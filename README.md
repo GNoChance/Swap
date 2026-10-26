@@ -1,0 +1,119 @@
+# Swap de Cyrielle
+
+Petit site interactif pour un swap de 7 cadeaux. Chaque cadeau est caché derrière un mini-jeu ; on débloque les étapes dans l'ordre.
+
+- Dossier : `C:\Users\eliott.colin\swap-cyrielle`
+- Stack : HTML/CSS/JS vanilla (modules natifs), GSAP 3.12.5 copié dans `js/vendor/`, pas de build
+- Hébergement prévu : Vercel (repo git créé par l'utilisateur, URL pas encore fournie ; ne rien pousser sans son accord)
+- Appareil de jeu : iPhone 17 (Safari) de l'utilisateur. Cyrielle a un Android mais jouera sur l'iPhone
+- Lancer en local : `npm run dev` puis http://localhost:5173 (tests : `npm test`). Pour refaire la grille de mots croisés si l'utilisateur change les mots : chercher une disposition compacte (script de recherche à réécrire, il était dans le scratchpad), puis vérifier avec `npm test`
+- Adresses spéciales : `?demo` débloque tout sans rien enregistrer, `?reset` efface la progression
+
+> **Pour Claude, si la session crashe :** lis d'abord la section « Avancement » ci-dessous, puis `git status` / `git log`. Mets cette section à jour après chaque étape terminée.
+
+## Avancement
+
+Dernière mise à jour : 2026-10-26 (reprise après crash du terminal)
+
+### Fait
+- [x] `js/content.js` : tous les textes (version A provisoire) + réponses acceptées. **Seul fichier que l'utilisateur doit modifier**
+- [x] `js/logic.js` : normalisation et vérification des réponses (accents, majuscules, pluriels) + `tests/logic.test.mjs` (13 tests OK)
+- [x] `js/state.js` : progression, sauvegarde localStorage, modes `?demo` / `?reset`
+- [x] `js/audio.js` : sons générés en WebAudio + bouton muet
+- [x] `js/effects.js` : effets de révélation sur canvas (un par cadeau + feu d'artifice final)
+- [x] `js/dom.js` : helpers DOM et animations GSAP communes
+- [x] `js/vendor/gsap.min.js` : GSAP 3.12.5 en local (pas de CDN le jour J)
+- [x] `js/games/` : free (réponse libre), anagram, blanks (texte à trous), qcm, acrostic (code secret), crossword (mots croisés)
+
+- [x] `index.html` : coquille (polices, CSS, GSAP, `main.js`) ; les écrans sont générés en JS depuis `content.js`
+- [x] `css/style.css`
+- [x] `js/main.js` : écrans accueil / timeline (chemin SVG dessiné) / panneau d'étape / final, bouton son, badge démo, clavier iPhone (`--vvh`, `--kb`)
+- [x] Ajout `ui.showAnswerConfirm` dans `content.js` : « Voir la réponse » demande un 2e toucher
+
+- [x] Parcours complet testé en Chrome automatisé (puppeteer-core, script dans le scratchpad de la session, pas dans le repo), taille iPhone 393×852 et PC 1440×900 : les 7 jeux, mauvaise réponse, indice, « Voir la réponse », écran final, sauvegarde après rechargement. 0 erreur console
+- [x] Bug corrigé : transitions CSS sur `opacity` en conflit avec les `gsap.from` (tuiles et options figées à moitié transparentes). Règle : **jamais de transition CSS sur opacity/transform d'un élément animé par GSAP** ; les états estompés utilisent `filter: opacity()`, et les intros ont `clearProps`
+
+- [x] Timeline progressive : les cadeaux verrouillés sont masqués et apparaissent un par un (clé `timeline.locked` retirée de `content.js`). Testé, 0 erreur
+
+- [x] Cadeau 3 : « Qui suis-je ? » remplacé par des mots croisés (`js/games/crossword.js`, `crosswordGrid`/`crosswordErrors` dans `logic.js`, 3 tests). Une seule `<input>` invisible suit la case courante (sentinelle « - » pour capter l'effacement sur iOS). Testé : erreur, effacement, enchaînement des mots, mot doré, changement de sens. 0 erreur
+- [x] `api.onProgress()` (main.js) : un mot juste efface le message « faux » resté affiché (mots croisés, texte à trous)
+
+- [x] Mini Cyrielle animée (voir « Mini Cyrielle » plus bas) : 12 stickers dans `assets/cyrielle/*.webp` (fond retiré par remplissage depuis les bords, seuil 246, recadrés, 300 px de large, WebP via canvas de Chrome, ~30 Ko chacun) ; `js/avatar.js` (createAvatar : set / react / setBase / jump, préchargement) ; branchée sur accueil, timeline (`placeBuddy`, `drawTo(reach, durée, walk)`), panneau (dock sticky en bas à droite) et final. `.gitignore` exclut la planche source. Testé iPhone + PC : marche le long du chemin, toucher, sommeil à 30 s, réactions aux erreurs. 0 erreur
+
+- [x] Intro Monster Munch + bonus Nerds (voir « Intro & bonus » plus bas) : 24 stickers en plus (36 au total, ~1,1 Mo), découpe propre (bavures retirées + contour blanc régénéré 6 px, script dans le scratchpad de la session) ; `js/scenes.js` (welcomeScreen + bonusScreen) ; `crisps()` / `nerds()` avec rebonds dans `effects.js` ; sons pop / whoosh / rip / crunch / rattle ; `progress.bonus` + `seeBonus()` + test ; `variant()` (expressions tirées au hasard) ; UBB seulement après la révélation du cadeau 7 (`revealFace` dans content.js, `ubbUnlocked()` dans main.js). `welcome.body` supprimé de content.js (remplacé par `intro.lines`). Testé iPhone + PC, intro en vitesse réelle (~22 s, toucher pour accélérer), 16 tests OK, 0 erreur
+
+- [x] Coupure pub téléachat « LE SWAP™ » après le cadeau 4 (voir « Coupure pub » plus bas) : `js/pub.js` (une timeline GSAP, pause sur « Je commande ! »), textes `content.pub`, sons static / jingle / sadTrombone / ding / dingHigh / drumroll / kaching / ring, `confetti()` dans effects.js, `progress.pub` + `seePub()` + 2 tests, `timelineScreen({ walkFrom })` pour reprendre la marche vers le cadeau 5 après la pub, `?pub` = aperçu (bouton ▶, rien n'est enregistré, la page se recharge à la fin). Rechargement pendant la pub : elle repasse (avec ▶). Bugs trouvés en test et corrigés : flash blanc rendu trop tôt (`immediateRender: false`), coins du fond qui tourne, bouton ▶ absent qui bloquait le démarrage dans le vrai parcours. Testé iPhone + PC, 18 tests OK, 0 erreur
+
+- [x] Débrief à embranchements façon The Quarry (voir « Débrief » plus bas), qui REMPLACE le générique (supprimé : credits.js, son CSS, content.credits, son clap ; startMusic/stopMusic gardés pour l'ambiance). `js/debrief.js` (debriefScreen + debriefReport), arbre dans `content.debrief` (6 questions, 9 fins, chaque fin avec sticker + effet), `debriefErrors` + `addDebriefRun` dans logic.js (3 tests), réponses dans localStorage `swap-cyrielle:debrief` (rien en ?demo, effacé par ?reset), `createBubble` exporté de scenes.js. `?debrief` = page récap de ses réponses + bouton pour lancer. Testé : 2 branches + récap, et depuis l'écran final dans le vrai parcours, iPhone + PC, 21 tests OK, 0 erreur
+
+### Reste à faire
+- [ ] Test sur le vrai iPhone (clavier, sons en mode silencieux, safe areas) : pas vérifiable en headless
+- [ ] Premier commit (rien n'est commité ; identité git à configurer, demander à l'utilisateur)
+- [ ] Brancher le repo Vercel quand l'utilisateur donne l'URL
+- [ ] Remplacer les textes provisoires par ceux de l'utilisateur : `welcome.signature` et `final.signature` vides, mot doux final en version A
+
+## Design validé
+
+### Palette « Bordeaux & crème »
+| Rôle | Couleur |
+|---|---|
+| Fond | `#F6EFE6` crème papier |
+| Surface | `#FFFDF9` ivoire |
+| Accent | `#7A1F35` bordeaux |
+| Détail | `#B8935A` or vieilli |
+| Texte | `#2B1A1E` quasi noir |
+
+Typo : Cormorant Garamond (titres, énigmes) + Inter (boutons, petits textes), via Google Fonts.
+Ton des textes d'interface : complice et taquin.
+
+### Déroulé
+- **Accueil** : fond crème papier légèrement texturé, message, bouton pour commencer (ce premier toucher active les sons sur iPhone).
+- **Timeline** : chemin vertical qui serpente. **Seuls les cadeaux débloqués sont affichés** (demande de l'utilisateur, 2026-10-26) : au départ on ne voit que le cadeau 1. Après « J'ai ouvert mon cadeau », le chemin se dessine vers un emplacement vide, puis le cadeau suivant apparaît (fondu + cachet qui éclate). États visibles : en cours (pulse doré), terminé (✦ + nom du cadeau). Le jalon final « Un dernier mot » n'apparaît qu'une fois les 7 ouverts. En `?demo` tout est débloqué donc tout est visible : tester l'apparition progressive sur l'adresse normale (+ `?reset`).
+- **Étape** : panneau qui monte du bas sur mobile, fenêtre centrée sur PC. « Cadeau n°X — titre », énigme, jeu, « Besoin d'un indice ? » si l'étape en a un, « Voir la réponse » toujours disponible mais discret. Après réponse trouvée ou dévoilée : animation, phrase de révélation, « file ouvrir le paquet n°X », puis bouton « J'ai ouvert mon cadeau ♥ » qui valide et débloque la suite. Une étape terminée peut être rouverte pour revoir la réponse.
+- **Final** : mot doux, récap des 7 cadeaux, score « trouvé toute seule » en clin d'œil, grand feu d'artifice puis pluie de cœurs.
+
+Une énigme compte comme « trouvée toute seule » si elle est résolue avant d'appuyer sur « Voir la réponse ».
+
+### Mini-jeux
+| # | Cadeau | Interaction |
+|---|---|---|
+| 1 | Charade → coffret Lush (bombe de bain + pain moussant) ; la charade mène à « bombe de bain » | Les 3 lignes apparaissent une à une, puis réponse libre |
+| 2 | Anagramme → pyjama | Tuiles A A J M P Y à toucher pour remplir 6 cases ; toucher une case retire la lettre ; vérif auto quand c'est plein. Indice derrière un bouton |
+| 3 | Mots croisés → M&M's perso | Grille 8×9, 7 mots (CHOCOLAT, COULEURS, LETTRE, ROND, NOUS, UNIQUE + MMS en doré = le cadeau). Toucher une case ou une définition, taper ; retoucher la case change de sens ; les mots justes se figent en doré, un mot plein mais faux tremble. Positions dans `content.js`, validées par `npm test` (`crosswordErrors`). Remplace le « Qui suis-je ? » (demande de l'utilisateur, 2026-10-26) |
+| 4 | Devinette → patate positive | Réponse libre (« patate » ou « pomme de terre » suffisent) |
+| 5 | Texte à trous → strass / TikTok | Cases lettre par lettre, le curseur avance tout seul, chaque mot s'allume quand il est juste |
+| 6 | QCM → brosse soufflante Air Styler | 3 cartes ; A ou B : la carte tremble + pique taquine ; C : révélation |
+| 7 | Code secret → maillot UBB | Elle touche les mots, la 1re lettre s'envole dans les cases, M-A-I-L-L-O-T se forme. Indice derrière un bouton |
+
+### Révélations
+Base commune : halo doré autour de la réponse, puis l'effet du cadeau.
+1. Bulles irisées · 2. Lunes et étoiles · 3. Pluie de M&M's qui rebondissent · 4. Patates souriantes et cœurs · 5. Éclats de strass prismatiques · 6. Rafale de vent, mèches ondulées · 7. Confettis rouge et bleu (couleurs du maillot) avec éclat doré · Final : feu d'artifice doré et bordeaux puis pluie de cœurs.
+Si « réduire les animations » est activé : versions douces.
+
+### Spécificités iPhone
+- Pas de vibrations (Safari ne les gère pas) : à la place, tremblement d'écran à l'erreur, rebond, flash à la révélation.
+- Sons joués même en mode silencieux ; bouton muet en haut à droite.
+- Contenu hors Dynamic Island et barre du bas (`env(safe-area-inset-*)`), champs en 16px minimum pour éviter le zoom.
+
+## Mini Cyrielle (design validé)
+Stickers : joy (fou rire), angry (bras croisés), cry (pleure), pout (moue), think (« ? »), sleep (zzz), kiss (bisou ♥), wink (clin d'œil ✨), surprised (mains sur les joues), smirk (clin d'œil malicieux), cool (lunettes de soleil), peace (peace + cœurs).
+- **Timeline** : debout sur le cachet en cours, flotte doucement, ombre. Déblocage : saute le long du chemin pendant qu'il se dessine (surprised), atterrit en peace. Toucher : kiss / cool / smirk / joy. 30 s sans rien faire : sleep, réveil au toucher.
+- **Panneau d'énigme** : petite Cyrielle collée en bas à droite du panneau (sticky). think pendant la recherche ; erreurs : 1re pout, 2e angry, 3e+ cry ; indice : smirk ; trouvé seule : joy ; « Voir la réponse » : surprised ; « J'ai ouvert » : kiss puis fermeture.
+- **Accueil** : remplace le cachet « C » (wink). **Final** : peace, ou cool si 7/7.
+- Changement d'expression : le sticker se retourne (scaleX) avec un rebond.
+
+## Intro & bonus (design validé)
+- **Accueil** = scène animée. « Touche l'écran pour commencer ✨ » (débloque le son iPhone) → Mini Cyrielle entre en sautillant → bulles tapées lettre par lettre (textes dans `content.intro`, une expression par bulle) → un paquet tombe, elle l'attrape (sticker munch-hold) → le paquet tremble → se déchire (munch-open, son rip) → chips Monster Munch en particules qui volent et rebondissent sur le bas de l'écran (croc-croc) → munch-eat + dernière bulle → titre + « Je suis prête ♥ ». Toucher = bulle suivante ; lien « Passer l'intro ».
+- **Bonus Nerds** entre le 7e cadeau et l'écran final, une seule fois (`progress.bonus`) : « Attends… il en reste un ! », boîte mystère (SVG) à toucher 3 fois, elle explose en pluie de Nerds qui rebondissent, puis bouton vers le mot final.
+- **Stickers UBB** seulement à partir de la révélation du cadeau 7 (pas de spoil) ; sushis en réactions au toucher ; variantes d'expressions (pout2, cry2…) tirées au hasard.
+
+## Coupure pub (design validé)
+~35 s, une seule fois, juste après « J'ai ouvert mon cadeau » du cadeau 4 (`content.pub.afterGift`). Friture télé → carton « PUBLICITÉ » + jingle → problème (gris, pout2, « Marre des cadeaux banals ? », chaussettes, trompette triste) → « NOUVEAU ! LE SWAP™ » (surprised3) → arguments cochés avec ding (cool/smirk), sans dévoiler les cadeaux 5-7 → témoignage (cry2 puis joy, 5 étoiles) → « MAIS ATTENDEZ… CE N'EST PAS TOUT ! » + copain offert (kiss) → prix barrés 999 € / 99 € / 9,99 € → tampon GRATUIT ♥ + ka-ching + confettis (peace) + petites lignes qui défilent → bouton « ☎ Je commande ! » (sonnerie, « Commande validée ✔ ») → « ▶ Reprise du programme » → chemin, marche vers le cadeau 5. Bouton façon YouTube « Passer la pub dans 5… » : 1er toucher « Bien essayé 😏 », 2e toucher passe. `?pub` = aperçu direct.
+
+## Débrief (design validé, remplace le générique)
+Bouton « 🎙 Le débrief de Mini Cyrielle ▸ » sur l'écran final. Écran sombre façon ciné, chemin doré qui se dessine et se sépare à chaque question (branches non choisies qui s'éteignent), notification « ⑂ CHEMIN CHOISI » comme dans The Quarry, Mini Cyrielle qui pose les questions. Pas de chrono. Arbre : verdict → (génial → cadeau préféré → Lush/pyjama → bain ou film / maillot → match / M&M's) ou (remarques → moins aimé → énigmes → plus faciles/plus dures / pub / je te taquine). 9 fins (FIN n / 9 : Cocooning total, La marmotte, Supportrice officielle, Le pyjama UBB, La gourmande, Mode facile activé, La revanche, Abonnement Premium, La taquine), chacune avec sticker + animation. « Fins découvertes : x / 9 » + « Rejouer le débrief ». Réponses enregistrées sur le téléphone, `?debrief` = récap pour l'utilisateur.
+
+## Journal
+- **2026-10-26 matin** : design validé, code de logique, état, sons, effets et jeux écrit. Crash du terminal pendant l'écriture des jeux (après `acrostic.js`).
+- **2026-10-26** : reprise, création de ce README. Écriture de `index.html`, `css/style.css`, `js/main.js`. Tests en local OK, correction du bug d'opacité GSAP. Le site est fonctionnel de bout en bout.
+- **2026-10-26 (suite)** : débrief à embranchements (remplace le générique de fin, que l'utilisateur n'aimait pas) ; coupure pub téléachat ; cadeau 1 = coffret Lush (bombe de bain + pain moussant) ; timeline progressive, mots croisés (cadeau 3), Mini Cyrielle animée, intro Monster Munch, bonus Nerds, stickers UBB/sushi.

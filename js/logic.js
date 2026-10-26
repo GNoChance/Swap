@@ -1,0 +1,265 @@
+// Pure logic: answer matching and progress transitions. No DOM, no storage.
+
+export const STEP_COUNT = 7;
+
+/** Lowercase, strip accents, keep only a–z and 0–9. */
+export function compact(text) {
+  return String(text)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/** Compacted words; with `singular`, a trailing "s" is dropped ("pommes" → "pomme"). */
+function tokens(text, singular) {
+  return String(text)
+    .split(/\s+/)
+    .map(compact)
+    .filter(Boolean)
+    .map((t) => (singular && t.length > 2 ? t.replace(/s$/, "") : t));
+}
+
+/**
+ * One accepted entry against the input, tolerant to plurals.
+ * - multi-word entries and long words match anywhere ("bombe de bain" ⊂ "une bombe de bain lush")
+ * - short single words must be a whole word ("mm" matches "m&m" but not "pomme")
+ */
+function matchesEntry(input, entry) {
+  if (!compact(entry)) return false;
+  const isMultiWord = /\s/.test(String(entry).trim());
+  return [false, true].some((singular) => {
+    const needle = tokens(entry, singular).join("");
+    const words = tokens(input, singular);
+    if (isMultiWord || needle.length >= 5) return words.join("").includes(needle);
+    return words.includes(needle) || words.join("") === needle;
+  });
+}
+
+/** `accept` items: a string, or an array of strings that must all be present. */
+export function matchesAnswer(input, accept) {
+  if (!compact(input)) return false;
+  return accept.some((item) =>
+    Array.isArray(item) ? item.every((entry) => matchesEntry(input, entry)) : matchesEntry(input, item),
+  );
+}
+
+/** "Prépare … [STRASS] … [TIKTOK] !" → [{text}, {word:"STRASS"}, {text}, {word:"TIKTOK"}, {text}] */
+export function parseBlanks(sentence) {
+  const parts = [];
+  const re = /\[([^\]]+)\]/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(sentence))) {
+    if (m.index > last) parts.push({ text: sentence.slice(last, m.index) });
+    parts.push({ word: m[1].toUpperCase() });
+    last = re.lastIndex;
+  }
+  if (last < sentence.length) parts.push({ text: sentence.slice(last) });
+  return parts;
+}
+
+/** Words of the acrostic phrase, with their first letter. Punctuation-only chunks are skipped. */
+export function acrosticWords(phrase) {
+  return phrase
+    .split(/\s+/)
+    .filter((w) => /\p{L}/u.test(w))
+    .map((w) => ({ word: w, letter: compact(w.match(/\p{L}/u)[0]).toUpperCase() }));
+}
+
+export function pick(list, previous) {
+  if (list.length < 2) return list[0];
+  let next;
+  do next = list[Math.floor(Math.random() * list.length)];
+  while (next === previous);
+  return next;
+}
+
+export function fill(template, values) {
+  return String(template).replace(/\{(\w+)\}/g, (_, key) => (key in values ? values[key] : `{${key}}`));
+}
+
+// ── Progress ────────────────────────────────────────────────
+// Step status: "locked" → "active" → "revealed" (answer shown) → "done" (gift opened)
+// bonus: the Nerds bonus (after the last gift) has been seen. pub: the ad break has been watched.
+
+export function initialProgress() {
+  return {
+    started: false,
+    bonus: false,
+    pub: false,
+    steps: Array.from({ length: STEP_COUNT }, (_, i) => ({
+      status: i === 0 ? "active" : "locked",
+      found: false,
+      hintUsed: false,
+    })),
+  };
+}
+
+function withStep(progress, index, patch) {
+  return {
+    ...progress,
+    steps: progress.steps.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+  };
+}
+
+export function start(progress) {
+  return { ...progress, started: true };
+}
+
+export function useHint(progress, index) {
+  return withStep(progress, index, { hintUsed: true });
+}
+
+/** Answer found (found=true) or shown with "Voir la réponse" (found=false). */
+export function solve(progress, index, found) {
+  const step = progress.steps[index];
+  if (!step || step.status !== "active") return progress;
+  return withStep(progress, index, { status: "revealed", found });
+}
+
+/** "J'ai ouvert mon cadeau" → step done, next one unlocked. */
+export function open(progress, index) {
+  const step = progress.steps[index];
+  if (!step || step.status !== "revealed") return progress;
+  let next = withStep(progress, index, { status: "done" });
+  const following = next.steps[index + 1];
+  if (following && following.status === "locked") next = withStep(next, index + 1, { status: "active" });
+  return next;
+}
+
+export function seeBonus(progress) {
+  return { ...progress, bonus: true };
+}
+
+export function seePub(progress) {
+  return { ...progress, pub: true };
+}
+
+export function unlockAll(progress) {
+  return {
+    ...progress,
+    started: true,
+    steps: progress.steps.map((s) => (s.status === "locked" ? { ...s, status: "active" } : s)),
+  };
+}
+
+export function doneCount(progress) {
+  return progress.steps.filter((s) => s.status === "done").length;
+}
+
+export function isComplete(progress) {
+  return doneCount(progress) === STEP_COUNT;
+}
+
+export function score(progress) {
+  return progress.steps.filter((s) => s.found).length;
+}
+
+/** Repair anything odd loaded from storage (wrong length, unknown status…). */
+export function sanitize(raw) {
+  const base = initialProgress();
+  if (!raw || !Array.isArray(raw.steps) || raw.steps.length !== STEP_COUNT) return base;
+  const valid = ["locked", "active", "revealed", "done"];
+  const steps = raw.steps.map((s, i) => ({
+    status: valid.includes(s?.status) ? s.status : base.steps[i].status,
+    found: Boolean(s?.found),
+    hintUsed: Boolean(s?.hintUsed),
+  }));
+  // The step after a done one can never stay locked.
+  steps.forEach((s, i) => {
+    if (s.status === "done" && steps[i + 1]?.status === "locked") steps[i + 1].status = "active";
+  });
+  return { started: Boolean(raw.started), bonus: Boolean(raw.bonus), pub: Boolean(raw.pub), steps };
+}
+
+// ── Crossword ───────────────────────────────────────────────
+// words: [{ word, clue, row, col, dir: "horizontal" | "vertical", golden? }], row/col from 0.
+
+/** Lay the words on a grid: cells by "r,c", entries with their cell keys and clue numbers. */
+export function crosswordGrid(words) {
+  const cells = new Map();
+  const entries = words.map((w, index) => {
+    const word = compact(w.word).toUpperCase();
+    const [dr, dc] = w.dir === "vertical" ? [1, 0] : [0, 1];
+    const keys = [...word].map((letter, i) => {
+      const r = w.row + dr * i;
+      const c = w.col + dc * i;
+      const key = `${r},${c}`;
+      const cell = cells.get(key) || { r, c, key, letter, entries: [], conflict: false };
+      if (cell.letter !== letter) cell.conflict = true;
+      cell.entries.push(index);
+      cells.set(key, cell);
+      return key;
+    });
+    return { ...w, index, word, keys };
+  });
+  // Clue numbers follow the reading order of the first letters.
+  [...new Set(entries.map((e) => e.keys[0]))]
+    .map((key) => cells.get(key))
+    .sort((a, b) => a.r - b.r || a.c - b.c)
+    .forEach((cell, i) => (cell.number = i + 1));
+  entries.forEach((e) => (e.number = cells.get(e.keys[0]).number));
+  const all = [...cells.values()];
+  return { cells, entries, rows: Math.max(...all.map((c) => c.r)) + 1, cols: Math.max(...all.map((c) => c.c)) + 1 };
+}
+
+/** What would make the grid unplayable: two different letters in one cell, or letters touching outside a word. */
+export function crosswordErrors(words) {
+  const { cells, entries } = crosswordGrid(words);
+  const errors = [];
+  for (const cell of cells.values()) {
+    if (cell.r < 0 || cell.c < 0) errors.push(`Case hors grille en ligne ${cell.r + 1}, colonne ${cell.c + 1}`);
+    if (cell.conflict) errors.push(`Deux lettres différentes en ligne ${cell.r + 1}, colonne ${cell.c + 1}`);
+  }
+  // Every horizontal or vertical run of 2+ letters must be exactly one of the words.
+  const runs = new Set(entries.map((e) => `${e.dir === "vertical" ? "vertical" : "horizontal"}:${e.keys[0]}:${e.keys.length}`));
+  for (const dir of ["horizontal", "vertical"]) {
+    const [dr, dc] = dir === "vertical" ? [1, 0] : [0, 1];
+    for (const cell of cells.values()) {
+      if (cells.has(`${cell.r - dr},${cell.c - dc}`)) continue;
+      let length = 1;
+      while (cells.has(`${cell.r + dr * length},${cell.c + dc * length}`)) length++;
+      if (length > 1 && !runs.has(`${dir}:${cell.key}:${length}`)) {
+        errors.push(`Lettres collées hors d'un mot en ligne ${cell.r + 1}, colonne ${cell.c + 1}`);
+      }
+    }
+  }
+  return errors;
+}
+
+// ── Debrief (branching dialogue) ────────────────────────────
+// { start, nodes: { id: { text, choices: [{ label, next }] } }, endings: { id: { n, title } } }
+
+/** What would break the debrief: a dead end, a missing target, an unreachable node or ending, bad numbering. */
+export function debriefErrors(d) {
+  const errors = [];
+  const nodes = d.nodes || {};
+  const endings = d.endings || {};
+  for (const id of Object.keys(nodes)) if (id in endings) errors.push(`« ${id} » est à la fois une question et une fin`);
+  if (!(d.start in nodes)) errors.push(`La première question « ${d.start} » n'existe pas`);
+  const seen = new Set();
+  const visit = (id, depth) => {
+    if (seen.has(id) || depth > 20) return;
+    seen.add(id);
+    const node = nodes[id];
+    if (!node) return;
+    if (!node.choices?.length) errors.push(`La question « ${id} » n'a aucune réponse`);
+    for (const choice of node.choices || []) {
+      if (!(choice.next in nodes) && !(choice.next in endings)) errors.push(`« ${choice.label} » mène à « ${choice.next} », qui n'existe pas`);
+      else visit(choice.next, depth + 1);
+    }
+  };
+  visit(d.start, 0);
+  for (const id of [...Object.keys(nodes), ...Object.keys(endings)]) if (!seen.has(id)) errors.push(`« ${id} » n'est jamais atteint`);
+  const numbers = Object.values(endings).map((e) => e.n).sort((a, b) => a - b);
+  if (numbers.some((n, i) => n !== i + 1)) errors.push("Les fins doivent être numérotées de 1 à " + numbers.length);
+  return errors;
+}
+
+/** Saved debriefs: every run (answers + ending) and the set of endings found. */
+export function addDebriefRun(store, run) {
+  const runs = Array.isArray(store?.runs) ? store.runs : [];
+  const found = Array.isArray(store?.found) ? store.found : [];
+  return { runs: [...runs, run], found: [...new Set([...found, run.ending])] };
+}
