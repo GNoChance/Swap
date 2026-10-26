@@ -46,6 +46,8 @@ Dernière mise à jour : 2026-10-26 (reprise après crash du terminal)
 
 - [x] Débrief à embranchements façon The Quarry (voir « Débrief » plus bas), qui REMPLACE le générique (supprimé : credits.js, son CSS, content.credits, son clap ; startMusic/stopMusic gardés pour l'ambiance). `js/debrief.js` (debriefScreen + debriefReport), arbre dans `content.debrief` (6 questions, 9 fins, chaque fin avec sticker + effet), `debriefErrors` + `addDebriefRun` dans logic.js (3 tests), réponses dans localStorage `swap-cyrielle:debrief` (rien en ?demo, effacé par ?reset), `createBubble` exporté de scenes.js. `?debrief` = page récap de ses réponses + bouton pour lancer. Testé : 2 branches + récap, et depuis l'écran final dans le vrai parcours, iPhone + PC, 21 tests OK, 0 erreur
 
+- [x] Logo « Mini Cyrielle en badge » : `assets/logo/` (badge.webp transparent pour le site, favicon-32/64.png = visage zoomé, apple-touch-icon.png 180 + icon-192/512.png = pleine tuile bordeaux), `manifest.webmanifest` (plein écran, « Swap de Cyrielle »), liens dans index.html. Sur l'écran « Touche l'écran » à la place du cachet « C », et au-dessus du titre de la timeline. Source : sticker wink redécoupé SANS contour blanc (cut3.cjs avec R=0 PEEL=40 PEEL_MIN=165 DROP_LIGHT=1), composé dans un canvas Chrome (logo.mjs, scratchpad). Sur iPhone, l'app de l'écran d'accueil et Safari ont des sauvegardes séparées. Pas d'og:image tant que l'URL Vercel n'existe pas
+
 ### Reste à faire
 - [ ] Test sur le vrai iPhone (clavier, sons en mode silencieux, safe areas) : pas vérifiable en headless
 - [x] Premier commit `d7d0d4c` (identité locale au repo : GNoChance / 183079883+GNoChance@users.noreply.github.com)
@@ -117,4 +119,4 @@ Bouton « 🎙 Le débrief de Mini Cyrielle ▸ » sur l'écran final. Écran so
 ## Journal
 - **2026-10-26 matin** : design validé, code de logique, état, sons, effets et jeux écrit. Crash du terminal pendant l'écriture des jeux (après `acrostic.js`).
 - **2026-10-26** : reprise, création de ce README. Écriture de `index.html`, `css/style.css`, `js/main.js`. Tests en local OK, correction du bug d'opacité GSAP. Le site est fonctionnel de bout en bout.
-- **2026-10-26 (suite)** : débrief à embranchements (remplace le générique de fin, que l'utilisateur n'aimait pas) ; coupure pub téléachat ; cadeau 1 = coffret Lush (bombe de bain + pain moussant) ; timeline progressive, mots croisés (cadeau 3), Mini Cyrielle animée, intro Monster Munch, bonus Nerds, stickers UBB/sushi.
+- **2026-10-26 (suite)** : logo Mini Cyrielle en badge ; débrief à embranchements (remplace le générique de fin, que l'utilisateur n'aimait pas) ; coupure pub téléachat ; cadeau 1 = coffret Lush (bombe de bain + pain moussant) ; timeline progressive, mots croisés (cadeau 3), Mini Cyrielle animée, intro Monster Munch, bonus Nerds, stickers UBB/sushi.

@@ -305,7 +305,9 @@ p {
   animation: rise-in 0.9s ease-out both;
 }
 
-.intro-tap-seal .seal {
+.intro-tap-logo {
+  display: block;
+  border-radius: 50%;
   filter: drop-shadow(0 12px 18px rgba(74, 14, 31, 0.32));
   animation: breathe 2.4s ease-in-out infinite;
 }
@@ -376,6 +378,13 @@ p {
 }
 
 /* ─── Timeline ───────────────────────────────────────────── */
+.tl-logo {
+  display: block;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  filter: drop-shadow(0 6px 10px rgba(74, 14, 31, 0.28));
+}
+
 .tl-header {
   display: flex;
   flex-direction: column;
@@ -2476,7 +2485,7 @@ p {
   .pub-bg,
   .pub-cta,
   .intro-tap,
-  .intro-tap-seal .seal,
+  .intro-tap-logo,
   .intro-tap-text,
   .tl-node[data-state] .tl-seal::before,
   .blank-box.is-current,

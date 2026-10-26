@@ -4,7 +4,7 @@ import { content } from "./content.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { crisps, nerds, goldDust } from "./effects.js";
 import { createAvatar, variant } from "./avatar.js";
-import { h, svg, bump, seal } from "./dom.js";
+import { h, svg, bump } from "./dom.js";
 
 const gsap = window.gsap;
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -163,7 +163,7 @@ export function welcomeScreen({ onBegin }) {
   const prompt = h(
     "button",
     { class: "intro-tap", type: "button" },
-    h("span", { class: "intro-tap-seal" }, seal("C", { size: 84, seed: 11 })),
+    h("img", { class: "intro-tap-logo", src: "assets/logo/badge.webp", alt: "", width: "132", height: "132" }),
     h("span", { class: "intro-tap-text" }, intro.tap),
   );
   const el = h(

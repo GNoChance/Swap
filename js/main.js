@@ -127,6 +127,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
   const header = h(
     "header",
     { class: "tl-header" },
+    h("img", { class: "tl-logo", src: "assets/logo/badge.webp", alt: "", width: "64", height: "64" }),
     h("h1", { class: "tl-title" }, t.title),
     h("p", { class: "ornament", "aria-hidden": "true" }, "✦"),
     progressText,
