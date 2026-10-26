@@ -48,7 +48,8 @@ Dernière mise à jour : 2026-10-26 (reprise après crash du terminal)
 
 ### Reste à faire
 - [ ] Test sur le vrai iPhone (clavier, sons en mode silencieux, safe areas) : pas vérifiable en headless
-- [ ] Premier commit (rien n'est commité ; identité git à configurer, demander à l'utilisateur)
+- [x] Premier commit `d7d0d4c` (identité locale au repo : GNoChance / 183079883+GNoChance@users.noreply.github.com)
+- [ ] Push : aucun dépôt GitHub pour le swap. Prévu : `gh repo create swap-cyrielle --private --source . --remote origin --push` (compte gh GNoChance connecté). Bloqué par les permissions de Claude Code le 2026-10-26 : l'utilisateur doit le lancer lui-même ou autoriser l'action
 - [ ] Brancher le repo Vercel quand l'utilisateur donne l'URL
 - [ ] Remplacer les textes provisoires par ceux de l'utilisateur : `welcome.signature` et `final.signature` vides, mot doux final en version A
 
