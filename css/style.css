@@ -2868,17 +2868,7 @@ body.is-ubb .mute {
   color: #7a1733;
 }
 
-/* A match ticket, drawn at its close-up size and scaled down in their hands */
-.ubb-ticket {
-  position: absolute;
-  left: 50%;
-  top: 80%; /* in their lap: under their faces */
-  z-index: 2;
-  width: 300px;
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
-  pointer-events: none;
-}
-
+/* The close-up: the match tickets, out of their hands */
 .ubb-tickets {
   position: absolute;
   inset: 0;
@@ -2886,9 +2876,12 @@ body.is-ubb .mute {
   pointer-events: none;
 }
 
-.ubb-tickets .ubb-ticket {
+.ubb-ticket {
+  position: absolute;
   left: 0;
   top: 0;
+  width: 300px;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
 }
 
 .ubb-ticket-paper {

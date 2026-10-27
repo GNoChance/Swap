@@ -585,10 +585,10 @@ export const content = {
         cycyTalk: "maillot-wink", // pendant sa phrase
         cycyTwist: "maillot-surprised", // d'un coup, super surprise
         cycyCheer: "maillot-cheer",
-        nini: "nini-thumbs", // Nini et Dédé débarquent, billet en main
-        niniCheer: "nini-cheer",
-        dede: "dede-thumbs",
-        dedeShout: "dede-cheer", // quand il hurle
+        nini: "nini-ticket-joy", // Nini et Dédé débarquent, billet en main
+        niniCheer: "nini-ticket-raise",
+        dede: "dede-ticket-joy",
+        dedeShout: "dede-ticket-raise", // quand il hurle, billet levé
       },
       cycyText: "J'étais trop impatiente, j'ai pas pu m'empêcher de le mettre !",
       dedeText: "Allez allez UBB UBB !!",

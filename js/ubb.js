@@ -13,7 +13,7 @@ import { h, shake, flash } from "./dom.js";
 const gsap = window.gsap;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const COLORS = ["#7a1733", "#1d2448", "#f3e9dc", "#c9a15b"]; // confetti: bordeaux, navy, cream, gold
-const HAND = 0.3; // a ticket in their hands, against its close-up size
+const HAND = 0.18; // the ticket in their sticker's hands, against its close-up size
 
 /** A match ticket, drawn at its close-up size. */
 function ticket(t) {
@@ -56,15 +56,15 @@ export function playUbb({ preview = false, onDone } = {}) {
   const alarm = h("div", { class: "ubb-alarm", "aria-hidden": "true" });
   const alarmText = h("p", { class: "ubb-alarm-text" }, u.alarm);
 
-  // Nini, Mini Cycy, Dédé: the two of the family each hold a ticket
-  const small = Math.round(Math.min(108, (innerWidth - 28) * 0.29));
-  const cycy = createAvatar({ face: f.cycy, size: Math.round(small * 1.14) });
+  // Nini, Mini Cycy, Dédé: Nini and Dédé come in tickets in hand (their stickers hold them)
+  const small = Math.round(Math.min(114, (innerWidth - 28) * 0.31));
+  const cycy = createAvatar({ face: f.cycy, size: Math.round(small * 1.06) });
   const nini = createAvatar({ face: f.nini, size: small });
   const dede = createAvatar({ face: f.dede, size: small });
   const tickets = [ticket(u.ticket), ticket(u.ticket)];
-  const niniSlot = h("div", { class: "ubb-actor", hidden: true }, nini.el, tickets[0]);
+  const niniSlot = h("div", { class: "ubb-actor", hidden: true }, nini.el);
   const cycySlot = h("div", { class: "ubb-actor" }, cycy.el);
-  const dedeSlot = h("div", { class: "ubb-actor", hidden: true }, dede.el, tickets[1]);
+  const dedeSlot = h("div", { class: "ubb-actor", hidden: true }, dede.el);
   const cast = h("div", { class: "ubb-cast" }, niniSlot, cycySlot, dedeSlot);
 
   const bubble = createBubble();
@@ -113,18 +113,19 @@ export function playUbb({ preview = false, onDone } = {}) {
     setTimeout(() => (speaker.textContent = ""), 200); // with the bubble, not before it
   }
 
-  /** The tickets leave their hands and come to the middle of the screen, big. */
+  /** Their tickets come out of their hands to the middle of the screen, big. */
   function closeUp() {
     const fit = Math.min(1, (innerWidth - 56) / 300);
     const spots = [
       { x: -12, y: -34, r: -7 },
       { x: 12, y: 38, r: 5 },
     ];
-    tickets.forEach((t, k) => {
-      const r = t.getBoundingClientRect();
-      gsap.killTweensOf(t);
+    [niniSlot, dedeSlot].forEach((slot, k) => {
+      const t = tickets[k];
+      const r = slot.getBoundingClientRect();
       layer.append(t);
-      gsap.set(t, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      gsap.set(t, { xPercent: -50, yPercent: -50, x: r.left + r.width / 2, y: r.top + r.height * 0.78, scale: HAND, autoAlpha: 0 });
+      gsap.to(t, { autoAlpha: 1, duration: 0.2, delay: k * 0.12 });
       gsap.to(t, {
         x: innerWidth / 2 + spots[k].x * fit,
         y: innerHeight * 0.4 + spots[k].y * fit,
@@ -157,7 +158,6 @@ export function playUbb({ preview = false, onDone } = {}) {
     document.body.classList.add("is-ubb"); // the sound button would sit on the notification
     gsap.set([scene, alarm, alarmText, closing, cycySlot], { autoAlpha: 0 });
     gsap.set(notif, { yPercent: -170 });
-    gsap.set(tickets, { xPercent: -50, yPercent: -50, scale: 0 });
     await sleep(250);
 
     // 1. The notification drops in
@@ -212,12 +212,9 @@ export function playUbb({ preview = false, onDone } = {}) {
     flash();
     shake(scene, 18);
     sfx("unlock");
-    tickets.forEach((t, k) =>
-      gsap.fromTo(t, { scale: 0, rotation: k ? 40 : -40 }, { scale: HAND, rotation: k ? 8 : -8, duration: 0.5, delay: 0.15, ease: "back.out(2.6)" }),
-    );
     await wait(1700);
 
-    // 6. Dédé shouts, everyone cheers, the tickets wave
+    // 6. Dédé shouts, everyone cheers, tickets up in the air
     dede.set(f.dedeShout);
     nini.set(f.niniCheer);
     cycy.set(f.cycyCheer);
@@ -225,7 +222,6 @@ export function playUbb({ preview = false, onDone } = {}) {
     sfx("horn");
     sfx("crowd");
     shake(stage, 12);
-    tickets.forEach((t, k) => gsap.to(t, { y: -10, rotation: k ? 14 : -14, duration: 0.2, repeat: 7, yoyo: true, ease: "sine.inOut" }));
     say.classList.add("is-shout");
     await line("dede", u.dedeText, "right");
     shake(bubble.el, 8);
