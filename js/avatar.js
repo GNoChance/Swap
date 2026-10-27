@@ -34,12 +34,13 @@ const VARIANTS = {
   surprised: ["surprised", "surprised2", "surprised3"],
 };
 
-/** Extra drawings of an emotion from now on: { think: "pj-think", … } (a revealed gift she keeps on). */
+/** Extra drawings of an emotion from now on: { think: "pj-think", joy: ["a", "b"], … } (a revealed gift she keeps on). */
 export function unlockVariants(extra) {
   for (const [face, more] of Object.entries(extra)) {
     const list = (VARIANTS[face] ||= [face]);
-    if (!list.includes(more)) list.push(more);
+    for (const name of [more].flat()) if (!list.includes(name)) list.push(name);
   }
+  preloadFaces(Object.values(extra).flat());
 }
 
 /** One of the drawings of an emotion, at random ("cry" → "cry" or "cry2"). */
@@ -50,9 +51,14 @@ export function variant(face) {
 
 const src = (face) => `assets/cyrielle/${face}.webp`;
 
-/** Load every face up front, so a change of expression never flashes. */
-export function preloadFaces() {
-  for (const face of FACES) {
+const loaded = new Set();
+
+/** Load faces ahead of use, so a change of expression never flashes. The core set at boot; the gift,
+ *  crisps, Nerds and Kevin sets once they can show up (there are 120 stickers in all). */
+export function preloadFaces(list = FACES) {
+  for (const face of list) {
+    if (!face || loaded.has(face)) continue;
+    loaded.add(face);
     const img = new Image();
     img.src = src(face);
   }

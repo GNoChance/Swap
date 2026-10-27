@@ -98,11 +98,14 @@ test("équation accepts mousse / Rituals", () => {
 test("every sticker named in content.js exists", () => {
   const faces = new Set();
   const walk = (v, key) => {
-    if (typeof v === "string" && ["face", "revealFace", "hold", "open", "eat"].includes(key)) faces.add(v);
+    if (typeof v === "string" && (key === "face" || key === "revealFace")) faces.add(v);
     else if (v && typeof v === "object") for (const [k, child] of Object.entries(v)) walk(child, k);
   };
   walk(content);
-  for (const g of content.gifts) for (const face of Object.values(g.unlocksFaces || {})) faces.add(face);
+  for (const s of content.intro.snacks) [s.hold, s.hug, s.tear, s.wow, s.bite, s.eat, s.empty, ...s.nibble, ...s.playFaces].forEach((f) => faces.add(f));
+  for (const g of content.gifts) [...Object.values(g.unlocksFaces || {}).flat(), ...(g.playFaces || [])].forEach((f) => faces.add(f));
+  Object.values(content.bonus.faces).forEach((f) => faces.add(f));
+  Object.values(content.debrief.secret.end).forEach((f) => faces.add(f));
   const missing = [...faces].filter((face) => !existsSync(new URL(`../assets/cyrielle/${face}.webp`, import.meta.url)));
   assert.deepEqual(missing, []);
 });
@@ -222,6 +225,30 @@ test("debrief runs pile up and found endings are counted once", () => {
   store = L.addDebriefRun(store, { ending: "cocooning", answers: [] });
   assert.equal(store.runs.length, 3);
   assert.deepEqual(store.found, ["taquine", "cocooning"]);
+});
+
+test("secret ending: unlocked by the last ending found, remembered across runs", () => {
+  const ids = Object.keys(content.debrief.endings);
+  let store = null;
+  for (const id of ids.slice(0, -1)) store = L.addDebriefRun(store, { ending: id, answers: [] });
+  assert.equal(L.secretUnlocked(store, ids), false);
+  store = L.addDebriefRun(store, { ending: ids.at(-1), answers: [] });
+  assert.equal(L.secretUnlocked(store, ids), true);
+  store = L.seeSecret(store);
+  store = L.addDebriefRun(store, { ending: ids[0], answers: [] });
+  assert.equal(store.secret, true);
+  assert.equal(L.seeSecret(null).secret, true);
+});
+
+test("secret dialogue: every line has a speaker and a sticker, Kevin enters before he speaks", () => {
+  const { script } = content.debrief.secret;
+  let kevinIn = false;
+  for (const line of script) {
+    if (line.reply) continue;
+    assert.ok(["cycy", "kevin"].includes(line.who) && line.face && line.text, JSON.stringify(line));
+    if (line.enter) kevinIn = true;
+    if (line.who === "kevin") assert.ok(kevinIn, line.text);
+  }
 });
 
 test("fill replaces placeholders", () => {

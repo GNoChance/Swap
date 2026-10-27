@@ -1,7 +1,7 @@
 // Debrief, The Quarry style: Mini Cyrielle asks, every answer forks the golden path,
 // and each branch leads to its own ending. Her answers are kept for you (?debrief).
 import { content } from "./content.js";
-import { fill, addDebriefRun } from "./logic.js";
+import { fill, addDebriefRun, secretUnlocked } from "./logic.js";
 import { sfx, unlockAudio, startMusic, stopMusic } from "./audio.js";
 import { playEffect, hearts, confetti } from "./effects.js";
 import { createAvatar } from "./avatar.js";
@@ -24,7 +24,7 @@ function svgEl(tag, attrs) {
   return el;
 }
 
-function starField() {
+export function starField() {
   return h(
     "div",
     { class: "debrief-stars", "aria-hidden": "true" },
@@ -37,7 +37,8 @@ function starField() {
 }
 
 /** values: placeholders for the texts ({snack}); camp: her fondue side, which picks that ending's version. */
-export function debriefScreen({ values = {}, camp, onReplay, onBack }) {
+/** onSecret: opens the secret ending (all endings found). */
+export function debriefScreen({ values = {}, camp, onReplay, onBack, onSecret }) {
   const d = content.debrief;
   const total = Object.keys(d.endings).length;
   const answers = [];
@@ -70,6 +71,7 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack }) {
   const endAvatar = h("div", { class: "debrief-end-avatar" });
   const endText = h("p", { class: "debrief-end-text" });
   const endFound = h("p", { class: "debrief-found" });
+  const endSecret = h("div", { class: "debrief-secret" });
   const ending = h(
     "div",
     { class: "debrief-end" },
@@ -79,6 +81,7 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack }) {
     endAvatar,
     endText,
     endFound,
+    endSecret,
     h(
       "div",
       { class: "debrief-actions" },
@@ -203,6 +206,14 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack }) {
     endTitle.textContent = end.title;
     endText.textContent = fill(end.text, values);
     endFound.textContent = fill(d.found, { found: store.found.length, total });
+    // The secret ending: a padlock until every ending is found, then it bursts in once; after that, a button
+    const unlocking = !store.secret && secretUnlocked(store, Object.keys(d.endings));
+    if (store.secret) {
+      endSecret.append(
+        h("button", { class: "btn btn-secondary btn-secret", type: "button", onclick: () => (sfx("tap"), onSecret()) }, d.secret.button),
+      );
+    } else if (!unlocking) endSecret.append(h("p", { class: "debrief-lock" }, fill(d.secret.locked, { total })));
+    if (unlocking) setTimeout(() => !left && glitchTo(onSecret), 4500);
     lastDot.setAttribute("class", "trail-dot is-end");
     lastDot.setAttribute("r", 8);
 
@@ -231,6 +242,23 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack }) {
         }, 500);
       },
     });
+  }
+
+  /** TV static over everything, « FIN SECRÈTE DÉBLOQUÉE » flickering, then the secret ending. */
+  function glitchTo(next) {
+    const text = h("p", { class: "secret-glitch-text" }, d.secret.unlocked);
+    const noise = h("div", { class: "tv-static" });
+    const veil = h("div", { class: "secret-glitch", "aria-live": "polite" }, noise, text);
+    document.body.append(veil);
+    sfx("static");
+    setTimeout(() => sfx("static"), 700);
+    gsap
+      .timeline({ onComplete: () => veil.remove() })
+      .set(noise, { autoAlpha: 0.9 })
+      .fromTo(text, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.08, repeat: 7, yoyo: true }, 0.2)
+      .to(noise, { autoAlpha: 0.35, duration: 0.15, repeat: 5, yoyo: true }, 0.2)
+      .add(() => next(), 1.6)
+      .to(veil, { autoAlpha: 0, duration: 0.5 }, 1.9);
   }
 
   return {
@@ -295,6 +323,7 @@ export function debriefReport({ onPlay }) {
       runs,
       h("h2", { class: "recap-title" }, `${r.endings} : ${store.found.length} / ${total}`),
       found,
+      h("p", { class: "report-secret" }, `${r.secret} : `, h("strong", {}, store.secret ? r.secretFound : r.secretNotYet)),
       h(
         "button",
         {

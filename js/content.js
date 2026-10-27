@@ -30,7 +30,10 @@ export const content = {
       { face: "surprised2", text: "Mais avant de commencer… il te faut des forces !" },
     ],
     // Elle choisit son paquet : la suite de l'intro (stickers, chips) suit son choix.
-    // hold / open / eat = stickers pendant l'animation ; text = la bulle après l'ouverture du paquet.
+    // Stickers : hold = elle revient avec, hug = câlin au paquet, tear = elle l'ouvre, wow = ouvert,
+    // bite = elle croque, eat = pendant la dernière bulle (text).
+    // Sur le chemin : nibble = elle grignote quand on ne touche à rien, playFaces = quand on la touche,
+    // empty = paquet vide après le dernier cadeau.
     snackQuestion: { face: "think", text: "Plutôt Monster Munch ou Brets ?" },
     // Elle part chercher le paquet (text), sort de l'écran et revient avec (back)
     fetch: { face: "wink", text: "Ok ça marche, je reviens !", back: "Et voilà !" },
@@ -40,8 +43,14 @@ export const content = {
         name: "Monster Munch",
         label: "Monster Munch 🐾",
         hold: "munch-hold",
-        open: "munch-open",
-        eat: "munch-eat",
+        hug: "munch-hug",
+        tear: "munch-tear",
+        wow: "munch-wow",
+        bite: "munch-bite",
+        eat: "munch-crumbs",
+        nibble: ["munch-dig", "munch-taste", "munch-cozy"],
+        playFaces: ["munch-taste", "munch-think", "munch-mess"],
+        empty: "munch-sad",
         text: "Ton paquet de Monster Munch t'attend, sers-toi 😋",
       },
       {
@@ -49,8 +58,14 @@ export const content = {
         name: "Brets",
         label: "Brets miel moutarde 🍯",
         hold: "brets-hold",
-        open: "brets-hold",
-        eat: "brets-eat",
+        hug: "brets-hug",
+        tear: "brets-tear",
+        wow: "brets-wow",
+        bite: "brets-bite",
+        eat: "brets-crumbs",
+        nibble: ["brets-dig", "brets-taste", "brets-cozy"],
+        playFaces: ["brets-offer", "brets-cheer", "brets-think"],
+        empty: "brets-empty",
         text: "Ton paquet de Brets t'attend, sers-toi 😋",
       },
     ],
@@ -120,7 +135,8 @@ export const content = {
       short: "Pyjama",
       effect: "moons",
       revealFace: "cosy",
-      // Une fois le pyjama révélé, Mini Cyrielle le porte aussi pour réfléchir, dormir et râler
+      // Une fois le cadeau révélé : unlocksFaces = stickers en plus pour ses émotions (réfléchir, dormir, râler…),
+      // playFaces = stickers en plus quand on la touche ou qu'elle s'occupe sur le chemin.
       unlocksFaces: { think: "pj-think", sleep: "pj-sleep", angry: "pj-angry" },
     },
     {
@@ -137,6 +153,9 @@ export const content = {
       reveal: "Ta dose de sourire et de motivation quotidienne 🥔",
       short: "Patate positive",
       effect: "potatoes",
+      revealFace: "patate-hug",
+      unlocksFaces: { joy: "patate-excited", think: "patate-think", sleep: "patate-sleep", angry: "patate-angry", kiss: "patate-love", pout: "patate-shy" },
+      playFaces: ["patate-kiss", "patate-peace", "patate-wink", "patate-cuddle", "patate-peek"],
     },
     {
       type: "camp",
@@ -265,6 +284,9 @@ export const content = {
       reveal: "Le graal de la coiffure 💨",
       short: "Brosse soufflante Air Styler",
       effect: "wind",
+      revealFace: "magic-hug",
+      unlocksFaces: { joy: "magic-done", think: "magic-think", kiss: "magic-cuddle" },
+      playFaces: ["magic-wand", "magic-brush-wink", "magic-smooth", "magic-dry", "magic-curl", "magic-style", "magic-case"],
     },
     {
       type: "acrostic",
@@ -320,7 +342,11 @@ export const content = {
   // Bonus après le dernier cadeau, juste avant le mot final (une seule fois)
   bonus: {
     eyebrow: "Bonus",
+    // Son paquet de chips est vide (sticker « empty » du paquet choisi), puis la boîte tombe
+    empty: "Oh non… mon paquet est vide 😢",
     wait: "Attends… il en reste un !",
+    // Stickers quand la boîte explose : wow, puis elle se verse les Nerds dans la bouche (pour), puis after
+    faces: { wow: "nerds-wow", pour: "nerds-pour", after: "nerds-mess" },
     tap: "Secoue la boîte : touche-la 3 fois",
     answer: "Des Nerds ! 🍬",
     reveal: "Pour finir sur une note sucrée (et qui croustille).",
@@ -405,7 +431,7 @@ export const content = {
       goodvibes: {
         n: 3,
         title: "Good vibes only",
-        face: "peace",
+        face: "patate-peace",
         effect: "potatoes",
         text: "Une patate positive pour le moral, tous les jours. Interdiction d'être triste, c'est la règle 🥔",
       },
@@ -455,7 +481,7 @@ export const content = {
       brushing: {
         n: 8,
         title: "Brushing de star",
-        face: "wink",
+        face: "magic-done",
         effect: "wind",
         text: "Un brushing parfait en dix minutes chrono. Les réseaux avaient raison 💨",
       },
@@ -495,6 +521,43 @@ export const content = {
         text: "Je le savais : tu as adoré du début à la fin. Et moi, je t'aime 😏♥",
       },
     },
+    // Fin secrète : après la dernière fin découverte, l'écran grésille et ce dialogue démarre.
+    // who = qui parle (cycy ou kevin), face = son sticker, reply = un bouton de réponse pour Cyrielle,
+    // enter = Kevin arrive à ce moment-là, sound = un son en plus (drumroll = roulement de tambour).
+    secret: {
+      locked: "🔒 Une fin secrète t'attend à {total} / {total}",
+      unlocked: "Fin secrète débloquée",
+      button: "✦ Revoir la fin secrète",
+      label: "Fin secrète · {n} / {total}",
+      title: "Les coulisses",
+      names: { cycy: "Mini Cycy", kevin: "Kevin" },
+      script: [
+        { who: "cycy", face: "surprised3", text: "Attends… tu as vraiment trouvé les 13 fins ?!" },
+        { who: "cycy", face: "smirk", text: "Bon. Puisque tu es allée jusqu'au bout, je vais te montrer un secret…" },
+        { who: "cycy", face: "wink", text: "Bienvenue dans les coulisses du Swap 🎬" },
+        { reply: "Raconte !" },
+        { who: "cycy", face: "think", text: "Tout a commencé hier. Kevin voulait te faire un swap pas comme les autres." },
+        { who: "cycy", face: "think2", text: "9 énigmes, une grille de mots croisés, des mots mêlés… et en plein milieu, l'ordinateur a planté." },
+        { reply: "Non ?!" },
+        { who: "cycy", face: "surprised", text: "Si. Panique totale. Mais on a tout repris." },
+        { who: "cycy", face: "peace", text: "Et moi ? 120 stickers, rien que pour toi : fou rire, bouderie, dodo, fondue, Brets…" },
+        { who: "cycy", face: "cool", text: "Le site fait plus de 8 000 lignes de code. Oui, 8 000. Pour toi." },
+        { who: "cycy", face: "smirk", text: "Ce matin encore, il y avait 7 cadeaux. Et puis 2 de plus se sont glissés dans le lot." },
+        { who: "cycy", face: "joy", text: "Et la pub ? Absolument indispensable. Je ne discute pas." },
+        { reply: "J'avoue 😂" },
+        { who: "cycy", face: "smirk", text: "Et tu veux savoir qui se cache derrière tout ça ?" },
+        { reply: "Dis-moi !" },
+        { who: "cycy", face: "surprised2", text: "Le cerveau de l'opération, c'est…", sound: "drumroll" },
+        { who: "kevin", face: "kevin-shocked", enter: true, text: "Euh… surprise ? 😅" },
+        { who: "kevin", face: "kevin-smug", text: "Oui, c'est moi. 120 stickers, 8 000 lignes de code… même pas fatigué." },
+        { who: "cycy", face: "smirk", text: "Kevin a passé la journée à parler à des stickers." },
+        { who: "kevin", face: "kevin-cry", text: "Tout ça pour voir ton sourire ce soir." },
+        { who: "kevin", face: "kevin-kiss", text: "Je t'aime ♥" },
+        { reply: "Moi aussi ♥" },
+      ],
+      // Les deux stickers sur l'écran de fin
+      end: { cycy: "kiss2", kevin: "kevin-kiss" },
+    },
     // Page ?debrief (pour toi)
     report: {
       title: "Le débrief de Cyrielle",
@@ -503,6 +566,9 @@ export const content = {
       ending: "Fin obtenue",
       endings: "Fins découvertes",
       play: "▶ Lancer le débrief",
+      secret: "Fin secrète",
+      secretFound: "trouvée ✔",
+      secretNotYet: "pas encore",
     },
   },
 

@@ -3,7 +3,7 @@
 import { content } from "./content.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { crisps, nerds, goldDust } from "./effects.js";
-import { createAvatar, variant } from "./avatar.js";
+import { createAvatar, variant, preloadFaces } from "./avatar.js";
 import { h, svg, bump } from "./dom.js";
 
 const gsap = window.gsap;
@@ -238,6 +238,7 @@ export function welcomeScreen({ onBegin }) {
               e.stopPropagation();
               if (snackPick) return;
               snackPick = item;
+              preloadFaces([item.hold, item.hug, item.tear, item.wow, item.bite, item.eat]);
               sfx("tap");
               bump(e.currentTarget);
               buttons.forEach((b) => b !== e.currentTarget && gsap.to(b, { opacity: 0.25, duration: 0.3 }));
@@ -292,13 +293,18 @@ export function welcomeScreen({ onBegin }) {
     await sleep(900);
   }
 
-  /** She fetches the packet, it shakes harder and harder, and bursts. */
+  /** She fetches the packet, hugs it, tugs it open (harder and harder), it bursts, and she crunches in. */
   async function snack() {
     await fetchPacket();
     if (clock.cancelled) return;
     bubble.hide();
-    await sleep(300);
+    buddy.set(snackPick.hug);
+    buddy.jump(12);
+    sfx("pop");
+    await sleep(1100);
+    if (clock.cancelled) return;
 
+    buddy.set(snackPick.tear);
     for (let k = 1; k <= 3; k++) {
       if (clock.cancelled) return;
       sfx("rattle");
@@ -307,12 +313,17 @@ export function welcomeScreen({ onBegin }) {
     }
     if (clock.cancelled) return;
 
-    buddy.set(snackPick.open);
+    buddy.set(snackPick.wow);
     sfx("rip");
     gsap.fromTo(stage, { scale: 1.1 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" });
     const r = buddy.el.getBoundingClientRect();
     crisps({ x: r.left + r.width / 2, y: r.top + r.height * 0.48 }, { onBounce: makeCrunch(), kind: snackPick.id });
-    await sleep(1500);
+    await sleep(1400);
+    if (clock.cancelled) return;
+    buddy.set(snackPick.bite);
+    buddy.jump(10);
+    sfx("crunch");
+    await sleep(1000);
   }
 
   async function finish({ skipped = false } = {}) {
@@ -362,10 +373,11 @@ export function welcomeScreen({ onBegin }) {
 
 // ── Bonus ───────────────────────────────────────────────────
 
-export function bonusScreen({ onDone }) {
+/** snack: the crisps she picked in the intro: she arrives with her empty packet, sulking. */
+export function bonusScreen({ onDone, snack }) {
   const b = content.bonus;
   const bubble = createBubble();
-  const buddy = createAvatar({ face: "surprised2", size: 116 });
+  const buddy = createAvatar({ face: snack?.empty || "surprised2", size: 116 });
   const box = svg(BOX_SVG);
   const lid = box.querySelector(".box-lid");
   const boxButton = h("button", { class: "bonus-box", type: "button", "aria-label": b.tap, onclick: shakeBox }, box);
@@ -433,10 +445,14 @@ export function bonusScreen({ onDone }) {
     const origin = { x: r.left + r.width / 2, y: r.top + r.height * 0.42 };
     nerds(origin);
     goldDust(origin);
-    buddy.setBase(variant("joy"));
+    // Nerds! wide eyes, she pours the box into her mouth, then crumbs everywhere
+    buddy.setBase(b.faces.wow);
     buddy.jump(32);
     await sleep(1000);
     if (left) return;
+    buddy.setBase(b.faces.pour);
+    sfx("rattle");
+    setTimeout(() => !left && buddy.setBase(b.faces.after), 1500);
     reveal.hidden = false;
     gsap.from(reveal.children, { opacity: 0, y: 16, duration: 0.6, stagger: 0.12, ease: "power2.out", clearProps: "all" });
     reveal.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
@@ -445,12 +461,20 @@ export function bonusScreen({ onDone }) {
   return {
     el,
     enter() {
+      preloadFaces(Object.values(b.faces));
       gsap.fromTo(buddy.el, { x: innerWidth / 2 + 120 }, { x: 0, duration: 1, ease: "power2.out" });
       gsap.to(buddy.el, { keyframes: { y: [0, -30, 0, -18, 0] }, duration: 1, ease: "none" });
       gsap.set(boxButton, { autoAlpha: 0 });
       gsap.set(hint, { opacity: 0 });
-      sleep(500).then(() => !left && bubble.say(b.wait));
-      sleep(1300).then(() => {
+      // with her packet: first she finds it empty, then the box drops in
+      const late = snack ? 2300 : 0;
+      if (snack) sleep(500).then(() => !left && (sfx("sadTrombone"), bubble.say(b.empty)));
+      sleep(500 + late).then(() => {
+        if (left) return;
+        if (snack) buddy.set("surprised2");
+        bubble.say(b.wait);
+      });
+      sleep(1300 + late).then(() => {
         if (left) return;
         sfx("whoosh");
         gsap.fromTo(boxButton, { autoAlpha: 1, y: -innerHeight * 0.6, rotation: -18 }, { y: 0, rotation: 0, duration: 0.9, ease: "bounce.out" });

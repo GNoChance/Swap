@@ -323,9 +323,18 @@ export function debriefErrors(d) {
   return errors;
 }
 
-/** Saved debriefs: every run (answers + ending) and the set of endings found. */
+/** Saved debriefs: every run (answers + ending), the set of endings found, and whether the secret ending was seen. */
 export function addDebriefRun(store, run) {
   const runs = Array.isArray(store?.runs) ? store.runs : [];
   const found = Array.isArray(store?.found) ? store.found : [];
-  return { runs: [...runs, run], found: [...new Set([...found, run.ending])] };
+  return { runs: [...runs, run], found: [...new Set([...found, run.ending])], secret: Boolean(store?.secret) };
+}
+
+/** The secret ending unlocks once every ending has been found. */
+export function secretUnlocked(store, endingIds) {
+  return endingIds.every((id) => store?.found?.includes(id));
+}
+
+export function seeSecret(store) {
+  return { runs: [], found: [], ...store, secret: true };
 }

@@ -18,6 +18,7 @@ import { createAvatar, preloadFaces, variant, unlockVariants } from "./avatar.js
 import { welcomeScreen, bonusScreen } from "./scenes.js";
 import { pubScreen } from "./pub.js";
 import { debriefScreen, debriefReport } from "./debrief.js";
+import { secretScreen } from "./secret.js";
 
 const gsap = window.gsap;
 // Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
@@ -80,6 +81,7 @@ function welcome() {
     onBegin(snack) {
       const started = P.pickSnack(P.start(progress), snack || progress.snack);
       commit(isDemo ? P.unlockAll(started) : started);
+      syncFaces();
       show(timelineScreen({ intro: true }));
     },
   });
@@ -89,6 +91,7 @@ function welcome() {
 function ending({ celebrate = true } = {}) {
   if (progress.bonus) return finalScreen({ celebrate });
   return bonusScreen({
+    snack: snackOf(),
     onDone() {
       commit(P.seeBonus(progress));
       show(finalScreen({ celebrate: true }));
@@ -125,14 +128,24 @@ function debrief() {
     values: textValues(),
     camp: progress.steps.find((s, i) => content.gifts[i].camps && s.choice)?.choice,
     onReplay: () => show(debrief()),
-    onBack: () => show(progress.started ? timelineScreen() : welcome()),
+    onBack: backFromDebrief,
+    onSecret: () => show(secret()),
   });
 }
 
+const backFromDebrief = () => show(progress.started ? timelineScreen() : welcome());
+
+/** The secret ending (all endings found): behind the scenes, then Kevin. preview (?secret): nothing is saved. */
+function secret({ preview = false } = {}) {
+  return secretScreen({ preview, onReplay: () => show(debrief()), onBack: backFromDebrief });
+}
+
+/** The crisps she picked in the intro (an item of content.intro.snacks), or undefined. */
+const snackOf = () => content.intro.snacks.find((s) => s.id === progress.snack);
+
 /** {snack} in texts: the crisps she picked in the intro. */
 function textValues() {
-  const snack = content.intro.snacks.find((s) => s.id === progress.snack) || content.intro.snacks[0];
-  return { snack: snack.name };
+  return { snack: (snackOf() || content.intro.snacks[0]).name };
 }
 
 /** What a gift shows once revealed: the fondue follows the camp she picked (sticker, sentence, effect). */
@@ -143,13 +156,25 @@ function revealOf(gift, i) {
 
 const isOpen = (i) => ["revealed", "done"].includes(progress.steps[i].status);
 
-/** Stickers a revealed gift brings along (pyjama: she keeps it on to think, sleep and sulk). */
+/** Stickers a revealed gift brings along (pyjama: she keeps it on to think, sleep and sulk; the potato, the 7MAGIC…).
+ *  Each gift's own stickers are loaded as soon as it can be played, the crisps ones once picked. */
 function syncFaces() {
-  content.gifts.forEach((gift, i) => gift.unlocksFaces && isOpen(i) && unlockVariants(gift.unlocksFaces));
+  content.gifts.forEach((gift, i) => {
+    if (progress.steps[i].status === "locked") return;
+    preloadFaces([gift.revealFace, ...(gift.camps || []).map((c) => c.face), ...(gift.playFaces || [])]);
+    if (gift.unlocksFaces && isOpen(i)) unlockVariants(gift.unlocksFaces);
+  });
+  const snack = snackOf();
+  if (snack) preloadFaces([...snack.nibble, ...snack.playFaces, snack.empty]);
 }
 
-/** Tapping her shows, among others, the stickers of the gifts already revealed. */
-const revealedFaces = () => [...new Set(content.gifts.flatMap((gift, i) => (isOpen(i) && revealOf(gift, i).face ? [revealOf(gift, i).face] : [])))];
+/** What she plays with once a gift is revealed (its sticker and playFaces), plus her crisps. */
+const toyFaces = () => [
+  ...new Set([
+    ...content.gifts.flatMap((gift, i) => (isOpen(i) ? [revealOf(gift, i).face, ...(gift.playFaces || [])].filter(Boolean) : [])),
+    ...(snackOf()?.playFaces || []),
+  ]),
+];
 
 /** UBB stickers stay hidden until the jersey gift is open, so nothing gives it away. */
 const UBB_STEP = content.gifts.findIndex((g) => g.revealFace?.startsWith("ubb"));
@@ -187,7 +212,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
     className: "tl-avatar",
     tappable: true,
     onTap: () => sfx("tap"),
-    tapFaces: () => ["kiss", "cool", "smirk", "sushi-happy", "joy", "sushi-eat", ...revealedFaces(), ...(ubbUnlocked() ? ["ubb-cap", "ubb-ball", "ubb-flag2"] : [])],
+    tapFaces: () => ["kiss", "cool", "smirk", "sushi-happy", "joy", "sushi-eat", ...toyFaces(), ...(ubbUnlocked() ? ["ubb-cap", "ubb-ball", "ubb-flag2"] : [])],
   });
   track.append(buddy.el);
   const LIFT = 12; // her feet stand a little above the seal's center
@@ -266,14 +291,33 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
   }
 
   // 30 s without a touch: she falls asleep. Any touch wakes her up.
+  // Before that, every 12 s she keeps busy: a nibble from her packet, or a gift she already has.
   let sleepTimer = 0;
+  let idleTimer = 0;
   function nudge() {
     clearTimeout(sleepTimer);
+    clearTimeout(idleTimer);
     if (buddy.base.includes("sleep")) {
       buddy.setBase("wink");
       buddy.jump();
     }
     sleepTimer = setTimeout(() => !panel && buddy.setBase(variant("sleep")), 30000);
+    idleTimer = setTimeout(idle, 12000);
+  }
+
+  function idle() {
+    idleTimer = setTimeout(idle, 12000);
+    if (panel || walking || buddy.base.includes("sleep")) return;
+    const snack = snackOf();
+    const toys = toyFaces();
+    if (snack && !P.isComplete(progress) && (!toys.length || Math.random() < 0.55)) {
+      // hand in the packet, a crisp, a happy sigh
+      snack.nibble.forEach((face, k) => setTimeout(() => !panel && buddy.react(face, 1600), k * 1300));
+      setTimeout(() => !panel && sfx("crunch"), 1400);
+    } else if (toys.length) {
+      buddy.react(pick(toys), 2600);
+      buddy.jump(14);
+    }
   }
 
   function render(except = -1) {
@@ -329,6 +373,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
     leave() {
       resizer.disconnect();
       clearTimeout(sleepTimer);
+      clearTimeout(idleTimer);
       document.removeEventListener("pointerdown", nudge);
       document.removeEventListener("keydown", nudge);
       if (timeline?.nodes === nodes) timeline = null;
@@ -615,6 +660,7 @@ function openStep(i, returnFocus) {
     bump(e.currentTarget);
     e.currentTarget.disabled = true;
     commit(P.open(progress, i));
+    syncFaces(); // the next gift is now playable: load its stickers
     sfx("tap");
     buddy.setBase(variant("kiss"));
     buddy.jump();
@@ -706,7 +752,7 @@ function finalScreen({ celebrate }) {
     size: 116,
     tappable: true,
     onTap: () => sfx("tap"),
-    tapFaces: ["kiss", "ubb-flag3", "joy", "ubb-cap", "sushi-full", "ubb-scarf", "wink", ...revealedFaces()],
+    tapFaces: ["kiss", "ubb-flag3", "joy", "ubb-cap", "sushi-full", "ubb-scarf", "wink", ...toyFaces()],
   });
   const card = h(
     "div",
@@ -814,6 +860,7 @@ syncFaces();
 const preview = new URLSearchParams(location.search);
 if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you
+else if (preview.has("secret")) show(secret({ preview: true })); // the secret ending, without finding the 13 endings
 else if (!progress.started) show(welcome());
 else if (P.isComplete(progress)) show(ending({ celebrate: false }));
 else if (pubPending()) playPub({ waitForTap: true }); // reloaded during the ad: play it again

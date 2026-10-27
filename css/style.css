@@ -2502,6 +2502,108 @@ p {
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* Secret ending: padlock, unlock glitch, then behind the scenes with Mini Cycy and Kevin */
+.debrief-secret {
+  display: flex;
+  justify-content: center;
+  min-height: 1.2em;
+}
+
+.debrief-lock {
+  font-size: 0.86rem;
+  color: rgba(243, 233, 220, 0.62);
+}
+
+.screen-debrief .btn-secret {
+  border-color: #e6cb8f;
+  color: #2b1a1e;
+  background: linear-gradient(180deg, #f3dfb0, #d9bf8c);
+  box-shadow: 0 0 22px rgba(230, 203, 143, 0.45);
+}
+
+.secret-glitch {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.secret-glitch .tv-static {
+  position: fixed;
+  z-index: 0;
+}
+
+.secret-glitch-text {
+  position: relative;
+  z-index: 1;
+  padding: 0 16px;
+  font-size: clamp(1.3rem, 6.4vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow:
+    3px 0 #ff2a6d,
+    -3px 0 #05d9e8,
+    0 0 18px rgba(0, 0, 0, 0.8);
+}
+
+.screen-secret {
+  background: radial-gradient(ellipse at 50% 28%, #4a3418, #1a1020 58%, #08060b 92%);
+}
+
+.secret-say {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.secret-name {
+  min-height: 1em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #e6cb8f;
+}
+
+.secret-say.is-kevin .secret-name {
+  color: #a9bcff;
+}
+
+.secret-say[data-side="left"] .bubble::after {
+  left: 28%;
+}
+
+.secret-say[data-side="right"] .bubble::after {
+  left: 72%;
+}
+
+.secret-cast {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.secret-actor[hidden] {
+  display: none;
+}
+
+.secret-reply {
+  min-height: 80px;
+}
+
+.report-secret {
+  text-align: center;
+}
+
 /* ?debrief: her answers, for you */
 .report-card {
   display: flex;
