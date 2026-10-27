@@ -1,4 +1,4 @@
-// Animated scenes: the welcome (Mini Cyrielle introduces the game, then opens her Monster Munch or Brets)
+// Animated scenes: the welcome (Mini Cyrielle introduces the game, fetches her Monster Munch or Brets and opens them)
 // and the Nerds bonus between the last gift and the final screen.
 import { content } from "./content.js";
 import { sfx, unlockAudio } from "./audio.js";
@@ -45,6 +45,7 @@ export function createBubble() {
 
   function show(message) {
     finishTyping?.();
+    gsap.killTweensOf(el); // a hide still fading out would hide this new text when it ends
     el.hidden = false;
     gsap.set(el, { opacity: 1, scale: 1 });
     text.textContent = message;
@@ -56,6 +57,7 @@ export function createBubble() {
     /** Resolves once the whole text is written (a tap writes it at once). */
     say(message) {
       finishTyping?.();
+      gsap.killTweensOf(el);
       el.hidden = false;
       text.textContent = "";
       sfx("pop");
@@ -87,26 +89,6 @@ export function createBubble() {
     },
   };
 }
-
-// Generic crisp bags (blue for Monster Munch, golden for Brets), only seen for a split second while they fall into her hands.
-const BAG = "M8 9l5-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5v82l-5 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5z";
-const PACKET_SVG = {
-  munch: `
-<svg class="intro-packet" viewBox="0 0 80 100" width="74" height="92" aria-hidden="true">
-  <path fill="#1f3fa6" d="${BAG}"/>
-  <path fill="#e3242b" d="M14 20h52v15H14z"/>
-  <circle cx="40" cy="64" r="17" fill="#3d6fe0"/>
-  <g fill="#f2a93b"><circle cx="31" cy="60" r="4"/><circle cx="43" cy="56" r="4"/><circle cx="48" cy="68" r="4"/><circle cx="35" cy="71" r="4"/></g>
-</svg>`,
-  brets: `
-<svg class="intro-packet" viewBox="0 0 80 100" width="74" height="92" aria-hidden="true">
-  <path fill="#c99a3e" d="${BAG}"/>
-  <path fill="#e7c47a" d="M14 52h52v32H14z"/>
-  <ellipse cx="40" cy="33" rx="22" ry="12" fill="#1d1a17"/>
-  <text x="40" y="38" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-style="italic" font-weight="700" fill="#fff">Brets</text>
-  <g fill="#f6dc8e" stroke="#c48a2c" stroke-width="1"><ellipse cx="31" cy="68" rx="8" ry="5.5"/><ellipse cx="48" cy="72" rx="8" ry="5.5" transform="rotate(-18 48 72)"/></g>
-</svg>`,
-};
 
 // Mystery gift box for the bonus: the lid flies off when it bursts.
 const BOX_SVG = `
@@ -146,8 +128,7 @@ export function welcomeScreen({ onBegin }) {
   const clock = makeClock();
   const bubble = createBubble();
   const buddy = createAvatar({ face: intro.lines[0]?.face || "wink", size: 150 });
-  const packets = Object.fromEntries(Object.entries(PACKET_SVG).map(([id, markup]) => [id, svg(markup)]));
-  const stage = h("div", { class: "intro-avatar" }, buddy.el, Object.values(packets));
+  const stage = h("div", { class: "intro-avatar" }, buddy.el);
   const choices = h("div", { class: "intro-choices", hidden: true });
   let snackPick = null; // the crisps she chose: an item of intro.snacks
 
@@ -275,19 +256,46 @@ export function welcomeScreen({ onBegin }) {
     }));
   }
 
-  /** The packet drops into her hands, shakes harder and harder, and bursts. */
-  async function snack() {
-    const packet = packets[snackPick.id] || packets.munch;
-    const top = stage.getBoundingClientRect().top;
-    sfx("whoosh");
-    gsap.fromTo(packet, { autoAlpha: 1, y: -(top + 200), rotation: -35 }, { y: 0, rotation: 0, duration: 0.6, ease: "power2.in" });
-    await sleep(600);
+  /** Footsteps: one tap sound per hop. */
+  const steps = (times) => times.forEach((at) => setTimeout(() => !clock.cancelled && sfx("tap"), at * 1000));
+
+  /** « Ok ça marche, je reviens ! »: she hops off to the right, rummages off-screen, and runs back with the packet. */
+  async function fetchPacket() {
+    const trip = intro.fetch;
+    buddy.set(trip.face);
+    buddy.jump(14);
+    await bubble.say(trip.text);
+    await sleep(900);
     if (clock.cancelled) return;
-    gsap.set(packet, { autoAlpha: 0 });
-    buddy.set(snackPick.hold);
-    buddy.jump(16);
-    sfx("tap");
-    await sleep(800);
+    bubble.hide();
+    const away = innerWidth / 2 + 160;
+    gsap.to(stage, { x: away, duration: 1.1, ease: "power2.in" });
+    gsap.to(stage, { keyframes: { y: [0, -30, 0, -24, 0, -18, 0] }, duration: 1.1, ease: "none" });
+    steps([0, 0.37, 0.74]);
+    await sleep(1500);
+    if (clock.cancelled) return;
+    sfx("rattle"); // rummaging somewhere off-screen
+    buddy.set(snackPick.hold); // out of sight: she comes back already holding it
+    await sleep(900);
+    if (clock.cancelled) return;
+    sfx("whoosh");
+    gsap.fromTo(stage, { x: away }, { x: 0, duration: 0.8, ease: "power3.out" });
+    gsap.to(stage, { keyframes: { y: [0, -34, 0, -20, 0] }, duration: 0.8, ease: "none" });
+    steps([0.1, 0.4]);
+    await sleep(850);
+    if (clock.cancelled) return;
+    buddy.jump(26);
+    sfx("pop");
+    await bubble.say(trip.back);
+    await sleep(900);
+  }
+
+  /** She fetches the packet, it shakes harder and harder, and bursts. */
+  async function snack() {
+    await fetchPacket();
+    if (clock.cancelled) return;
+    bubble.hide();
+    await sleep(300);
 
     for (let k = 1; k <= 3; k++) {
       if (clock.cancelled) return;
@@ -314,9 +322,8 @@ export function welcomeScreen({ onBegin }) {
       unlockAudio();
       started = true;
       prompt.remove();
-      gsap.killTweensOf([stage, ...Object.values(packets)]);
+      gsap.killTweensOf(stage);
       gsap.set(stage, { x: 0, y: 0, rotation: 0, scale: 1 });
-      gsap.set(Object.values(packets), { autoAlpha: 0 });
       gsap.set(buddy.el, { autoAlpha: 1 });
       // skipping never skips the crisps question: she still gets her packet
       await askSnack();
@@ -343,7 +350,6 @@ export function welcomeScreen({ onBegin }) {
     el,
     enter() {
       gsap.set(buddy.el, { autoAlpha: 0 });
-      gsap.set(Object.values(packets), { autoAlpha: 0 });
       end.style.visibility = "hidden";
     },
     leave() {

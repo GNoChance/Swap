@@ -260,15 +260,6 @@ p {
   margin-top: 16px;
 }
 
-.intro-packet {
-  position: absolute;
-  top: 54%;
-  left: 50%;
-  margin: -46px 0 0 -37px;
-  filter: drop-shadow(0 8px 10px rgba(20, 30, 80, 0.35));
-  pointer-events: none;
-}
-
 .intro-end {
   display: flex;
   flex-direction: column;

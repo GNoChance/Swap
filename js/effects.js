@@ -767,17 +767,26 @@ function bounceOnFloor(p) {
   }
 }
 
-/** Monster Munch: a puffy monster paw (palm + three toes). */
-function pawPath(c, s) {
+/** Monster Munch: a little smiling ghost (dome, pointed bottom corner), eyes and smile cut out (fill with "evenodd"). */
+function ghostPath(c, s) {
   c.beginPath();
-  c.ellipse(0, s * 0.22, s * 0.62, s * 0.5, 0, 0, Math.PI * 2);
-  for (const [x, y, r] of [[-0.46, -0.32, 0.25], [0, -0.5, 0.27], [0.46, -0.32, 0.25]]) {
-    c.moveTo(x * s + r * s, y * s);
-    c.arc(x * s, y * s, r * s, 0, Math.PI * 2);
+  c.moveTo(-0.75 * s, -0.12 * s);
+  c.arc(0, -0.12 * s, 0.75 * s, Math.PI, 0);
+  c.quadraticCurveTo(0.82 * s, 0.5 * s, 0.55 * s, 0.76 * s);
+  c.quadraticCurveTo(0.1 * s, 0.98 * s, -0.36 * s, 0.82 * s);
+  c.lineTo(-0.86 * s, 0.98 * s);
+  c.quadraticCurveTo(-0.76 * s, 0.42 * s, -0.75 * s, -0.12 * s);
+  c.closePath();
+  for (const ex of [-0.24, 0.26]) {
+    c.moveTo((ex + 0.11) * s, -0.24 * s);
+    c.ellipse(ex * s, -0.24 * s, 0.11 * s, 0.17 * s, 0, 0, Math.PI * 2);
   }
+  c.moveTo(-0.44 * s, 0.1 * s);
+  c.quadraticCurveTo(0.04 * s, 0.72 * s, 0.52 * s, 0.06 * s);
+  c.quadraticCurveTo(0.06 * s, 0.38 * s, -0.44 * s, 0.1 * s);
 }
 
-/** Brets: a wavy golden crisp (honey-mustard specks). */
+/** Brets: a plain golden crisp. */
 function chipPath(c, p) {
   c.beginPath();
   p.edge.forEach(([x, y], k) => (k ? c.lineTo(x * p.s, y * p.s) : c.moveTo(x * p.s, y * p.s)));
@@ -791,11 +800,11 @@ const chipEdge = () =>
     return [Math.cos(a) * r * 1.15, Math.sin(a) * r * 0.82];
   });
 
-/** Crisps burst out of a packet, spin, and bounce on the bottom of the screen (kind: "munch" paws or "brets" chips). */
+/** Crisps burst out of a packet, spin, and bounce on the bottom of the screen (kind: "munch" ghosts or "brets" chips). */
 export function crisps(origin, { onBounce, kind = "munch" } = {}) {
   const brets = kind === "brets";
   const { x, y } = origin || { x: W / 2, y: H / 2 };
-  for (let i = 0; i < count(54); i++) {
+  for (let i = 0; i < count(brets ? 54 : 40); i++) {
     const a = -Math.PI / 2 + rand(-1.05, 1.05);
     const speed = rand(420, 820);
     add({
@@ -803,7 +812,7 @@ export function crisps(origin, { onBounce, kind = "munch" } = {}) {
       vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
       g: 1500, drag: 0.998, vr: rand(-9, 9), rot: rand(0, 6),
       life: rand(3.8, 5.2), delay: rand(0, 0.12), fadeIn: 0.02, fadeOut: 0.12,
-      s: rand(7, 11.5), floor: H - rand(14, 70), bounce: rand(0.38, 0.55), bounces: 0, onBounce,
+      s: brets ? rand(7, 11.5) : rand(10, 15), floor: H - rand(14, 70), bounce: rand(0.38, 0.55), bounces: 0, onBounce,
       tone: pickOne(brets ? ["#F6D98A", "#F2CF74", "#EFC766", "#F8E2A0"] : ["#F2A93B", "#EFA032", "#F5B347", "#E8952B"]),
       edge: brets && chipEdge(),
       tick: bounceOnFloor,
@@ -812,27 +821,31 @@ export function crisps(origin, { onBounce, kind = "munch" } = {}) {
         if (p.edge) {
           chipPath(c, p);
           c.fill();
-          c.strokeStyle = "rgba(190, 140, 50, .6)";
+          // the curve of the crisp: a paler shine on one side
+          const shine = c.createRadialGradient(-p.s * 0.35, -p.s * 0.25, 0, -p.s * 0.35, -p.s * 0.25, p.s);
+          shine.addColorStop(0, "rgba(255, 248, 215, .7)");
+          shine.addColorStop(1, "rgba(255, 248, 215, 0)");
+          c.fillStyle = shine;
+          c.fill();
+          c.strokeStyle = "rgba(196, 150, 60, .7)";
           c.lineWidth = 1;
           c.stroke();
-          c.strokeStyle = "rgba(205, 160, 70, .45)";
-          for (const dy of [-0.3, 0.05, 0.4]) {
-            c.beginPath();
-            c.moveTo(-p.s * 0.8, dy * p.s);
-            c.quadraticCurveTo(0, (dy - 0.18) * p.s, p.s * 0.8, dy * p.s);
-            c.stroke();
-          }
-          c.fillStyle = "rgba(170, 110, 30, .6)";
-          for (const [dx, dy] of [[-0.4, -0.15], [0.35, 0.25], [0.1, -0.4]]) c.fillRect(dx * p.s, dy * p.s, 1.6, 1.6);
+          c.fillStyle = "rgba(170, 120, 40, .5)";
+          for (const [dx, dy] of [[-0.4, -0.15], [0.35, 0.25], [0.1, -0.4]]) c.fillRect(dx * p.s, dy * p.s, 1.4, 1.4);
           return;
         }
-        pawPath(c, p.s);
-        c.fill();
-        c.strokeStyle = "rgba(170, 92, 20, .55)";
+        ghostPath(c, p.s);
+        c.fill("evenodd");
+        const glow = c.createRadialGradient(-p.s * 0.2, -p.s * 0.35, 0, -p.s * 0.2, -p.s * 0.35, p.s * 1.1);
+        glow.addColorStop(0, "rgba(255, 226, 150, .55)");
+        glow.addColorStop(1, "rgba(255, 226, 150, 0)");
+        c.fillStyle = glow;
+        c.fill("evenodd");
+        c.strokeStyle = "rgba(176, 98, 22, .6)";
         c.lineWidth = 1;
         c.stroke();
-        c.fillStyle = "rgba(190, 104, 24, .55)";
-        for (const [dx, dy] of [[-0.25, 0.2], [0.2, 0.35], [0.05, 0]]) c.fillRect(dx * p.s, dy * p.s, 1.6, 1.6);
+        c.fillStyle = "rgba(190, 104, 24, .5)";
+        for (const [dx, dy] of [[-0.5, 0.35], [0.45, -0.5], [0.1, 0.6], [-0.1, -0.6]]) c.fillRect(dx * p.s, dy * p.s, 1.4, 1.4);
       },
     });
   }

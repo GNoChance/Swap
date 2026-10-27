@@ -32,6 +32,8 @@ export const content = {
     // Elle choisit son paquet : la suite de l'intro (stickers, chips) suit son choix.
     // hold / open / eat = stickers pendant l'animation ; text = la bulle après l'ouverture du paquet.
     snackQuestion: { face: "think", text: "Plutôt Monster Munch ou Brets ?" },
+    // Elle part chercher le paquet (text), sort de l'écran et revient avec (back)
+    fetch: { face: "wink", text: "Ok ça marche, je reviens !", back: "Et voilà !" },
     snacks: [
       {
         id: "munch",
