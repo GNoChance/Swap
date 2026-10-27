@@ -1,6 +1,6 @@
 # Swap de Cyrielle
 
-Petit site interactif pour un swap de 7 cadeaux. Chaque cadeau est caché derrière un mini-jeu ; on débloque les étapes dans l'ordre.
+Petit site interactif pour un swap de 9 cadeaux. Chaque cadeau est caché derrière un mini-jeu ; on débloque les étapes dans l'ordre.
 
 - Dossier : `C:\Users\eliott.colin\swap-cyrielle`
 - Stack : HTML/CSS/JS vanilla (modules natifs), GSAP 3.12.5 copié dans `js/vendor/`, pas de build
@@ -13,7 +13,7 @@ Petit site interactif pour un swap de 7 cadeaux. Chaque cadeau est caché derri�
 
 ## Avancement
 
-Dernière mise à jour : 2026-10-26 (reprise après crash du terminal)
+Dernière mise à jour : 2026-10-27 (passage à 9 cadeaux, swap le soir même)
 
 ### Fait
 - [x] `js/content.js` : tous les textes (version A provisoire) + réponses acceptées. **Seul fichier que l'utilisateur doit modifier**
@@ -48,11 +48,12 @@ Dernière mise à jour : 2026-10-26 (reprise après crash du terminal)
 
 - [x] Logo « Mini Cyrielle en badge » : `assets/logo/` (badge.webp transparent pour le site, favicon-32/64.png = visage zoomé, apple-touch-icon.png 180 + icon-192/512.png = pleine tuile bordeaux), `manifest.webmanifest` (plein écran, « Swap de Cyrielle »), liens dans index.html. Sur l'écran « Touche l'écran » à la place du cachet « C », et au-dessus du titre de la timeline. Source : sticker wink redécoupé SANS contour blanc (cut3.cjs avec R=0 PEEL=40 PEEL_MIN=165 DROP_LIGHT=1), composé dans un canvas Chrome (logo.mjs, scratchpad). Sur iPhone, l'app de l'écran d'accueil et Safari ont des sauvegardes séparées. Pas d'og:image tant que l'URL Vercel n'existe pas
 
+- [x] **Passage à 9 cadeaux (2026-10-27)**, voir « Mini-jeux » : nouvel ordre, fondue (`js/games/camp.js`), mots mêlés (`js/games/wordsearch.js`, `wordsearch*` dans logic.js), équation Rituals (`equation` dans free.js), `STEP_COUNT = 9`, `step.choice` (camp fondue) et `progress.snack` (Monster Munch / Brets) + `choose` / `pickSnack`. Intro : choix Monster Munch ou Brets (aussi posé si elle passe l'intro). Effets `fondue` / `cheese` / `chocolate` / `foam` et chips Brets. 12 stickers de la planche « kawaii gourmande et cosy » (cosy, bath, fondue-cheese, fondue-choc, hike, gym, mms, brets-hold, brets-eat, pj-sleep, pj-angry, pj-think). Débrief : 9 cadeaux en grille, une fin chacun (13 fins). Testé en Chrome automatisé iPhone 393×852 et PC 1440×900 : parcours complet (Brets, changement de camp, glisser + toucher-toucher aux mots mêlés, pub, bonus, final 7/9, fins Team chocolat et La gourmande), saut d'intro. 27 tests OK, 0 erreur
+
 ### Reste à faire
 - [ ] Test sur le vrai iPhone (clavier, sons en mode silencieux, safe areas) : pas vérifiable en headless
 - [x] Premier commit `d7d0d4c` (identité locale au repo : GNoChance / 183079883+GNoChance@users.noreply.github.com)
-- [ ] Push : aucun dépôt GitHub pour le swap. Prévu : `gh repo create swap-cyrielle --private --source . --remote origin --push` (compte gh GNoChance connecté). Bloqué par les permissions de Claude Code le 2026-10-26 : l'utilisateur doit le lancer lui-même ou autoriser l'action
-- [ ] Brancher le repo Vercel quand l'utilisateur donne l'URL
+- [x] Dépôt GitHub `GNoChance/Swap` (remote `origin`), branché sur Vercel par l'utilisateur : un push sur `main` met le site en ligne. Ne pousser qu'avec son accord
 - [ ] Remplacer les textes provisoires par ceux de l'utilisateur : `welcome.signature` et `final.signature` vides, mot doux final en version A
 
 ## Design validé
@@ -71,26 +72,30 @@ Ton des textes d'interface : complice et taquin.
 
 ### Déroulé
 - **Accueil** : fond crème papier légèrement texturé, message, bouton pour commencer (ce premier toucher active les sons sur iPhone).
-- **Timeline** : chemin vertical qui serpente. **Seuls les cadeaux débloqués sont affichés** (demande de l'utilisateur, 2026-10-26) : au départ on ne voit que le cadeau 1. Après « J'ai ouvert mon cadeau », le chemin se dessine vers un emplacement vide, puis le cadeau suivant apparaît (fondu + cachet qui éclate). États visibles : en cours (pulse doré), terminé (✦ + nom du cadeau). Le jalon final « Un dernier mot » n'apparaît qu'une fois les 7 ouverts. En `?demo` tout est débloqué donc tout est visible : tester l'apparition progressive sur l'adresse normale (+ `?reset`).
+- **Timeline** : chemin vertical qui serpente. **Seuls les cadeaux débloqués sont affichés** (demande de l'utilisateur, 2026-10-26) : au départ on ne voit que le cadeau 1. Après « J'ai ouvert mon cadeau », le chemin se dessine vers un emplacement vide, puis le cadeau suivant apparaît (fondu + cachet qui éclate). États visibles : en cours (pulse doré), terminé (✦ + nom du cadeau). Le jalon final « Un dernier mot » n'apparaît qu'une fois les 9 ouverts. En `?demo` tout est débloqué donc tout est visible : tester l'apparition progressive sur l'adresse normale (+ `?reset`).
 - **Étape** : panneau qui monte du bas sur mobile, fenêtre centrée sur PC. « Cadeau n°X — titre », énigme, jeu, « Besoin d'un indice ? » si l'étape en a un, « Voir la réponse » toujours disponible mais discret. Après réponse trouvée ou dévoilée : animation, phrase de révélation, « file ouvrir le paquet n°X », puis bouton « J'ai ouvert mon cadeau ♥ » qui valide et débloque la suite. Une étape terminée peut être rouverte pour revoir la réponse.
-- **Final** : mot doux, récap des 7 cadeaux, score « trouvé toute seule » en clin d'œil, grand feu d'artifice puis pluie de cœurs.
+- **Final** : mot doux, récap des 9 cadeaux, score « trouvé toute seule » en clin d'œil, grand feu d'artifice puis pluie de cœurs.
 
 Une énigme compte comme « trouvée toute seule » si elle est résolue avant d'appuyer sur « Voir la réponse ».
 
 ### Mini-jeux
+Ordre et textes donnés par l'utilisateur le 2026-10-27 (9 cadeaux).
+
 | # | Cadeau | Interaction |
 |---|---|---|
-| 1 | Charade → coffret Lush (bombe de bain + pain moussant) ; la charade mène à « bombe de bain » | Les 3 lignes apparaissent une à une, puis réponse libre |
-| 2 | Anagramme → pyjama | Tuiles A A J M P Y à toucher pour remplir 6 cases ; toucher une case retire la lettre ; vérif auto quand c'est plein. Indice derrière un bouton |
-| 3 | Mots croisés → M&M's perso | Grille 8×9, 7 mots (CHOCOLAT, COULEURS, LETTRE, ROND, NOUS, UNIQUE + MMS en doré = le cadeau). Toucher une case ou une définition, taper ; retoucher la case change de sens ; les mots justes se figent en doré, un mot plein mais faux tremble. Positions dans `content.js`, validées par `npm test` (`crosswordErrors`). Remplace le « Qui suis-je ? » (demande de l'utilisateur, 2026-10-26) |
-| 4 | Devinette → patate positive | Réponse libre (« patate » ou « pomme de terre » suffisent) |
-| 5 | Texte à trous → strass / TikTok | Cases lettre par lettre, le curseur avance tout seul, chaque mot s'allume quand il est juste |
-| 6 | QCM → brosse soufflante Air Styler | 3 cartes ; A ou B : la carte tremble + pique taquine ; C : révélation |
-| 7 | Code secret → maillot UBB | Elle touche les mots, la 1re lettre s'envole dans les cases, M-A-I-L-L-O-T se forme. Indice derrière un bouton |
+| 1 | Charade → coffret Lush (bombe de bain + pain moussant) | Les lignes apparaissent une à une, puis réponse libre. Sticker bath |
+| 2 | Anagramme → pyjama | Tuiles A A J M P Y à toucher pour remplir 6 cases ; toucher une case retire la lettre. Indice derrière un bouton. Sticker cosy ; ensuite pj-think / pj-sleep / pj-angry rejoignent les variantes (`unlocksFaces`) |
+| 3 | Devinette douce → patate positive | Réponse libre (« patate » ou « pomme de terre » suffisent) |
+| 4 | Texte à trous gourmand → tasse à fondue | Deux cartes `F _ _ _ _ G E fondu` 🧀 / `C _ _ _ O L A T fondu` 🍫 ; elle en touche une (camp enregistré, changeable tant que ce n'est pas trouvé) et complète les lettres. Phrase, effet et sticker (fondue-cheese / fondue-choc) suivent son camp |
+| 5 | Mots mêlés → strass + trend TikTok | Grille 7×7 (`grid` dans content.js), STRASS horizontal, TIKTOK vertical, croisés sur le T. Glisser du début à la fin du mot, ou toucher la 1re puis la dernière lettre ; anneau doré. `npm test` vérifie que chaque mot est caché une seule fois. Indice derrière un bouton |
+| 6 | Mots croisés → M&M's perso | Grille 8×9, 7 mots (CHOCOLAT, COULEURS, LETTRE, ROND, NOUS, UNIQUE + MMS en doré). Gardés à la place du « Qui suis-je ? » (choix de l'utilisateur). Sticker mms |
+| 7 | Équation mystère → 2 mousses de douche Rituals | Tuiles ( 🧖‍♀️ + 🚿 ) × 2 = ☁️ qui apparaissent une à une, puis réponse libre (« mousse », « Rituals », « gel douche »). Effet nuages de mousse en 2 vagues |
+| 8 | QCM → brosse soufflante Air Styler | 3 cartes ; A (bivouac) → sticker hike, B (whey) → sticker gym, avec la pique ; C : révélation |
+| 9 | Code secret → maillot UBB | Elle touche les mots, la 1re lettre s'envole dans les cases, M-A-I-L-L-O-T se forme. Indice derrière un bouton |
 
 ### Révélations
 Base commune : halo doré autour de la réponse, puis l'effet du cadeau.
-1. Bulles irisées · 2. Lunes et étoiles · 3. Pluie de M&M's qui rebondissent · 4. Patates souriantes et cœurs · 5. Éclats de strass prismatiques · 6. Rafale de vent, mèches ondulées · 7. Confettis rouge et bleu (couleurs du maillot) avec éclat doré · Final : feu d'artifice doré et bordeaux puis pluie de cœurs.
+1. Bulles irisées · 2. Lunes et étoiles · 3. Patates souriantes et cœurs · 4. Coulures de fromage (+ cubes de pain) ou de chocolat (+ fraises) depuis le haut de l'écran · 5. Éclats de strass prismatiques · 6. Pluie de M&M's qui rebondissent · 7. Deux vagues de nuages de mousse + bulles nacrées · 8. Rafale de vent, mèches ondulées · 9. Confettis rouge et bleu (couleurs du maillot) avec éclat doré · Final : feu d'artifice doré et bordeaux puis pluie de cœurs.
 Si « réduire les animations » est activé : versions douces.
 
 ### Spécificités iPhone
@@ -106,17 +111,20 @@ Stickers : joy (fou rire), angry (bras croisés), cry (pleure), pout (moue), thi
 - Changement d'expression : le sticker se retourne (scaleX) avec un rebond.
 
 ## Intro & bonus (design validé)
+- **Choix des chips (2026-10-27)** : après « il te faut des forces ! », « Plutôt Monster Munch ou Brets ? » + deux boutons (`content.intro.snacks`). Brets : paquet SVG doré, stickers brets-hold puis brets-eat, chips ondulées dorées. Aussi demandé si elle passe l'intro. Enregistré dans `progress.snack` ; `{snack}` dans les textes de la pub et du débrief.
 - **Accueil** = scène animée. « Touche l'écran pour commencer ✨ » (débloque le son iPhone) → Mini Cyrielle entre en sautillant → bulles tapées lettre par lettre (textes dans `content.intro`, une expression par bulle) → un paquet tombe, elle l'attrape (sticker munch-hold) → le paquet tremble → se déchire (munch-open, son rip) → chips Monster Munch en particules qui volent et rebondissent sur le bas de l'écran (croc-croc) → munch-eat + dernière bulle → titre + « Je suis prête ♥ ». Toucher = bulle suivante ; lien « Passer l'intro ».
-- **Bonus Nerds** entre le 7e cadeau et l'écran final, une seule fois (`progress.bonus`) : « Attends… il en reste un ! », boîte mystère (SVG) à toucher 3 fois, elle explose en pluie de Nerds qui rebondissent, puis bouton vers le mot final.
-- **Stickers UBB** seulement à partir de la révélation du cadeau 7 (pas de spoil) ; sushis en réactions au toucher ; variantes d'expressions (pout2, cry2…) tirées au hasard.
+- **Bonus Nerds** entre le dernier cadeau et l'écran final, une seule fois (`progress.bonus`) : « Attends… il en reste un ! », boîte mystère (SVG) à toucher 3 fois, elle explose en pluie de Nerds qui rebondissent, puis bouton vers le mot final.
+- **Stickers UBB** seulement à partir de la révélation du cadeau 9 (pas de spoil) ; sushis en réactions au toucher ; variantes d'expressions (pout2, cry2…) tirées au hasard.
 
 ## Coupure pub (design validé)
 ~35 s, une seule fois, juste après « J'ai ouvert mon cadeau » du cadeau 4 (`content.pub.afterGift`). Friture télé → carton « PUBLICITÉ » + jingle → problème (gris, pout2, « Marre des cadeaux banals ? », chaussettes, trompette triste) → « NOUVEAU ! LE SWAP™ » (surprised3) → arguments cochés avec ding (cool/smirk), sans dévoiler les cadeaux 5-7 → témoignage (cry2 puis joy, 5 étoiles) → « MAIS ATTENDEZ… CE N'EST PAS TOUT ! » + copain offert (kiss) → prix barrés 999 € / 99 € / 9,99 € → tampon GRATUIT ♥ + ka-ching + confettis (peace) + petites lignes qui défilent → bouton « ☎ Je commande ! » (sonnerie, « Commande validée ✔ ») → « ▶ Reprise du programme » → chemin, marche vers le cadeau 5. Bouton façon YouTube « Passer la pub dans 5… » : 1er toucher « Bien essayé 😏 », 2e toucher passe. `?pub` = aperçu direct.
 
 ## Débrief (design validé, remplace le générique)
+**Mis à jour le 2026-10-27** : « ton cadeau préféré » propose les 9 cadeaux en grille 3×3, chacun mène à sa fin (Cocooning total, La marmotte, Good vibes only, Team fondue → Team fromage / Team chocolat selon son camp, Star de TikTok, La gourmande, Spa à la maison, Brushing de star, Supportrice officielle) ; branche « remarques » inchangée ; 13 fins. Les questions « bain ou film » / « au prochain match » et la fin « Le pyjama UBB » ont disparu. Description d'origine :
 Bouton « 🎙 Le débrief de Mini Cyrielle ▸ » sur l'écran final. Écran sombre façon ciné, chemin doré qui se dessine et se sépare à chaque question (branches non choisies qui s'éteignent), notification « ⑂ CHEMIN CHOISI » comme dans The Quarry, Mini Cyrielle qui pose les questions. Pas de chrono. Arbre : verdict → (génial → cadeau préféré → Lush/pyjama → bain ou film / maillot → match / M&M's) ou (remarques → moins aimé → énigmes → plus faciles/plus dures / pub / je te taquine). 9 fins (FIN n / 9 : Cocooning total, La marmotte, Supportrice officielle, Le pyjama UBB, La gourmande, Mode facile activé, La revanche, Abonnement Premium, La taquine), chacune avec sticker + animation. « Fins découvertes : x / 9 » + « Rejouer le débrief ». Réponses enregistrées sur le téléphone, `?debrief` = récap pour l'utilisateur.
 
 ## Journal
 - **2026-10-26 matin** : design validé, code de logique, état, sons, effets et jeux écrit. Crash du terminal pendant l'écriture des jeux (après `acrostic.js`).
 - **2026-10-26** : reprise, création de ce README. Écriture de `index.html`, `css/style.css`, `js/main.js`. Tests en local OK, correction du bug d'opacité GSAP. Le site est fonctionnel de bout en bout.
+- **2026-10-27** : passage à 9 cadeaux le jour du swap (questions puis design validés par l'utilisateur). Stickers découpés par couleur (le fond de la planche est aussi blanc que le contour : le remplissage depuis les bords fuyait) puis contour blanc régénéré, script `cut.js` dans le scratchpad de la session.
 - **2026-10-26 (suite)** : logo Mini Cyrielle en badge ; débrief à embranchements (remplace le générique de fin, que l'utilisateur n'aimait pas) ; coupure pub téléachat ; cadeau 1 = coffret Lush (bombe de bain + pain moussant) ; timeline progressive, mots croisés (cadeau 3), Mini Cyrielle animée, intro Monster Munch, bonus Nerds, stickers UBB/sushi.

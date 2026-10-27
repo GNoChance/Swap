@@ -25,17 +25,38 @@ export const content = {
     skip: "Passer l'intro",
     lines: [
       { face: "wink", text: "Coucou Cyrielle ! C'est moi… enfin, c'est toi 👋" },
-      { face: "think", text: "Aujourd'hui, 7 cadeaux t'attendent. Chacun est caché derrière une énigme." },
+      { face: "think", text: "Aujourd'hui, 9 cadeaux t'attendent. Chacun est caché derrière une énigme." },
       { face: "smirk", text: "On les ouvre dans l'ordre. Il y a des indices… mais je compte les points 😏" },
       { face: "surprised2", text: "Mais avant de commencer… il te faut des forces !" },
     ],
-    // La bulle qui suit l'ouverture du paquet
-    snack: { face: "munch-eat", text: "Ton paquet de Monster Munch t'attend, sers-toi 😋" },
+    // Elle choisit son paquet : la suite de l'intro (stickers, chips) suit son choix.
+    // hold / open / eat = stickers pendant l'animation ; text = la bulle après l'ouverture du paquet.
+    snackQuestion: { face: "think", text: "Plutôt Monster Munch ou Brets ?" },
+    snacks: [
+      {
+        id: "munch",
+        name: "Monster Munch",
+        label: "Monster Munch 🐾",
+        hold: "munch-hold",
+        open: "munch-open",
+        eat: "munch-eat",
+        text: "Ton paquet de Monster Munch t'attend, sers-toi 😋",
+      },
+      {
+        id: "brets",
+        name: "Brets",
+        label: "Brets miel moutarde 🍯",
+        hold: "brets-hold",
+        open: "brets-hold",
+        eat: "brets-eat",
+        text: "Ton paquet de Brets t'attend, sers-toi 😋",
+      },
+    ],
   },
 
   timeline: {
     title: "Le Swap de Cyrielle",
-    progress: "{done} / 7 cadeaux ouverts",
+    progress: "{done} / {total} cadeaux ouverts",
     active: "À toi de jouer",
     toOpen: "Ouvre ton paquet !",
     finalNode: "Un dernier mot",
@@ -78,10 +99,12 @@ export const content = {
       // Réponses acceptées. Majuscules, accents et espaces sont ignorés.
       // Une liste entre crochets = tous ces mots doivent être présents.
       accept: ["bombe de bain", "lush", ["bombe", "bain"]],
-      answer: "Un coffret Lush 🛁",
+      answer: "Une bombe de bain / Coffret Lush 🛁",
       reveal: "Une bombe de bain… et un pain moussant en bonus. Ce soir, c'est bain moussant !",
       short: "Coffret Lush",
       effect: "bubbles",
+      // Sticker de Mini Cyrielle à la révélation (noms dans assets/cyrielle/)
+      revealFace: "bath",
     },
     {
       type: "anagram",
@@ -94,6 +117,78 @@ export const content = {
       reveal: "Le dress code officiel de nos soirées.",
       short: "Pyjama",
       effect: "moons",
+      revealFace: "cosy",
+      // Une fois le pyjama révélé, Mini Cyrielle le porte aussi pour réfléchir, dormir et râler
+      unlocksFaces: { think: "pj-think", sleep: "pj-sleep", angry: "pj-angry" },
+    },
+    {
+      type: "free",
+      title: "La Devinette douce",
+      lines: [
+        "À la base, je pousse sous terre.",
+        "Les gens m'adorent en purée, en gratin ou en frites.",
+        "Mais aujourd'hui, je suis toute douce et je suis là pour te donner le sourire et de la motivation tous les jours.",
+        "Qui suis-je ?",
+      ],
+      accept: ["patate", "pomme de terre", "potato"],
+      answer: "Une patate positive",
+      reveal: "Ta dose de sourire et de motivation quotidienne 🥔",
+      short: "Patate positive",
+      effect: "potatoes",
+    },
+    {
+      type: "camp",
+      title: "Le texte à trous gourmand",
+      lines: [
+        "Parce qu'il n'y a rien de mieux pour nos soirées.",
+        "À toi de choisir ton camp pour remplir cette petite tasse magique :",
+      ],
+      // Deux camps : elle en touche un et complète le mot. Les « _ » sont les lettres à trouver.
+      // face / reveal / effect remplacent ceux du cadeau selon le camp choisi.
+      camps: [
+        {
+          id: "fromage",
+          emoji: "🧀",
+          word: "FROMAGE",
+          pattern: "F____GE",
+          after: "fondu",
+          face: "fondue-cheese",
+          reveal: "Team fromage : ce soir, ça file ! 🧀",
+          effect: "cheese",
+        },
+        {
+          id: "chocolat",
+          emoji: "🍫",
+          word: "CHOCOLAT",
+          pattern: "C___OLAT",
+          after: "fondu",
+          face: "fondue-choc",
+          reveal: "Team chocolat : sors les fraises 🍓",
+          effect: "chocolate",
+        },
+      ],
+      or: "ou",
+      answer: "Une tasse à fondue !",
+      reveal: "Fromage ou chocolat : pas besoin de choisir, on fera les deux 🫕",
+      short: "Tasse à fondue",
+      effect: "fondue",
+      revealFace: "joy2",
+    },
+    {
+      type: "wordsearch",
+      title: "Les Mots Mêlés de la Beauté",
+      lines: ["Trouve les deux mots cachés (horizontalement ou verticalement) dans cette grille pour découvrir la suite :"],
+      // Une ligne = une rangée de la grille, toutes de la même longueur.
+      // ⚠️ Si tu changes la grille ou les mots, lance `npm test` : il vérifie que chaque mot y est une seule fois.
+      grid: ["MLBUZER", "CSTRASS", "VAIENPH", "ORKLUYG", "JETFDBN", "WQOMHCL", "PUKYEZA"],
+      words: ["STRASS", "TIKTOK"],
+      // Compteur sous la grille
+      progress: "Mots trouvés : {found} / {total}",
+      hint: "L'un brille de mille feux, l'autre est l'application où l'on va poster le résultat sur mon visage. Prépare tes talents de maquilleuse !",
+      answer: "Des Strass pour une trend TikTok !",
+      reveal: "À tes pinceaux, artiste ✨",
+      short: "Strass & trend TikTok",
+      effect: "sparkles",
     },
     {
       type: "crossword",
@@ -116,47 +211,48 @@ export const content = {
       reveal: "Uniques au monde, comme nous.",
       short: "M&M's personnalisés",
       effect: "candies",
+      revealFace: "mms",
     },
     {
       type: "free",
-      title: "La Devinette",
+      title: "L'Équation Mystère",
       lines: [
-        "À la base, je pousse sous terre.",
-        "Les gens m'adorent en purée, en gratin ou en frites.",
-        "Mais aujourd'hui, je suis toute douce et je suis là pour te donner le sourire et de la motivation tous les jours.",
-        "Qui suis-je ?",
+        "Si tu mélanges l'ambiance d'un spa luxueux avec l'heure de la douche, et que tu multiplies le tout par deux…",
+        "Qu'est-ce qui en ressort sous forme de nuage parfumé ?",
       ],
-      accept: ["patate", "pomme de terre", "potato"],
-      answer: "Une patate positive",
-      reveal: "Ta dose de sourire et de motivation quotidienne 🥔",
-      short: "Patate positive",
-      effect: "potatoes",
-    },
-    {
-      type: "blanks",
-      title: "Le texte à trous",
-      lines: ["Complète cette phrase avec les mots manquants :"],
-      // Les mots à deviner sont écrits entre [crochets].
-      // La première et la dernière lettre sont affichées, le reste est à trouver.
-      sentence:
-        "« Prépare tes talents de maquilleuse ! Tu vas devoir utiliser ces petits [STRASS] pour me les coller sur le visage et reproduire notre prochaine trend [TIKTOK] ! »",
-      answer: "Des strass pour notre trend TikTok",
-      reveal: "À tes pinceaux, artiste ✨",
-      short: "Strass & trend TikTok",
-      effect: "sparkles",
+      // Les termes de l'équation, affichés un par un sous l'énigme
+      equation: [
+        { op: "(" },
+        { emoji: "🧖‍♀️", label: "Spa luxueux" },
+        { op: "+" },
+        { emoji: "🚿", label: "L'heure de la douche" },
+        { op: ")" },
+        { op: "× 2" },
+        { op: "=" },
+        { emoji: "☁️", label: "?" },
+      ],
+      accept: ["mousse", "rituals", "gel douche", "moussant"],
+      answer: "2 mousses de douche Rituals",
+      reveal: "Ton spa à la maison… en double ☁️",
+      short: "Mousses de douche Rituals",
+      effect: "foam",
+      revealFace: "kiss2",
     },
     {
       type: "qcm",
       title: "Le QCM",
       lines: ["Que se cache-t-il dans ce (très) gros paquet ?"],
+      // face = sticker de Mini Cyrielle quand elle choisit cette mauvaise réponse
       options: [
         {
           label: "Un nouveau réchaud ultra-léger pour nos prochains bivouacs.",
           tease: "Un réchaud ? Je ne suis pas romantique à ce point-là ⛺",
+          face: "hike",
         },
         {
           label: "Un énième pot de whey pour ma prise de masse.",
           tease: "Ça, c'est MON cadeau de rêve, pas le tien 💪😏",
+          face: "gym",
         },
         {
           label: "Le graal absolu de la coiffure qui a retourné tous les réseaux sociaux.",
@@ -196,11 +292,11 @@ export const content = {
     badge: "Nouveau !",
     product: "Le Swap™",
     features: [
-      "7 cadeaux surprises",
-      "7 énigmes (pas trop dures… enfin presque)",
-      "Monster Munch inclus",
-      "Déjà livrés : coffret Lush, pyjama, M&M's, patate positive",
-      "3 surprises encore à venir 👀",
+      "9 cadeaux surprises",
+      "9 énigmes (pas trop dures… enfin presque)",
+      "{snack} inclus",
+      "Déjà livrés : coffret Lush, pyjama, patate positive, tasse à fondue",
+      "5 surprises encore à venir 👀",
     ],
     quote: "« J'ai pleuré de joie. »",
     quoteBy: "— Cyrielle, cliente 100 % satisfaite",
@@ -219,7 +315,7 @@ export const content = {
     play: "▶ Lancer la pub",
   },
 
-  // Bonus après le 7e cadeau, juste avant le mot final (une seule fois)
+  // Bonus après le dernier cadeau, juste avant le mot final (une seule fois)
   bonus: {
     eyebrow: "Bonus",
     wait: "Attends… il en reste un !",
@@ -233,7 +329,8 @@ export const content = {
   // Débrief à embranchements (bouton sur l'écran final) : chaque réponse change la suite.
   // nodes = les questions ; next = l'id de la question suivante OU d'une fin (endings).
   // face = sticker de Mini Cyrielle (noms dans assets/cyrielle/).
-  // effect = bubbles, moons, candies, sparkles, wind, rugby, hearts ou confetti.
+  // effect = bubbles, moons, potatoes, candies, sparkles, wind, rugby, fondue, cheese, chocolate, foam, hearts ou confetti.
+  // {snack} dans un texte = le paquet choisi dans l'intro.
   debrief: {
     button: "🎙 Le débrief de Mini Cyrielle ▸",
     intro: { face: "wink", text: "Petit débrief avant de se quitter ? Réponds franchement : chaque réponse change la suite…" },
@@ -255,26 +352,18 @@ export const content = {
       favorite: {
         face: "joy2",
         text: "Trop bien ! Et ton cadeau préféré, c'est lequel ?",
+        // grid: les réponses en grille (pour une longue liste)
+        grid: true,
         choices: [
-          { label: "Le coffret Lush et le pyjama", next: "tonight" },
-          { label: "Le maillot de l'UBB", next: "match" },
-          { label: "Les M&M's perso", next: "gourmande" },
-        ],
-      },
-      tonight: {
-        face: "smirk",
-        text: "Je m'en doutais… Alors ce soir : bain ou film ?",
-        choices: [
-          { label: "Les deux, évidemment", next: "cocooning" },
-          { label: "Dodo direct", next: "marmotte" },
-        ],
-      },
-      match: {
-        face: "ubb-cap",
-        text: "Tu le portes au prochain match ?",
-        choices: [
-          { label: "Évidemment, allez l'UBB !", next: "supportrice" },
-          { label: "Je vais surtout dormir dedans", next: "pyjama-ubb" },
+          { label: "🛁 Le coffret Lush", next: "cocooning" },
+          { label: "🌙 Le pyjama", next: "marmotte" },
+          { label: "🥔 La patate positive", next: "goodvibes" },
+          { label: "🫕 La tasse à fondue", next: "fondue" },
+          { label: "✨ Les strass", next: "tiktok" },
+          { label: "🍬 Les M&M's", next: "gourmande" },
+          { label: "☁️ Les mousses Rituals", next: "spa" },
+          { label: "💨 L'Air Styler", next: "brushing" },
+          { label: "🏉 Le maillot UBB", next: "supportrice" },
         ],
       },
       remarks: {
@@ -300,61 +389,104 @@ export const content = {
       cocooning: {
         n: 1,
         title: "Cocooning total",
-        face: "kiss2",
+        face: "bath",
         effect: "bubbles",
-        text: "Bain moussant avec ton coffret Lush, pyjama tout doux, un film sous le plaid et les M&M's à portée de main. Programme validé ♥",
+        text: "Bombe de bain qui pétille, bain moussant, bougie allumée… Ce soir, c'est spa à la maison 🛁",
       },
       marmotte: {
         n: 2,
         title: "La marmotte",
-        face: "sleep2",
+        face: "pj-sleep",
         effect: "moons",
         text: "Pyjama enfilé, lumière éteinte, dodo bien mérité. Les énigmes, ça fatigue 😴",
       },
-      supportrice: {
+      goodvibes: {
         n: 3,
+        title: "Good vibes only",
+        face: "peace",
+        effect: "potatoes",
+        text: "Une patate positive pour le moral, tous les jours. Interdiction d'être triste, c'est la règle 🥔",
+      },
+      // Cette fin suit le camp choisi au cadeau 4 (camps.fromage / camps.chocolat remplacent le reste).
+      fondue: {
+        n: 4,
+        title: "Team fondue",
+        face: "joy",
+        effect: "fondue",
+        text: "Fromage ou chocolat ? Pas besoin de choisir : on fera les deux 🫕",
+        camps: {
+          fromage: {
+            title: "Team fromage",
+            face: "fondue-cheese",
+            effect: "cheese",
+            text: "Fromage qui file, pain qui trempe : la fondue, c'est sacré. Prochaine soirée fondue chez nous 🧀",
+          },
+          chocolat: {
+            title: "Team chocolat",
+            face: "fondue-choc",
+            effect: "chocolate",
+            text: "Chocolat fondu et fraises à volonté : la soirée parfaite existe, et elle est chez nous 🍓",
+          },
+        },
+      },
+      tiktok: {
+        n: 5,
+        title: "Star de TikTok",
+        face: "cool",
+        effect: "sparkles",
+        text: "Strass sur le visage, ring light allumée : la trend va exploser. Un million de vues minimum ✨",
+      },
+      gourmande: {
+        n: 6,
+        title: "La gourmande",
+        face: "mms",
+        effect: "candies",
+        text: "M&M's, {snack}, Nerds… On sait maintenant ce que tu préfères vraiment 🍬",
+      },
+      spa: {
+        n: 7,
+        title: "Spa à la maison",
+        face: "kiss2",
+        effect: "foam",
+        text: "Deux mousses Rituals, une douche qui sent le spa… Tu vas sentir trop bon ☁️",
+      },
+      brushing: {
+        n: 8,
+        title: "Brushing de star",
+        face: "wink",
+        effect: "wind",
+        text: "Un brushing parfait en dix minutes chrono. Les réseaux avaient raison 💨",
+      },
+      supportrice: {
+        n: 9,
         title: "Supportrice officielle",
         face: "ubb-flag",
         effect: "rugby",
         text: "Maillot sur le dos, drapeau à la main : l'UBB a une nouvelle supportrice. Allez l'UBB !",
       },
-      "pyjama-ubb": {
-        n: 4,
-        title: "Le pyjama UBB",
-        face: "ubb-cap-scarf",
-        effect: "moons",
-        text: "Un maillot qui sent (presque) moi, pour dormir : c'est encore mieux qu'un pyjama 💤",
-      },
-      gourmande: {
-        n: 5,
-        title: "La gourmande",
-        face: "munch-eat",
-        effect: "candies",
-        text: "M&M's, Monster Munch, Nerds… On sait maintenant ce que tu préfères vraiment 🍬",
-      },
       facile: {
-        n: 6,
+        n: 10,
         title: "Mode facile activé",
         face: "sushi-happy",
         effect: "sparkles",
         text: "Promis, le prochain swap sera en mode facile. Avec des indices partout. Et des sushis.",
       },
       revanche: {
-        n: 7,
+        n: 11,
         title: "La revanche",
         face: "angry2",
         effect: "wind",
         text: "Défi accepté. Le prochain swap sera bien plus corsé… Prépare-toi ⚔️",
       },
       premium: {
-        n: 8,
+        n: 12,
         title: "Abonnement Premium",
         face: "surprised3",
         effect: "confetti",
         text: "Trop tard : tu viens de souscrire à LE SWAP™ Premium. Publicités illimitées, à vie 📺",
       },
       taquine: {
-        n: 9,
+        n: 13,
         title: "La taquine",
         face: "smirk",
         effect: "hearts",
@@ -373,21 +505,21 @@ export const content = {
   },
 
   final: {
-    eyebrow: "7 cadeaux ouverts",
+    eyebrow: "9 cadeaux ouverts",
     title: "Et voilà 🎉",
     body: [
-      "Coffret Lush, pyjama, M&M's, patate positive, strass, brosse soufflante et maillot de l'UBB : tu as maintenant tout ce qu'il faut pour une soirée parfaite… avec moi, évidemment.",
+      "Coffret Lush, pyjama, patate positive, tasse à fondue, strass, M&M's, mousses Rituals, brosse soufflante et maillot de l'UBB : tu as maintenant tout ce qu'il faut pour une soirée parfaite… avec moi, évidemment.",
       "Merci d'être toi. Je t'aime.",
     ],
     signature: "",
-    recapTitle: "Tes 7 cadeaux",
+    recapTitle: "Tes 9 cadeaux",
     foundBadge: "trouvé seule",
     // Phrase de score selon le nombre d'énigmes trouvées sans « Voir la réponse »
     score: {
-      all: "7 sur 7 toute seule. Impossible de te cacher quoi que ce soit, tu me connais par cœur.",
-      high: "{score} énigmes sur 7 trouvées toute seule. Pas mal du tout ✨",
-      low: "{score} sur 7… Disons que mes énigmes étaient très (trop ?) bien ficelées 😏",
-      none: "0 sur 7 ? Pas grave, l'important c'est les cadeaux 😇",
+      all: "9 sur 9 toute seule. Impossible de te cacher quoi que ce soit, tu me connais par cœur.",
+      high: "{score} énigmes sur 9 trouvées toute seule. Pas mal du tout ✨",
+      low: "{score} sur 9… Disons que mes énigmes étaient très (trop ?) bien ficelées 😏",
+      none: "0 sur 9 ? Pas grave, l'important c'est les cadeaux 😇",
     },
     replay: "Revoir le parcours",
   },

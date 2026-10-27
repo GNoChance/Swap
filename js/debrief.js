@@ -34,7 +34,8 @@ function starField() {
   );
 }
 
-export function debriefScreen({ onReplay, onBack }) {
+/** values: placeholders for the texts ({snack}); camp: her fondue side, which picks that ending's version. */
+export function debriefScreen({ values = {}, camp, onReplay, onBack }) {
   const d = content.debrief;
   const total = Object.keys(d.endings).length;
   const answers = [];
@@ -95,8 +96,10 @@ export function debriefScreen({ onReplay, onBack }) {
   };
 
   function drawStubs(count) {
+    const spread = count > 1 ? Math.min(SPREAD, 252 / (count - 1)) : 0; // many answers: the fork tightens to fit
+    const center = Math.max(24 + (spread * (count - 1)) / 2, Math.min(276 - (spread * (count - 1)) / 2, px));
     return Array.from({ length: count }, (_, k) => {
-      const tx = Math.max(24, Math.min(276, px + (k - (count - 1) / 2) * SPREAD));
+      const tx = center + (k - (count - 1) / 2) * spread;
       const ty = py + STEP_Y;
       const path = svgEl("path", { d: curve(px, py, tx, ty), class: "stub" });
       const dot = svgEl("circle", { cx: tx, cy: ty, r: 4, class: "stub-dot" });
@@ -162,8 +165,9 @@ export function debriefScreen({ onReplay, onBack }) {
           choice.label,
         ),
       );
+      choicesEl.classList.toggle("is-grid", Boolean(node.grid));
       choicesEl.replaceChildren(...buttons);
-      gsap.from(buttons, { opacity: 0, y: 12, duration: 0.4, stagger: 0.1, ease: "power2.out", clearProps: "opacity,transform" });
+      gsap.from(buttons, { opacity: 0, y: 12, duration: 0.4, stagger: node.grid ? 0.05 : 0.1, ease: "power2.out", clearProps: "opacity,transform" });
     });
   }
 
@@ -189,13 +193,13 @@ export function debriefScreen({ onReplay, onBack }) {
   }
 
   function showEnding(id) {
-    const end = d.endings[id];
+    const end = { ...d.endings[id], ...d.endings[id].camps?.[camp] };
     const store = addDebriefRun(loadDebrief(), { ending: id, answers, date: new Date().toISOString() });
     saveDebrief(store);
 
     endLabel.textContent = fill(d.endLabel, { n: end.n, total });
     endTitle.textContent = end.title;
-    endText.textContent = end.text;
+    endText.textContent = fill(end.text, values);
     endFound.textContent = fill(d.found, { found: store.found.length, total });
     lastDot.setAttribute("class", "trail-dot is-end");
     lastDot.setAttribute("r", 8);

@@ -1,6 +1,6 @@
 // Pure logic: answer matching and progress transitions. No DOM, no storage.
 
-export const STEP_COUNT = 7;
+export const STEP_COUNT = 9;
 
 /** Lowercase, strip accents, keep only a–z and 0–9. */
 export function compact(text) {
@@ -82,16 +82,19 @@ export function fill(template, values) {
 // ── Progress ────────────────────────────────────────────────
 // Step status: "locked" → "active" → "revealed" (answer shown) → "done" (gift opened)
 // bonus: the Nerds bonus (after the last gift) has been seen. pub: the ad break has been watched.
+// snack: the crisps she picked in the intro ("munch" | "brets"). step.choice: her pick inside a gift (fondue camp).
 
 export function initialProgress() {
   return {
     started: false,
     bonus: false,
     pub: false,
+    snack: null,
     steps: Array.from({ length: STEP_COUNT }, (_, i) => ({
       status: i === 0 ? "active" : "locked",
       found: false,
       hintUsed: false,
+      choice: null,
     })),
   };
 }
@@ -128,6 +131,17 @@ export function open(progress, index) {
   return next;
 }
 
+/** Her pick inside a gift (the fondue camp); she can change her mind until the gift is solved. */
+export function choose(progress, index, choice) {
+  const step = progress.steps[index];
+  if (!step || step.status !== "active") return progress;
+  return withStep(progress, index, { choice });
+}
+
+export function pickSnack(progress, snack) {
+  return { ...progress, snack };
+}
+
 export function seeBonus(progress) {
   return { ...progress, bonus: true };
 }
@@ -161,16 +175,18 @@ export function sanitize(raw) {
   const base = initialProgress();
   if (!raw || !Array.isArray(raw.steps) || raw.steps.length !== STEP_COUNT) return base;
   const valid = ["locked", "active", "revealed", "done"];
+  const text = (v) => (typeof v === "string" && v ? v : null);
   const steps = raw.steps.map((s, i) => ({
     status: valid.includes(s?.status) ? s.status : base.steps[i].status,
     found: Boolean(s?.found),
     hintUsed: Boolean(s?.hintUsed),
+    choice: text(s?.choice),
   }));
   // The step after a done one can never stay locked.
   steps.forEach((s, i) => {
     if (s.status === "done" && steps[i + 1]?.status === "locked") steps[i + 1].status = "active";
   });
-  return { started: Boolean(raw.started), bonus: Boolean(raw.bonus), pub: Boolean(raw.pub), steps };
+  return { started: Boolean(raw.started), bonus: Boolean(raw.bonus), pub: Boolean(raw.pub), snack: text(raw.snack), steps };
 }
 
 // ── Crossword ───────────────────────────────────────────────
@@ -224,6 +240,56 @@ export function crosswordErrors(words) {
         errors.push(`Lettres collées hors d'un mot en ligne ${cell.r + 1}, colonne ${cell.c + 1}`);
       }
     }
+  }
+  return errors;
+}
+
+// ── Word search ─────────────────────────────────────────────
+// grid: rows of letters ("MLBUZER", …); words read left → right or top → bottom (a selection may go backwards).
+
+/** Cells [row, col] from one cell to another, if they share a row or a column; null otherwise. */
+export function wordsearchLine([r0, c0], [r1, c1]) {
+  if (r0 !== r1 && c0 !== c1) return null;
+  const length = Math.max(Math.abs(r1 - r0), Math.abs(c1 - c0)) + 1;
+  const dr = Math.sign(r1 - r0);
+  const dc = Math.sign(c1 - c0);
+  return Array.from({ length }, (_, i) => [r0 + dr * i, c0 + dc * i]);
+}
+
+/** Index of the word spelled by the selection (either way), or -1. */
+export function wordsearchMatch(grid, words, from, to) {
+  const line = wordsearchLine(from, to);
+  if (!line) return -1;
+  const text = line.map(([r, c]) => grid[r]?.[c] ?? "").join("");
+  const reversed = [...text].reverse().join("");
+  return words.findIndex((w) => w === text || w === reversed);
+}
+
+/** Where each word sits: [{ word, from, to }] (first occurrence, rows then columns). */
+export function wordsearchPlaces(grid, words) {
+  return words.map((word) => {
+    for (let r = 0; r < grid.length; r++) {
+      const c = grid[r].indexOf(word);
+      if (c >= 0) return { word, from: [r, c], to: [r, c + word.length - 1] };
+    }
+    for (let c = 0; c < grid[0].length; c++) {
+      const r = grid.map((row) => row[c]).join("").indexOf(word);
+      if (r >= 0) return { word, from: [r, c], to: [r + word.length - 1, c] };
+    }
+    return { word, from: null, to: null };
+  });
+}
+
+/** What would make the grid unfair: ragged rows, a word missing, or a word hidden twice (any direction). */
+export function wordsearchErrors(grid, words) {
+  const errors = [];
+  if (grid.some((row) => row.length !== grid[0].length)) errors.push("Toutes les lignes doivent avoir la même longueur");
+  const lines = [...grid, ...Array.from({ length: grid[0].length }, (_, c) => grid.map((row) => row[c]).join(""))];
+  const all = [...lines, ...lines.map((l) => [...l].reverse().join(""))];
+  for (const word of words) {
+    const hits = all.reduce((n, line) => n + line.split(word).length - 1, 0);
+    if (hits === 0) errors.push(`« ${word} » n'est pas dans la grille`);
+    if (hits > 1) errors.push(`« ${word} » apparaît ${hits} fois`);
   }
   return errors;
 }

@@ -9,11 +9,15 @@ export const FACES = [
   // emotions (two drawings of most of them: "joy" / "joy2"…)
   "joy", "joy2", "angry", "angry2", "cry", "cry2", "pout", "pout2", "think", "think2", "sleep", "sleep2",
   "kiss", "kiss2", "wink", "smirk", "cool", "peace", "surprised", "surprised2", "surprised3",
-  // Monster Munch (intro)
-  "munch-hold", "munch-open", "munch-eat", "munch-empty",
+  // Monster Munch or Brets (intro)
+  "munch-hold", "munch-open", "munch-eat", "munch-empty", "brets-hold", "brets-eat",
+  // gifts: Lush, pyjama, fondue, M&M's; QCM wrong answers (bivouac, whey)
+  "bath", "cosy", "fondue-cheese", "fondue-choc", "mms", "hike", "gym",
+  // in pyjama: only once the pyjama (gift 2) is revealed
+  "pj-think", "pj-sleep", "pj-angry",
   // sushi
   "sushi-eat", "sushi-happy", "sushi-full", "sushi-sulk",
-  // UBB: only once the jersey (gift 7) is revealed, so nothing gives it away
+  // UBB: only once the jersey (gift 9) is revealed, so nothing gives it away
   "ubb-flag", "ubb-flag2", "ubb-flag3", "ubb-ball", "ubb-scarf", "ubb-cap", "ubb-cap-scarf",
 ];
 
@@ -27,6 +31,14 @@ const VARIANTS = {
   kiss: ["kiss", "kiss2"],
   surprised: ["surprised", "surprised2", "surprised3"],
 };
+
+/** Extra drawings of an emotion from now on: { think: "pj-think", … } (a revealed gift she keeps on). */
+export function unlockVariants(extra) {
+  for (const [face, more] of Object.entries(extra)) {
+    const list = (VARIANTS[face] ||= [face]);
+    if (!list.includes(more)) list.push(more);
+  }
+}
 
 /** One of the drawings of an emotion, at random ("cry" → "cry" or "cry2"). */
 export function variant(face) {
@@ -111,7 +123,7 @@ export function createAvatar({ face = "wink", size = 80, className = "", tappabl
     el.classList.add("is-tappable");
     el.addEventListener("click", () => {
       onTap?.();
-      if (current.startsWith("sleep")) return;
+      if (current.includes("sleep")) return;
       const faces = typeof tapFaces === "function" ? tapFaces() : tapFaces;
       react(variant(faces[tapIndex++ % faces.length]), 1800);
       jump();

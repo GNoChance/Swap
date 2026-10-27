@@ -1,4 +1,4 @@
-// Animated scenes: the welcome (Mini Cyrielle introduces the game, then opens her Monster Munch)
+// Animated scenes: the welcome (Mini Cyrielle introduces the game, then opens her Monster Munch or Brets)
 // and the Nerds bonus between the last gift and the final screen.
 import { content } from "./content.js";
 import { sfx, unlockAudio } from "./audio.js";
@@ -88,14 +88,25 @@ export function createBubble() {
   };
 }
 
-// A generic blue crisp bag, only seen for a split second while it falls into her hands.
-const PACKET_SVG = `
+// Generic crisp bags (blue for Monster Munch, golden for Brets), only seen for a split second while they fall into her hands.
+const BAG = "M8 9l5-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5v82l-5 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5z";
+const PACKET_SVG = {
+  munch: `
 <svg class="intro-packet" viewBox="0 0 80 100" width="74" height="92" aria-hidden="true">
-  <path fill="#1f3fa6" d="M8 9l5-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5 6-5 5 5v82l-5 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5-6 5-5-5z"/>
+  <path fill="#1f3fa6" d="${BAG}"/>
   <path fill="#e3242b" d="M14 20h52v15H14z"/>
   <circle cx="40" cy="64" r="17" fill="#3d6fe0"/>
   <g fill="#f2a93b"><circle cx="31" cy="60" r="4"/><circle cx="43" cy="56" r="4"/><circle cx="48" cy="68" r="4"/><circle cx="35" cy="71" r="4"/></g>
-</svg>`;
+</svg>`,
+  brets: `
+<svg class="intro-packet" viewBox="0 0 80 100" width="74" height="92" aria-hidden="true">
+  <path fill="#c99a3e" d="${BAG}"/>
+  <path fill="#e7c47a" d="M14 52h52v32H14z"/>
+  <ellipse cx="40" cy="33" rx="22" ry="12" fill="#1d1a17"/>
+  <text x="40" y="38" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-style="italic" font-weight="700" fill="#fff">Brets</text>
+  <g fill="#f6dc8e" stroke="#c48a2c" stroke-width="1"><ellipse cx="31" cy="68" rx="8" ry="5.5"/><ellipse cx="48" cy="72" rx="8" ry="5.5" transform="rotate(-18 48 72)"/></g>
+</svg>`,
+};
 
 // Mystery gift box for the bonus: the lid flies off when it bursts.
 const BOX_SVG = `
@@ -135,8 +146,10 @@ export function welcomeScreen({ onBegin }) {
   const clock = makeClock();
   const bubble = createBubble();
   const buddy = createAvatar({ face: intro.lines[0]?.face || "wink", size: 150 });
-  const packet = svg(PACKET_SVG);
-  const stage = h("div", { class: "intro-avatar" }, buddy.el, packet);
+  const packets = Object.fromEntries(Object.entries(PACKET_SVG).map(([id, markup]) => [id, svg(markup)]));
+  const stage = h("div", { class: "intro-avatar" }, buddy.el, Object.values(packets));
+  const choices = h("div", { class: "intro-choices", hidden: true });
+  let snackPick = null; // the crisps she chose: an item of intro.snacks
 
   const button = h("button", { class: "btn btn-primary", type: "button", onclick: begin }, w.button);
   const end = h(
@@ -171,7 +184,8 @@ export function welcomeScreen({ onBegin }) {
     { class: "screen screen-welcome", onclick: onSceneTap },
     h("div", { class: "intro-bubble-slot" }, bubble.el),
     stage,
-    end,
+    // the crisps question and the title share one spot: nothing jumps when one replaces the other
+    h("div", { class: "intro-foot" }, end, choices),
     skip,
     prompt,
   );
@@ -211,25 +225,66 @@ export function welcomeScreen({ onBegin }) {
       await clock.wait(900 + line.text.length * 18);
     }
     if (clock.cancelled) return;
+    await askSnack();
+    if (clock.cancelled) return;
     bubble.hide();
     await snack();
     if (clock.cancelled) return;
-    buddy.set(intro.snack.face);
+    buddy.set(snackPick.eat);
     buddy.jump(12);
-    await bubble.say(intro.snack.text);
+    await bubble.say(snackPick.text);
     await sleep(400);
     finish();
   }
 
+  /** « Plutôt Monster Munch ou Brets ? »: resolves once she has picked (also asked when the intro is skipped). */
+  let asking = null;
+  function askSnack() {
+    if (snackPick) return Promise.resolve(snackPick);
+    if (asking) return asking; // skipped while the question is on screen: same question, same answer
+    buddy.set(intro.snackQuestion.face);
+    bubble.say(intro.snackQuestion.text);
+    return (asking = new Promise((resolve) => {
+      const buttons = intro.snacks.map((item) =>
+        h(
+          "button",
+          {
+            class: "btn btn-secondary intro-choice",
+            type: "button",
+            onclick(e) {
+              e.stopPropagation();
+              if (snackPick) return;
+              snackPick = item;
+              sfx("tap");
+              bump(e.currentTarget);
+              buttons.forEach((b) => b !== e.currentTarget && gsap.to(b, { opacity: 0.25, duration: 0.3 }));
+              buddy.jump();
+              setTimeout(() => {
+                gsap.to(choices, { autoAlpha: 0, duration: 0.3, onComplete: () => (choices.hidden = true) });
+                resolve(item);
+              }, 500);
+            },
+          },
+          item.label,
+        ),
+      );
+      choices.replaceChildren(...buttons);
+      choices.hidden = false;
+      gsap.set(choices, { autoAlpha: 1 });
+      gsap.from(buttons, { opacity: 0, y: 12, duration: 0.4, stagger: 0.12, delay: 0.4, ease: "power2.out", clearProps: "opacity,transform" });
+    }));
+  }
+
   /** The packet drops into her hands, shakes harder and harder, and bursts. */
   async function snack() {
+    const packet = packets[snackPick.id] || packets.munch;
     const top = stage.getBoundingClientRect().top;
     sfx("whoosh");
     gsap.fromTo(packet, { autoAlpha: 1, y: -(top + 200), rotation: -35 }, { y: 0, rotation: 0, duration: 0.6, ease: "power2.in" });
     await sleep(600);
     if (clock.cancelled) return;
     gsap.set(packet, { autoAlpha: 0 });
-    buddy.set("munch-hold");
+    buddy.set(snackPick.hold);
     buddy.jump(16);
     sfx("tap");
     await sleep(800);
@@ -242,15 +297,15 @@ export function welcomeScreen({ onBegin }) {
     }
     if (clock.cancelled) return;
 
-    buddy.set("munch-open");
+    buddy.set(snackPick.open);
     sfx("rip");
     gsap.fromTo(stage, { scale: 1.1 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" });
     const r = buddy.el.getBoundingClientRect();
-    crisps({ x: r.left + r.width / 2, y: r.top + r.height * 0.48 }, { onBounce: makeCrunch() });
+    crisps({ x: r.left + r.width / 2, y: r.top + r.height * 0.48 }, { onBounce: makeCrunch(), kind: snackPick.id });
     await sleep(1500);
   }
 
-  function finish({ skipped = false } = {}) {
+  async function finish({ skipped = false } = {}) {
     if (ended) return;
     ended = true;
     clock.cancel();
@@ -259,12 +314,14 @@ export function welcomeScreen({ onBegin }) {
       unlockAudio();
       started = true;
       prompt.remove();
-      gsap.killTweensOf([stage, packet]);
+      gsap.killTweensOf([stage, ...Object.values(packets)]);
       gsap.set(stage, { x: 0, y: 0, rotation: 0, scale: 1 });
-      gsap.set(packet, { autoAlpha: 0 });
+      gsap.set(Object.values(packets), { autoAlpha: 0 });
       gsap.set(buddy.el, { autoAlpha: 1 });
-      buddy.set(intro.snack.face);
-      bubble.show(intro.snack.text);
+      // skipping never skips the crisps question: she still gets her packet
+      await askSnack();
+      buddy.set(snackPick.eat);
+      bubble.show(snackPick.text);
     }
     end.style.visibility = "visible";
     gsap.from(end.children, { opacity: 0, y: 16, duration: 0.7, stagger: 0.12, ease: "power2.out", clearProps: "opacity,transform" });
@@ -279,14 +336,14 @@ export function welcomeScreen({ onBegin }) {
     bubble.hide();
     buddy.set(variant("joy"));
     buddy.jump();
-    onBegin();
+    onBegin(snackPick?.id);
   }
 
   return {
     el,
     enter() {
       gsap.set(buddy.el, { autoAlpha: 0 });
-      gsap.set(packet, { autoAlpha: 0 });
+      gsap.set(Object.values(packets), { autoAlpha: 0 });
       end.style.visibility = "hidden";
     },
     leave() {

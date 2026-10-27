@@ -12,7 +12,9 @@ import { createBlanks } from "./games/blanks.js";
 import { createQcm } from "./games/qcm.js";
 import { createAcrostic } from "./games/acrostic.js";
 import { createCrossword } from "./games/crossword.js";
-import { createAvatar, preloadFaces, variant } from "./avatar.js";
+import { createCamp } from "./games/camp.js";
+import { createWordsearch } from "./games/wordsearch.js";
+import { createAvatar, preloadFaces, variant, unlockVariants } from "./avatar.js";
 import { welcomeScreen, bonusScreen } from "./scenes.js";
 import { pubScreen } from "./pub.js";
 import { debriefScreen, debriefReport } from "./debrief.js";
@@ -21,7 +23,16 @@ const gsap = window.gsap;
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wide = matchMedia("(min-width: 720px)");
 const { ui } = content;
-const games = { free: createFree, anagram: createAnagram, blanks: createBlanks, qcm: createQcm, acrostic: createAcrostic, crossword: createCrossword };
+const games = {
+  free: createFree,
+  anagram: createAnagram,
+  blanks: createBlanks,
+  qcm: createQcm,
+  acrostic: createAcrostic,
+  crossword: createCrossword,
+  camp: createCamp,
+  wordsearch: createWordsearch,
+};
 const FINAL = P.STEP_COUNT; // index of the "dernier mot" node on the timeline
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, reduced ? Math.min(ms, 150) : ms));
@@ -64,8 +75,8 @@ function show(screen) {
 
 function welcome() {
   return welcomeScreen({
-    onBegin() {
-      const started = P.start(progress);
+    onBegin(snack) {
+      const started = P.pickSnack(P.start(progress), snack || progress.snack);
       commit(isDemo ? P.unlockAll(started) : started);
       show(timelineScreen({ intro: true }));
     },
@@ -96,6 +107,7 @@ function playPub({ walkFrom, waitForTap = false, preview = false } = {}) {
   show(
     pubScreen({
       waitForTap,
+      values: textValues(),
       onDone() {
         if (preview) return location.replace(location.pathname + (isDemo ? "?demo" : ""));
         commit(P.seePub(progress));
@@ -108,10 +120,34 @@ function playPub({ walkFrom, waitForTap = false, preview = false } = {}) {
 /** The debrief; « Rejouer le débrief » starts it again, « Revoir le parcours » goes back to the timeline. */
 function debrief() {
   return debriefScreen({
+    values: textValues(),
+    camp: progress.steps.find((s, i) => content.gifts[i].camps && s.choice)?.choice,
     onReplay: () => show(debrief()),
     onBack: () => show(progress.started ? timelineScreen() : welcome()),
   });
 }
+
+/** {snack} in texts: the crisps she picked in the intro. */
+function textValues() {
+  const snack = content.intro.snacks.find((s) => s.id === progress.snack) || content.intro.snacks[0];
+  return { snack: snack.name };
+}
+
+/** What a gift shows once revealed: the fondue follows the camp she picked (sticker, sentence, effect). */
+function revealOf(gift, i) {
+  const camp = gift.camps?.find((c) => c.id === progress.steps[i].choice);
+  return { face: camp?.face || gift.revealFace, text: camp?.reveal || gift.reveal, effect: camp?.effect || gift.effect };
+}
+
+const isOpen = (i) => ["revealed", "done"].includes(progress.steps[i].status);
+
+/** Stickers a revealed gift brings along (pyjama: she keeps it on to think, sleep and sulk). */
+function syncFaces() {
+  content.gifts.forEach((gift, i) => gift.unlocksFaces && isOpen(i) && unlockVariants(gift.unlocksFaces));
+}
+
+/** Tapping her shows, among others, the stickers of the gifts already revealed. */
+const revealedFaces = () => [...new Set(content.gifts.flatMap((gift, i) => (isOpen(i) && revealOf(gift, i).face ? [revealOf(gift, i).face] : [])))];
 
 /** UBB stickers stay hidden until the jersey gift is open, so nothing gives it away. */
 const UBB_STEP = content.gifts.findIndex((g) => g.revealFace?.startsWith("ubb"));
@@ -149,7 +185,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
     className: "tl-avatar",
     tappable: true,
     onTap: () => sfx("tap"),
-    tapFaces: () => ["kiss", "cool", "smirk", "sushi-happy", "joy", "sushi-eat", ...(ubbUnlocked() ? ["ubb-cap", "ubb-ball", "ubb-flag2"] : [])],
+    tapFaces: () => ["kiss", "cool", "smirk", "sushi-happy", "joy", "sushi-eat", ...revealedFaces(), ...(ubbUnlocked() ? ["ubb-cap", "ubb-ball", "ubb-flag2"] : [])],
   });
   track.append(buddy.el);
   const LIFT = 12; // her feet stand a little above the seal's center
@@ -231,7 +267,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
   let sleepTimer = 0;
   function nudge() {
     clearTimeout(sleepTimer);
-    if (buddy.base.startsWith("sleep")) {
+    if (buddy.base.includes("sleep")) {
       buddy.setBase("wink");
       buddy.jump();
     }
@@ -240,7 +276,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
 
   function render(except = -1) {
     nodes.forEach((n, i) => i !== except && n.render());
-    progressText.textContent = fill(t.progress, { done: P.doneCount(progress) });
+    progressText.textContent = fill(t.progress, { done: P.doneCount(progress), total: P.STEP_COUNT });
   }
 
   /** Show a newly unlocked node, still invisible, so the path can be laid out up to it before it fades in. */
@@ -416,12 +452,12 @@ function openStep(i, returnFocus) {
   let errors = 0;
 
   // Mini Cyrielle peeks from the bottom of the sheet (sticky) and reacts.
-  const buddy = createAvatar({ face: status() === "active" ? variant("think") : gift.revealFace || "wink", size: 58 });
+  const buddy = createAvatar({ face: status() === "active" ? variant("think") : revealOf(gift, i).face || "wink", size: 58 });
   const buddyDock = h("div", { class: "sheet-buddy", "aria-hidden": "true" }, buddy.el);
 
   const feedback = h("p", { class: "feedback", "aria-live": "polite" });
   // onProgress: a partial success (one word right) clears a stale "wrong" message.
-  const game = games[gift.type](gift, { ui, sfx, onFound: () => solve(true), onWrong, onProgress });
+  const game = games[gift.type](gift, { ui, sfx, onFound: () => solve(true), onWrong, onProgress, onChoice });
 
   // Hint
   const hintZone = h("div", { class: "hint" });
@@ -478,7 +514,7 @@ function openStep(i, returnFocus) {
   // Reveal
   const revealLabel = h("p", { class: "reveal-label" });
   const answerCard = h("div", { class: "answer-card" }, h("p", { class: "answer-text" }, gift.answer));
-  const revealText = h("p", { class: "reveal-text" }, gift.reveal);
+  const revealText = h("p", { class: "reveal-text" });
   const goOpen = h("p", { class: "reveal-go" }, fill(ui.goOpen, { n }));
   const revealActions = h("div", { class: "reveal-actions" });
   const reveal = h("div", { class: "reveal", hidden: true }, revealLabel, answerCard, revealText, goOpen, revealActions);
@@ -505,14 +541,21 @@ function openStep(i, returnFocus) {
   const backdrop = h("div", { class: "panel-backdrop", onclick: () => close() });
   const el = h("div", { class: "panel", role: "dialog", "aria-modal": "true", "aria-labelledby": titleId }, backdrop, sheet);
 
-  function onWrong({ target, message } = {}) {
+  function onWrong({ target, message, face } = {}) {
     sfx("wrong");
     if (target) shake(target);
     errors++;
-    buddy.react(variant(errors === 1 ? "pout" : errors === 2 ? "angry" : "cry"), 2400);
+    // a wrong answer may come with its own sticker (QCM: the hike, the dumbbells)
+    if (face) buddy.react(face, 3600);
+    else buddy.react(variant(errors === 1 ? "pout" : errors === 2 ? "angry" : "cry"), 2400);
     shake(buddy.el, 5);
     const text = message === undefined ? (lastWrong = pick(ui.wrong, lastWrong)) : message;
     setFeedback(text);
+  }
+
+  /** Her pick inside the gift (fondue camp), saved right away. */
+  function onChoice(choice) {
+    commit(P.choose(progress, i, choice));
   }
 
   function onProgress() {
@@ -529,14 +572,15 @@ function openStep(i, returnFocus) {
   function solve(found) {
     if (status() !== "active") return;
     commit(P.solve(progress, i, found));
-    buddy.setBase(gift.revealFace || variant(found ? "joy" : "surprised"));
+    syncFaces();
+    buddy.setBase(revealOf(gift, i).face || variant(found ? "joy" : "surprised"));
     buddy.jump();
     if (found) {
       sfx("good");
       setFeedback("");
       wait(700).then(() => showReveal({ found: true, celebrate: true }));
     } else {
-      game.reveal();
+      game.reveal(progress.steps[i].choice);
       showReveal({ found: false, celebrate: true });
     }
   }
@@ -544,6 +588,7 @@ function openStep(i, returnFocus) {
   function showReveal({ found, celebrate }) {
     if (closed) return;
     revealLabel.textContent = found ? pick(ui.foundSelf) : ui.revealed;
+    revealText.textContent = revealOf(gift, i).text;
     const done = status() === "done";
     goOpen.hidden = done;
     revealActions.replaceChildren(
@@ -561,7 +606,7 @@ function openStep(i, returnFocus) {
     answerCard.classList.remove("is-glowing");
     void answerCard.offsetWidth;
     answerCard.classList.add("is-glowing");
-    wait(380).then(() => !closed && playEffect(gift.effect, centerOf(answerCard)));
+    wait(380).then(() => !closed && playEffect(revealOf(gift, i).effect, centerOf(answerCard)));
   }
 
   function opened(e) {
@@ -617,7 +662,7 @@ function openStep(i, returnFocus) {
 
   if (status() === "active") game.intro();
   else {
-    game.reveal();
+    game.reveal(progress.steps[i].choice);
     showReveal({ found: progress.steps[i].found, celebrate: false });
   }
 }
@@ -638,7 +683,7 @@ function flash() {
 function finalScreen({ celebrate }) {
   const f = content.final;
   const score = P.score(progress);
-  const phrase = score === P.STEP_COUNT ? f.score.all : score >= 4 ? f.score.high : score >= 1 ? f.score.low : f.score.none;
+  const phrase = score === P.STEP_COUNT ? f.score.all : score >= P.STEP_COUNT / 2 ? f.score.high : score >= 1 ? f.score.low : f.score.none;
 
   const recap = h(
     "ol",
@@ -659,7 +704,7 @@ function finalScreen({ celebrate }) {
     size: 116,
     tappable: true,
     onTap: () => sfx("tap"),
-    tapFaces: ["kiss", "ubb-flag3", "joy", "ubb-cap", "sushi-full", "ubb-scarf", "wink"],
+    tapFaces: ["kiss", "ubb-flag3", "joy", "ubb-cap", "sushi-full", "ubb-scarf", "wink", ...revealedFaces()],
   });
   const card = h(
     "div",
@@ -763,6 +808,7 @@ if (vv) {
 
 mountEffects();
 preloadFaces();
+syncFaces();
 const preview = new URLSearchParams(location.search);
 if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you

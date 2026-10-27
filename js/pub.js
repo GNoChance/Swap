@@ -10,7 +10,7 @@ import { h, shake } from "./dom.js";
 const gsap = window.gsap;
 const END = 33.8; // the « Reprise du programme » card; skipping jumps here
 
-export function pubScreen({ onDone, waitForTap = false }) {
+export function pubScreen({ onDone, waitForTap = false, values = {} }) {
   const p = content.pub;
   const buddy = createAvatar({ face: "pout2", size: 132 });
   const buddyWrap = h("div", { class: "pub-buddy" }, buddy.el);
@@ -23,7 +23,7 @@ export function pubScreen({ onDone, waitForTap = false }) {
   const badge = h("p", { class: "pub-badge" }, h("span", {}, p.badge));
   const logo = h("p", { class: "pub-logo" }, p.product);
   const reveal = layer("pub-reveal", badge, logo);
-  const featureItems = p.features.map((text) => h("li", { class: "pub-feature" }, h("span", { class: "pub-check" }, "✔"), h("span", {}, text)));
+  const featureItems = p.features.map((text) => h("li", { class: "pub-feature" }, h("span", { class: "pub-check" }, "✔"), h("span", {}, fill(text, values))));
   const features = layer("pub-features", h("p", { class: "pub-logo pub-logo--sm" }, p.product), h("ul", { class: "pub-feature-list" }, featureItems));
   const quote = h("p", { class: "pub-quote" }, p.quote);
   const quoteBy = h("p", { class: "pub-quote-by" }, p.quoteBy);

@@ -27,7 +27,7 @@ export function createQcm(gift, api) {
     } else {
       button.classList.add("is-wrong");
       window.gsap.fromTo(tease, { height: 0, opacity: 0 }, { height: "auto", opacity: 1, duration: 0.35, ease: "power2.out" });
-      api.onWrong({ target: button, message: option.tease ? "" : undefined });
+      api.onWrong({ target: button, message: option.tease ? "" : undefined, face: option.face });
     }
   }
 

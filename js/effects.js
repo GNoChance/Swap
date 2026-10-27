@@ -580,7 +580,169 @@ export function fireworks(rounds = 7) {
   hearts(30, 3);
 }
 
-// ── Entry point ─────────────────────────────────────────────
+// ── Fondue: melted cheese or chocolate drips down from the top ──
+
+const MELT = {
+  cheese: { body: ["#F6D776", "#F2C94C", "#EDBE3F"], shine: "rgba(255,250,220,.8)", edge: "rgba(176,128,28,.5)" },
+  chocolate: { body: ["#5A3220", "#6B3E26", "#4E2A1A"], shine: "rgba(255,225,200,.38)", edge: "rgba(36,18,8,.55)" },
+};
+
+function drip(c, p, length) {
+  const r = p.w / 2;
+  c.beginPath();
+  c.moveTo(-p.band, -6);
+  c.lineTo(p.band, -6);
+  c.lineTo(p.band, 10);
+  c.quadraticCurveTo(r, 12, r, 22);
+  c.lineTo(r, length);
+  c.arc(0, length, r, 0, Math.PI);
+  c.lineTo(-r, 22);
+  c.quadraticCurveTo(-r, 12, -p.band, 10);
+  c.closePath();
+}
+
+/** kinds: "cheese", "chocolate" or both (the generic fondue). */
+function melt(kinds) {
+  const n = Math.max(6, Math.round(W / 30));
+  for (let i = 0; i < n; i++) {
+    const m = MELT[kinds[i % kinds.length]];
+    add({
+      x: (i + 0.5) * (W / n), y: 0,
+      life: rand(3.2, 4.2), delay: rand(0, 0.35), fadeIn: 0.02, fadeOut: 0.3,
+      w: rand(9, 20), band: W / n / 2 + 2, len: rand(50, Math.min(240, H * 0.3)), speed: rand(0.4, 0.6),
+      color: pickOne(m.body), m,
+      draw(c, p, t) {
+        const grow = Math.min(1, t / p.speed);
+        const length = 22 + p.len * (1 - Math.pow(1 - grow, 3));
+        c.fillStyle = p.color;
+        drip(c, p, length);
+        c.fill();
+        c.strokeStyle = p.m.edge;
+        c.lineWidth = 1;
+        c.stroke();
+        c.fillStyle = p.m.shine;
+        c.fillRect(-p.w * 0.28, 14, p.w * 0.16, Math.max(0, length - 20));
+      },
+    });
+  }
+  // drops falling off the drips
+  for (let i = 0; i < count(28); i++) {
+    const m = MELT[pickOne(kinds)];
+    add({
+      x: rand(0, W), y: rand(80, Math.min(260, H * 0.32)), vy: rand(20, 80), g: 900,
+      life: rand(1.4, 2.4), delay: rand(0.9, 2.2), r: rand(3, 6), color: pickOne(m.body), m,
+      draw(c, p) {
+        c.fillStyle = p.color;
+        c.beginPath();
+        c.moveTo(0, -p.r * 2.2);
+        c.quadraticCurveTo(p.r, -p.r * 0.4, p.r, 0);
+        c.arc(0, 0, p.r, 0, Math.PI);
+        c.quadraticCurveTo(-p.r, -p.r * 0.4, 0, -p.r * 2.2);
+        c.fill();
+        c.fillStyle = p.m.shine;
+        c.beginPath();
+        c.arc(-p.r * 0.35, -p.r * 0.2, p.r * 0.28, 0, Math.PI * 2);
+        c.fill();
+      },
+    });
+  }
+  // something to dip: bread cubes for the cheese, strawberries for the chocolate
+  for (let i = 0; i < count(16); i++) {
+    const kind = pickOne(kinds);
+    add({
+      x: rand(W * 0.08, W * 0.92), y: -30, vy: rand(60, 160), vx: rand(-30, 30), g: 420, vr: rand(-3, 3),
+      life: rand(2.8, 3.6), delay: rand(0.3, 1.6), s: rand(9, 14), kind,
+      draw(c, p) {
+        if (p.kind === "cheese") {
+          c.fillStyle = "#E8C98F";
+          c.fillRect(-p.s, -p.s, p.s * 2, p.s * 2);
+          c.strokeStyle = "#B07A3A";
+          c.lineWidth = 2.5;
+          c.strokeRect(-p.s, -p.s, p.s * 2, p.s * 2);
+          c.fillStyle = "rgba(176,122,58,.35)";
+          for (const [dx, dy] of [[-0.4, -0.3], [0.3, 0.1], [-0.1, 0.45]]) c.fillRect(dx * p.s, dy * p.s, 2, 2);
+        } else {
+          c.fillStyle = "#E3343E";
+          c.beginPath();
+          c.moveTo(0, p.s * 1.1);
+          c.bezierCurveTo(-p.s * 1.2, p.s * 0.2, -p.s * 1, -p.s * 0.9, 0, -p.s * 0.7);
+          c.bezierCurveTo(p.s * 1, -p.s * 0.9, p.s * 1.2, p.s * 0.2, 0, p.s * 1.1);
+          c.fill();
+          c.fillStyle = "#3E9A4A";
+          for (const a of [-0.9, 0, 0.9]) {
+            c.beginPath();
+            c.ellipse(Math.sin(a) * p.s * 0.45, -p.s * 0.8, p.s * 0.22, p.s * 0.45, a, 0, Math.PI * 2);
+            c.fill();
+          }
+          c.fillStyle = "rgba(255,236,160,.85)";
+          for (const [dx, dy] of [[-0.35, -0.1], [0.3, 0.05], [0, 0.45], [-0.15, 0.2]]) c.fillRect(dx * p.s, dy * p.s, 1.6, 2.2);
+        }
+      },
+    });
+  }
+}
+
+const fondue = () => melt(["cheese", "chocolate"]);
+const cheese = () => melt(["cheese"]);
+const chocolate = () => melt(["chocolate"]);
+
+// ── Shower foam: two waves of scented foam clouds (× 2) and pearly bubbles ──
+
+function foam() {
+  for (let wave = 0; wave < 2; wave++) {
+    for (let i = 0; i < count(10); i++) {
+      const s = rand(26, 52);
+      add({
+        x: rand(W * 0.06, W * 0.94), y: H + s * 1.4, vy: -rand(150, 240),
+        life: rand(3.2, 4.4), delay: wave * 1.2 + rand(0, 0.5), fadeIn: 0.08, fadeOut: 0.3,
+        s, phase: rand(0, 6),
+        puffs: Array.from({ length: 6 }, (_, k) => [Math.cos((k / 6) * Math.PI * 2) * rand(0.5, 0.8), Math.sin((k / 6) * Math.PI * 2) * rand(0.25, 0.4), rand(0.42, 0.62)]),
+        tick(p) {
+          p.ox = Math.sin(p.age * 1.3 + p.phase) * 16;
+        },
+        draw(c, p, t) {
+          const k = 0.75 + t * 0.6;
+          c.scale(k, k);
+          for (const [dx, dy, r] of [[0, 0, 0.7], ...p.puffs]) {
+            const x = dx * p.s;
+            const y = dy * p.s;
+            const g = c.createRadialGradient(x - r * p.s * 0.35, y - r * p.s * 0.35, 0, x, y, r * p.s);
+            g.addColorStop(0, "rgba(255,255,255,1)");
+            g.addColorStop(0.65, "rgba(250,246,253,.95)");
+            g.addColorStop(1, "rgba(214,204,232,.85)");
+            c.fillStyle = g;
+            c.beginPath();
+            c.arc(x, y, r * p.s, 0, Math.PI * 2);
+            c.fill();
+          }
+        },
+      });
+    }
+  }
+  for (let i = 0; i < count(36); i++) {
+    const r = rand(3, 9);
+    add({
+      x: rand(0, W), y: H + r, vy: -rand(110, 220), life: rand(2.2, 3.6), delay: rand(0, 2.2), r,
+      phase: rand(0, 6),
+      tick(p) {
+        p.ox = Math.sin(p.age * 2.4 + p.phase) * 10;
+      },
+      draw(c, p) {
+        c.fillStyle = "rgba(255,255,255,.35)";
+        c.strokeStyle = "rgba(190,165,215,.85)";
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.arc(0, 0, p.r, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        c.fillStyle = "rgba(255,255,255,.95)";
+        c.beginPath();
+        c.arc(-p.r * 0.35, -p.r * 0.35, p.r * 0.25, 0, Math.PI * 2);
+        c.fill();
+      },
+    });
+  }
+}
 
 // ── Snacks that bounce on the bottom of the screen ──────────
 
@@ -615,8 +777,23 @@ function pawPath(c, s) {
   }
 }
 
-/** Crisps burst out of a packet, spin, and bounce on the bottom of the screen. */
-export function crisps(origin, { onBounce } = {}) {
+/** Brets: a wavy golden crisp (honey-mustard specks). */
+function chipPath(c, p) {
+  c.beginPath();
+  p.edge.forEach(([x, y], k) => (k ? c.lineTo(x * p.s, y * p.s) : c.moveTo(x * p.s, y * p.s)));
+  c.closePath();
+}
+
+const chipEdge = () =>
+  Array.from({ length: 12 }, (_, k) => {
+    const a = (k / 12) * Math.PI * 2;
+    const r = rand(0.85, 1.08);
+    return [Math.cos(a) * r * 1.15, Math.sin(a) * r * 0.82];
+  });
+
+/** Crisps burst out of a packet, spin, and bounce on the bottom of the screen (kind: "munch" paws or "brets" chips). */
+export function crisps(origin, { onBounce, kind = "munch" } = {}) {
+  const brets = kind === "brets";
   const { x, y } = origin || { x: W / 2, y: H / 2 };
   for (let i = 0; i < count(54); i++) {
     const a = -Math.PI / 2 + rand(-1.05, 1.05);
@@ -627,10 +804,28 @@ export function crisps(origin, { onBounce } = {}) {
       g: 1500, drag: 0.998, vr: rand(-9, 9), rot: rand(0, 6),
       life: rand(3.8, 5.2), delay: rand(0, 0.12), fadeIn: 0.02, fadeOut: 0.12,
       s: rand(7, 11.5), floor: H - rand(14, 70), bounce: rand(0.38, 0.55), bounces: 0, onBounce,
-      tone: pickOne(["#F2A93B", "#EFA032", "#F5B347", "#E8952B"]),
+      tone: pickOne(brets ? ["#F6D98A", "#F2CF74", "#EFC766", "#F8E2A0"] : ["#F2A93B", "#EFA032", "#F5B347", "#E8952B"]),
+      edge: brets && chipEdge(),
       tick: bounceOnFloor,
       draw(c, p) {
         c.fillStyle = p.tone;
+        if (p.edge) {
+          chipPath(c, p);
+          c.fill();
+          c.strokeStyle = "rgba(190, 140, 50, .6)";
+          c.lineWidth = 1;
+          c.stroke();
+          c.strokeStyle = "rgba(205, 160, 70, .45)";
+          for (const dy of [-0.3, 0.05, 0.4]) {
+            c.beginPath();
+            c.moveTo(-p.s * 0.8, dy * p.s);
+            c.quadraticCurveTo(0, (dy - 0.18) * p.s, p.s * 0.8, dy * p.s);
+            c.stroke();
+          }
+          c.fillStyle = "rgba(170, 110, 30, .6)";
+          for (const [dx, dy] of [[-0.4, -0.15], [0.35, 0.25], [0.1, -0.4]]) c.fillRect(dx * p.s, dy * p.s, 1.6, 1.6);
+          return;
+        }
         pawPath(c, p.s);
         c.fill();
         c.strokeStyle = "rgba(170, 92, 20, .55)";
@@ -647,7 +842,7 @@ export function crisps(origin, { onBounce } = {}) {
     const speed = rand(150, 500);
     add({
       x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, g: 1300, life: rand(0.8, 1.6),
-      r: rand(1, 2.2), color: pickOne(["#F2A93B", "#D9822B", "#F5C56B"]),
+      r: rand(1, 2.2), color: pickOne(brets ? ["#F2CF74", "#D9A94B", "#F8E2A0"] : ["#F2A93B", "#D9822B", "#F5C56B"]),
       draw(c, p) {
         c.fillStyle = p.color;
         c.beginPath();
@@ -692,7 +887,7 @@ export function nerds(origin) {
   }
 }
 
-const effects = { bubbles, moons, candies, potatoes, sparkles, wind, rugby };
+const effects = { bubbles, moons, candies, potatoes, sparkles, wind, rugby, fondue, cheese, chocolate, foam };
 
 export function playEffect(name, origin) {
   goldDust(origin);

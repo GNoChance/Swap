@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { existsSync } from "node:fs";
 import assert from "node:assert/strict";
 import { content } from "../js/content.js";
 import * as L from "../js/logic.js";
@@ -58,9 +59,52 @@ test("anagram letters are exactly the solution letters", () => {
   assert.deepEqual([...g.letters].sort(), [...g.solution].sort());
 });
 
-test("blanks sentence has the two words", () => {
-  const words = L.parseBlanks(gift("blanks").sentence).filter((p) => p.word).map((p) => p.word);
+test("blanks parser finds the bracketed words", () => {
+  const words = L.parseBlanks("Des [STRASS] pour une trend [TikTok] !").filter((p) => p.word).map((p) => p.word);
   assert.deepEqual(words, ["STRASS", "TIKTOK"]);
+});
+
+test("word search in content.js hides each word exactly once", () => {
+  const { grid, words } = gift("wordsearch");
+  assert.deepEqual(L.wordsearchErrors(grid, words), []);
+  for (const place of L.wordsearchPlaces(grid, words)) assert.ok(place.from, place.word);
+});
+
+test("word search matches a word selected either way, never diagonally", () => {
+  const grid = ["ABC", "DOG", "XYZ"];
+  assert.equal(L.wordsearchMatch(grid, ["DOG", "BOY"], [1, 0], [1, 2]), 0);
+  assert.equal(L.wordsearchMatch(grid, ["DOG", "BOY"], [1, 2], [1, 0]), 0);
+  assert.equal(L.wordsearchMatch(grid, ["DOG", "BOY"], [0, 1], [2, 1]), 1);
+  assert.equal(L.wordsearchMatch(grid, ["DOG", "BOY"], [0, 0], [2, 2]), -1);
+  assert.equal(L.wordsearchMatch(grid, ["DOG", "BOY"], [1, 0], [1, 1]), -1);
+  assert.deepEqual(L.wordsearchErrors(["DOGDOG"], ["DOG", "CAT"]), ["« DOG » apparaît 2 fois", "« CAT » n'est pas dans la grille"]);
+});
+
+test("fondue camps: the given letters fit each word", () => {
+  for (const camp of gift("camp").camps) {
+    assert.equal(camp.pattern.length, camp.word.length, camp.id);
+    [...camp.pattern].forEach((ch, i) => ch !== "_" && assert.equal(ch, camp.word[i], camp.id));
+    assert.ok(camp.pattern.includes("_"), camp.id);
+  }
+});
+
+test("équation accepts mousse / Rituals", () => {
+  const { accept } = gift("free", "Équation");
+  for (const ok of ["mousse de douche", "2 mousses de douche Rituals", "Rituals", "du gel douche", "MOUSSES"])
+    assert.ok(L.matchesAnswer(ok, accept), ok);
+  for (const ko of ["savon", "douche", "nuage"]) assert.ok(!L.matchesAnswer(ko, accept), ko);
+});
+
+test("every sticker named in content.js exists", () => {
+  const faces = new Set();
+  const walk = (v, key) => {
+    if (typeof v === "string" && ["face", "revealFace", "hold", "open", "eat"].includes(key)) faces.add(v);
+    else if (v && typeof v === "object") for (const [k, child] of Object.entries(v)) walk(child, k);
+  };
+  walk(content);
+  for (const g of content.gifts) for (const face of Object.values(g.unlocksFaces || {})) faces.add(face);
+  const missing = [...faces].filter((face) => !existsSync(new URL(`../assets/cyrielle/${face}.webp`, import.meta.url)));
+  assert.deepEqual(missing, []);
 });
 
 test("acrostic initials spell the solution", () => {
@@ -81,7 +125,7 @@ test("every gift has the fields the UI needs", () => {
 
 test("progress: steps unlock one after another", () => {
   let p = L.initialProgress();
-  assert.deepEqual(p.steps.map((s) => s.status), ["active", "locked", "locked", "locked", "locked", "locked", "locked"]);
+  assert.deepEqual(p.steps.map((s) => s.status), ["active", ...Array(L.STEP_COUNT - 1).fill("locked")]);
 
   // can't open before solving, can't solve a locked step
   assert.equal(L.open(p, 0), p);
@@ -96,7 +140,7 @@ test("progress: steps unlock one after another", () => {
 
   for (let i = 1; i < L.STEP_COUNT; i++) p = L.open(L.solve(p, i, i % 2 === 0), i);
   assert.ok(L.isComplete(p));
-  assert.equal(L.score(p), 4); // steps 0, 2, 4, 6
+  assert.equal(L.score(p), 5); // steps 0, 2, 4, 6, 8
 });
 
 test("progress: solving twice does not change found", () => {
@@ -114,6 +158,20 @@ test("sanitize repairs bad storage", () => {
   const fixed = L.sanitize(raw);
   assert.equal(fixed.steps[1].status, "active");
   assert.equal(fixed.steps[3].status, "locked");
+});
+
+test("fondue camp and snack are remembered, and survive storage", () => {
+  let p = L.choose(L.initialProgress(), 0, "chocolat");
+  p = L.choose(p, 0, "fromage"); // she changed her mind
+  p = L.pickSnack(p, "brets");
+  const back = L.sanitize(JSON.parse(JSON.stringify(p)));
+  assert.equal(back.steps[0].choice, "fromage");
+  assert.equal(back.snack, "brets");
+  // no more changes once the gift is solved, and nothing on a locked step
+  const solved = L.solve(p, 0, true);
+  assert.equal(L.choose(solved, 0, "chocolat"), solved);
+  assert.equal(L.choose(p, 3, "chocolat"), p);
+  assert.equal(L.sanitize({ steps: L.initialProgress().steps }).snack, null);
 });
 
 test("bonus: unseen at first, remembered once seen, survives storage", () => {
@@ -141,7 +199,9 @@ test("pub plays after a gift that exists, before the last one", () => {
 
 test("debrief in content.js: every answer leads somewhere, every ending is reachable", () => {
   assert.deepEqual(L.debriefErrors(content.debrief), []);
-  assert.equal(Object.keys(content.debrief.endings).length, 9);
+  assert.equal(Object.keys(content.debrief.endings).length, 13);
+  // one ending per gift in « ton cadeau préféré »
+  assert.equal(content.debrief.nodes.favorite.choices.length, content.gifts.length);
 });
 
 test("debrief errors catch dead ends, missing targets and unreachable endings", () => {

@@ -1,4 +1,4 @@
-// Free answer (charade, qui suis-je, devinette): riddle lines + a tolerant text field.
+// Free answer (charade, devinette, équation): riddle lines, optional equation tiles, a tolerant text field.
 import { h, svg, icons } from "../dom.js";
 import { matchesAnswer } from "../logic.js";
 
@@ -38,17 +38,41 @@ export function createFree(gift, api) {
 
   input.addEventListener("focus", () => setTimeout(() => form.scrollIntoView({ block: "center", behavior: "smooth" }), 320));
 
+  // Equation terms: picture tiles ({ emoji, label }) and operators ({ op })
+  const equation =
+    gift.equation &&
+    h(
+      "div",
+      { class: "equation", role: "img", "aria-label": gift.equation.map((t) => t.label || t.op).join(" ") },
+      gift.equation.map((t) =>
+        t.op
+          ? h("span", { class: "eq-op" }, t.op)
+          : h("span", { class: "eq-tile" }, h("span", { class: "eq-emoji" }, t.emoji), h("span", { class: "eq-label" }, t.label)),
+      ),
+    );
+
   const el = h(
     "div",
     { class: "game game-free" },
     h("div", { class: "riddle" }, gift.lines.map((line) => h("p", { class: "riddle-line" }, line))),
+    equation,
     form,
   );
 
   return {
     el,
     intro() {
-      window.gsap.from(el.querySelectorAll(".riddle-line"), { opacity: 0, y: 10, duration: 0.6, stagger: 0.32, ease: "power2.out" });
+      const gsap = window.gsap;
+      const lines = el.querySelectorAll(".riddle-line");
+      gsap.from(lines, { opacity: 0, y: 10, duration: 0.6, stagger: 0.32, ease: "power2.out" });
+      if (!equation) return;
+      // the terms pop in one by one once the riddle is written, the "?" last
+      const terms = [...equation.children];
+      const tl = gsap.timeline({ delay: 0.3 + lines.length * 0.32 });
+      terms.forEach((term, k) => {
+        tl.from(term, { opacity: 0, scale: 0.4, y: 8, duration: 0.4, ease: "back.out(2.6)", clearProps: "opacity,transform", onStart: () => api.sfx(k === terms.length - 1 ? "ding" : "letter") }, k * 0.32);
+      });
+      gsap.from(form, { opacity: 0, y: 8, duration: 0.5, delay: 0.3 + lines.length * 0.32 + terms.length * 0.32, ease: "power2.out", clearProps: "opacity,transform" });
     },
     reveal() {
       form.classList.add("is-hidden");
