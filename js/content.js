@@ -527,7 +527,7 @@ export const content = {
     },
     // Fin secrète : après la dernière fin découverte, l'écran grésille et ce dialogue démarre.
     // who = qui parle (cycy ou kevin), face = son sticker, reply = un bouton de réponse pour Cyrielle,
-    // enter = Kevin arrive à ce moment-là (de dos, avec ce sticker, puis il se retourne), react = le sticker
+    // enter = Kevin arrive à ce moment-là (true, ou le sticker avec lequel il entre), grow = sticker agrandi, react = le sticker
     // de l'autre pendant la réplique, sound = un son en plus (drumroll = roulement de tambour),
     // duo = un sticker où ils sont tous les deux (à la place des deux séparés), bite = la morsure, d'un coup.
     secret: {
@@ -554,13 +554,15 @@ export const content = {
         { who: "cycy", face: "smirk", text: "Et tu veux savoir qui se cache derrière tout ça ?" },
         { reply: "Dis-moi !" },
         { who: "cycy", face: "surprised2", text: "Le cerveau de l'opération, c'est…", sound: "drumroll" },
-        { who: "kevin", face: "kevin-flex-wow", enter: "kevin-back-joy", text: "Euh… surprise ? 😅" },
-        { who: "kevin", face: "kevin-flex-cool", text: "Oui, c'est moi. 141 stickers, 8 000 lignes de code… même pas fatigué." },
-        { who: "cycy", face: "smirk", react: { kevin: "kevin-flex-tongue" }, text: "Kevin a passé la journée à parler à des stickers." },
-        { who: "kevin", face: "kevin-flex-love", text: "Tout ça pour voir ton sourire ce soir." },
-        { who: "kevin", face: "kevin-flex-smirk", text: "Je t'aime ♥" },
+        { who: "kevin", face: "kevin-shocked", enter: true, text: "Euh… surprise ? 😅" },
+        { who: "kevin", face: "kevin-smug", text: "Oui, c'est moi. 141 stickers, 8 000 lignes de code… même pas fatigué." },
+        { who: "cycy", face: "smirk", react: { kevin: "kevin-pout" }, text: "Kevin a passé la journée à parler à des stickers." },
+        { who: "kevin", face: "kevin-joy", text: "Tout ça pour voir ton sourire ce soir." },
+        { who: "kevin", face: "kevin-kiss", text: "Je t'aime ♥" },
         { reply: "Moi aussi ♥" },
-        { who: "kevin", face: "kevin-flex-joy", text: "Et maintenant… admire ces biceps." },
+        { who: "kevin", face: "kevin-smug", text: "Et maintenant…" },
+        // grow = sticker agrandi (bras écartés : sinon il paraît tout petit)
+        { who: "kevin", face: "kevin-flex-joy", grow: 1.35, text: "… admire ces biceps 💪" },
         { who: "cycy", duo: "duo-look", text: "Oh… 👀" },
         { who: "cycy", duo: "duo-admire", text: "Ils ont l'air… trop bons." },
         { who: "kevin", duo: "duo-eye", text: "Euh… pourquoi tu me regardes comme ça ?" },

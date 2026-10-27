@@ -115,8 +115,9 @@ export function secretScreen({ preview = false, onReplay, onBack }) {
     });
   }
 
-  /** Kevin walks in from the right (back turned); Mini Cycy slides over to make room. He turns around on his first line. */
-  async function enterKevin() {
+  /** Kevin walks in from the right; Mini Cycy slides over to make room. Entering with another sticker (back turned):
+   *  a second of mystery, and he turns around on his first line. */
+  async function enterKevin(line) {
     const before = cycySlot.getBoundingClientRect().left;
     kevinSlot.hidden = false;
     const after = cycySlot.getBoundingClientRect().left;
@@ -125,7 +126,7 @@ export function secretScreen({ preview = false, onReplay, onBack }) {
     gsap.to(kevinSlot, { keyframes: { y: [0, -34, 0, -20, 0] }, duration: 0.9, ease: "none" });
     sfx("whoosh");
     cycy.react("surprised2", 2600);
-    await sleep(1900); // a second of mystery, back turned
+    await sleep(typeof line.enter === "string" ? 1900 : 950);
     sfx("reveal");
   }
 
@@ -176,7 +177,7 @@ export function secretScreen({ preview = false, onReplay, onBack }) {
         await reply(line.reply);
         continue;
       }
-      if (line.enter) await enterKevin();
+      if (line.enter) await enterKevin(line);
       if (line.bite) await bite(line.bite);
       if (left) return;
       if (line.sound) sfx(line.sound);
@@ -184,6 +185,9 @@ export function secretScreen({ preview = false, onReplay, onBack }) {
       else if (line.face) {
         actors[line.who].set(line.face);
         actors[line.who].jump(10);
+        // a wide sticker (arms out) is drawn bigger, so he keeps his size
+        const slot = line.who === "kevin" ? kevinSlot : cycySlot;
+        gsap.to(slot, { scale: line.grow || 1, transformOrigin: "50% 100%", duration: 0.4, ease: "back.out(2)" });
       }
       for (const [who, face] of Object.entries(line.react || {})) actors[who].set(face);
       speaker.textContent = sec.names[line.who];
