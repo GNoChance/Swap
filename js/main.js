@@ -20,7 +20,9 @@ import { pubScreen } from "./pub.js";
 import { debriefScreen, debriefReport } from "./debrief.js";
 
 const gsap = window.gsap;
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
+// on that setting she would leave and come back with her crisps in a blink). Set to true to bring the soft versions back.
+const reduced = false;
 const wide = matchMedia("(min-width: 720px)");
 const { ui } = content;
 const games = {

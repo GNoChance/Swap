@@ -1,7 +1,9 @@
 // Full-screen particle canvas. One effect per gift, plus shared gold dust, hearts and fireworks.
 // Each particle: position/velocity/physics + its own draw(ctx, p) in local (translated, rotated) space.
 
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
+// on that setting she would leave and come back with her crisps in a blink). Set to true to bring the soft versions back.
+const reduced = false;
 const canvas = document.createElement("canvas");
 canvas.className = "fx-canvas";
 canvas.setAttribute("aria-hidden", "true");

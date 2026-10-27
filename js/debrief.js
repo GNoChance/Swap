@@ -10,7 +10,9 @@ import { loadDebrief, saveDebrief } from "./state.js";
 import { h, svg, bump, centerOf } from "./dom.js";
 
 const gsap = window.gsap;
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
+// on that setting she would leave and come back with her crisps in a blink). Set to true to bring the soft versions back.
+const reduced = false;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, reduced ? Math.min(ms, 200) : ms));
 const NS = "http://www.w3.org/2000/svg";
 const STEP_Y = 54; // path: vertical distance between two choices

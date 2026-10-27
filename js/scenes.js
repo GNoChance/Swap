@@ -7,7 +7,9 @@ import { createAvatar, variant } from "./avatar.js";
 import { h, svg, bump } from "./dom.js";
 
 const gsap = window.gsap;
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
+// on that setting she would leave and come back with her crisps in a blink). Set to true to bring the soft versions back.
+const reduced = false;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, reduced ? Math.min(ms, 200) : ms));
 
 /** Pauses that a tap can cut short, all released at once when the scene is skipped. */

@@ -2725,16 +2725,4 @@ p {
   pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .debrief-star,
-  .pub-bg,
-  .pub-cta,
-  .intro-tap,
-  .intro-tap-logo,
-  .intro-tap-text,
-  .tl-node[data-state] .tl-seal::before,
-  .blank-box.is-current,
-  .answer-card.is-glowing {
-    animation: none;
-  }
-}
+/* No reduced-motion variant on purpose: the iPhone setting is ignored (see `reduced` in the scripts). */
