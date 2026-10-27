@@ -251,6 +251,17 @@ test("secret dialogue: every line has a speaker and a sticker, Kevin enters befo
   }
 });
 
+test("debrief map: every ending on the bottom row, each question above its answers", () => {
+  const tree = L.debriefTree(content.debrief);
+  const endings = tree.filter((t) => t.ending);
+  assert.equal(endings.length, Object.keys(content.debrief.endings).length);
+  assert.ok(endings.every((t) => t.y === 1));
+  const byId = Object.fromEntries(tree.map((t) => [t.id, t]));
+  for (const t of tree) if (t.parent) assert.ok(byId[t.parent].y < t.y, t.id);
+  assert.equal(byId[content.debrief.start].parent, null);
+  assert.ok(endings.every((t, k) => k === 0 || t.x > endings[k - 1].x));
+});
+
 test("fill replaces placeholders", () => {
   assert.equal(L.fill("Cadeau n°{n}", { n: 3 }), "Cadeau n°3");
   assert.equal(L.fill("{x} reste", {}), "{x} reste");

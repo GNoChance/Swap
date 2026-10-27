@@ -803,18 +803,25 @@ const chipEdge = () =>
   });
 
 /** Crisps burst out of a packet, spin, and bounce on the bottom of the screen (kind: "munch" ghosts or "brets" chips). */
-export function crisps(origin, { onBounce, kind = "munch" } = {}) {
+// amount: more of them; rain: more falling from the top of the screen; stay: they stay piled at the bottom
+// until clearEffects() (the intro: « il y en a partout »).
+export function crisps(origin, { onBounce, kind = "munch", amount = 1, rain = false, stay = false } = {}) {
   const brets = kind === "brets";
   const { x, y } = origin || { x: W / 2, y: H / 2 };
-  for (let i = 0; i < count(brets ? 54 : 40); i++) {
-    const a = -Math.PI / 2 + rand(-1.05, 1.05);
+  const n = count((brets ? 54 : 40) * amount);
+  for (let i = 0; i < n + (rain ? Math.round(n * 0.7) : 0); i++) {
+    const fromTop = i >= n;
+    const a = -Math.PI / 2 + rand(-1.05, 1.05) * (stay ? 1.3 : 1);
     const speed = rand(420, 820);
+    const life = stay ? 600 : rand(3.8, 5.2);
     add({
-      x, y,
-      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+      x: fromTop ? rand(10, W - 10) : x,
+      y: fromTop ? -20 - rand(0, 60) : y,
+      vx: fromTop ? rand(-60, 60) : Math.cos(a) * speed,
+      vy: fromTop ? rand(0, 160) : Math.sin(a) * speed,
       g: 1500, drag: 0.998, vr: rand(-9, 9), rot: rand(0, 6),
-      life: rand(3.8, 5.2), delay: rand(0, 0.12), fadeIn: 0.02, fadeOut: 0.12,
-      s: brets ? rand(7, 11.5) : rand(10, 15), floor: H - rand(14, 70), bounce: rand(0.38, 0.55), bounces: 0, onBounce,
+      life, delay: fromTop ? rand(0.15, 1.5) : rand(0, 0.12), fadeIn: 0.09 / life, fadeOut: stay ? 0.5 / life : 0.12,
+      s: brets ? rand(7, 11.5) : rand(10, 15), floor: H - (stay ? rand(8, 130) : rand(14, 70)), bounce: rand(0.38, 0.55), bounces: 0, onBounce,
       tone: pickOne(brets ? ["#F6D98A", "#F2CF74", "#EFC766", "#F8E2A0"] : ["#F2A93B", "#EFA032", "#F5B347", "#E8952B"]),
       edge: brets && chipEdge(),
       tick: bounceOnFloor,
@@ -852,7 +859,7 @@ export function crisps(origin, { onBounce, kind = "munch" } = {}) {
     });
   }
   // a few crumbs
-  for (let i = 0; i < count(30); i++) {
+  for (let i = 0; i < count(30 * amount); i++) {
     const a = -Math.PI / 2 + rand(-1.3, 1.3);
     const speed = rand(150, 500);
     add({

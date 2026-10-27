@@ -35,6 +35,16 @@ export function shake(el, strength = 10) {
   });
 }
 
+/** Warm white flash over everything: the reveal "pop", stronger than a vibration on iPhone. */
+export function flash() {
+  const veil = h("div", { class: "flash", "aria-hidden": "true" });
+  document.body.append(veil);
+  gsap
+    .timeline({ onComplete: () => veil.remove() })
+    .to(veil, { opacity: 0.75, duration: 0.12, ease: "power1.out" })
+    .to(veil, { opacity: 0, duration: 0.6, ease: "power2.out" });
+}
+
 /** Tactile "bump" for iPhone, where there is no vibration. */
 export function bump(el, amount = 0.985) {
   gsap.fromTo(el, { scale: 1 }, { scale: amount, duration: 0.09, yoyo: true, repeat: 1, ease: "power2.out", clearProps: "scale" });

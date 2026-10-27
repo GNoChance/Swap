@@ -1679,6 +1679,22 @@ p {
   color: var(--wine);
 }
 
+/* « Voir la réponse »: the gift is still a surprise (the class goes before GSAP flips the card) */
+.answer-card.is-teaser {
+  animation: tease 1.8s ease-in-out infinite;
+}
+
+.answer-card.is-teaser .answer-text {
+  font-size: 1.45rem;
+  font-style: italic;
+}
+
+@keyframes tease {
+  50% {
+    transform: rotate(-1.2deg) scale(1.02);
+  }
+}
+
 .reveal-text {
   font-family: var(--serif);
   font-size: 1.3rem;
@@ -2383,6 +2399,89 @@ p {
   fill: #fff6dd;
 }
 
+/* The map of every ending (ending screens, ?debrief) */
+.debrief-map {
+  display: block;
+  width: min(100%, 360px);
+  overflow: visible;
+}
+
+.map-edge {
+  fill: none;
+  stroke: rgba(243, 233, 220, 0.22);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+.map-edge.is-found {
+  stroke: #c9a15b;
+  stroke-width: 1.8;
+  stroke-dasharray: none;
+}
+
+.map-edge.is-current {
+  stroke: #f3dfb0;
+  stroke-width: 2.6;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 5px rgba(243, 223, 176, 0.8));
+}
+
+.map-node {
+  fill: rgba(243, 233, 220, 0.3);
+}
+
+.map-node.is-found,
+.map-node.is-current {
+  fill: #e6cb8f;
+}
+
+.map-end circle {
+  fill: #140d18;
+  stroke: rgba(243, 233, 220, 0.3);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 2;
+}
+
+.map-end text {
+  font-family: var(--sans);
+  font-size: 7.5px;
+  font-weight: 700;
+  fill: rgba(243, 233, 220, 0.4);
+}
+
+.map-end.is-found circle {
+  fill: #c9a15b;
+  stroke: #e6cb8f;
+  stroke-dasharray: none;
+}
+
+.map-end.is-found text {
+  fill: #2b1a1e;
+}
+
+.map-end.is-current circle {
+  fill: #fff6dd;
+  stroke: #fff6dd;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 7px rgba(255, 236, 190, 0.95));
+}
+
+.map-end.is-current text {
+  fill: #2b1a1e;
+}
+
+.map-secret text {
+  font-size: 10px;
+}
+
+.report-card .debrief-map {
+  margin: 4px auto 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: #1a1020;
+}
+
 .debrief-bubble .bubble {
   color: var(--ink);
 }
@@ -2828,3 +2927,39 @@ p {
 }
 
 /* No reduced-motion variant on purpose: the iPhone setting is ignored (see `reduced` in the scripts). */
+
+/* ?test: a shortcut to every scene */
+.test-note {
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.test-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.test-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  color: var(--wine);
+  text-decoration: none;
+  background: var(--ivory);
+}
+
+.test-link small {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  text-align: right;
+}

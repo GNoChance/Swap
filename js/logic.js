@@ -323,6 +323,27 @@ export function debriefErrors(d) {
   return errors;
 }
 
+/**
+ * The debrief as a map: every question and ending once, with x, y in 0..1. Endings sit on the bottom row
+ * in reading order, each question above the middle of its answers. → [{ id, parent, ending, x, y }]
+ */
+export function debriefTree(d) {
+  const items = [];
+  const place = (id, depth, parent) => {
+    const item = { id, parent, ending: id in d.endings, depth, kids: [] };
+    items.push(item);
+    if (!item.ending) item.kids = (d.nodes[id]?.choices || []).map((choice) => place(choice.next, depth + 1, id));
+    return item;
+  };
+  const root = place(d.start, 0, null);
+  const endings = items.filter((item) => item.ending);
+  endings.forEach((item, k) => (item.x = (k + 0.5) / endings.length));
+  const centre = (item) => (item.ending ? item.x : (item.x = item.kids.reduce((sum, kid) => sum + centre(kid), 0) / item.kids.length));
+  centre(root);
+  const depth = Math.max(...items.filter((item) => !item.ending).map((item) => item.depth)) + 1;
+  return items.map(({ id, parent, ending, x, depth: level }) => ({ id, parent, ending, x, y: ending ? 1 : level / depth }));
+}
+
 /** Saved debriefs: every run (answers + ending), the set of endings found, and whether the secret ending was seen. */
 export function addDebriefRun(store, run) {
   const runs = Array.isArray(store?.runs) ? store.runs : [];

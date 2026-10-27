@@ -5,7 +5,7 @@ import { fill, pick } from "./logic.js";
 import { isDemo, loadProgress, saveProgress, loadMuted, saveMuted } from "./state.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { mountEffects, playEffect, fireworks, hearts, goldDust } from "./effects.js";
-import { h, svg, icons, seal, shake, bump, centerOf } from "./dom.js";
+import { h, svg, icons, seal, shake, bump, centerOf, flash } from "./dom.js";
 import { createFree } from "./games/free.js";
 import { createAnagram } from "./games/anagram.js";
 import { createBlanks } from "./games/blanks.js";
@@ -19,6 +19,7 @@ import { welcomeScreen, bonusScreen } from "./scenes.js";
 import { pubScreen } from "./pub.js";
 import { debriefScreen, debriefReport } from "./debrief.js";
 import { secretScreen } from "./secret.js";
+import { testScreen } from "./testpage.js";
 
 const gsap = window.gsap;
 // Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
@@ -499,7 +500,8 @@ function openStep(i, returnFocus) {
   let errors = 0;
 
   // Mini Cyrielle peeks from the bottom of the sheet (sticky) and reacts.
-  const buddy = createAvatar({ face: status() === "active" ? variant("think") : revealOf(gift, i).face || "wink", size: 58 });
+  const surprise = status() === "revealed" && !progress.steps[i].found; // answer asked for, gift not opened yet
+  const buddy = createAvatar({ face: status() === "active" ? variant("think") : surprise ? "smirk" : revealOf(gift, i).face || "wink", size: 58 });
   const buddyDock = h("div", { class: "sheet-buddy", "aria-hidden": "true" }, buddy.el);
 
   const feedback = h("p", { class: "feedback", "aria-live": "polite" });
@@ -560,7 +562,11 @@ function openStep(i, returnFocus) {
 
   // Reveal
   const revealLabel = h("p", { class: "reveal-label" });
-  const answerCard = h("div", { class: "answer-card" }, h("p", { class: "answer-text" }, gift.answer));
+  const answerText = h("p", { class: "answer-text" }, gift.answer);
+  const answerCard = h("div", { class: "answer-card" }, answerText);
+  // « Voir la réponse »: the answer stays hidden (in the game too) until she has opened the gift for real
+  let teaser = false;
+  let walkPending = false; // opened after a teaser: closing the sheet must still walk on to the next gift
   const revealText = h("p", { class: "reveal-text" });
   const goOpen = h("p", { class: "reveal-go" }, fill(ui.goOpen, { n }));
   const revealActions = h("div", { class: "reveal-actions" });
@@ -627,15 +633,19 @@ function openStep(i, returnFocus) {
       setFeedback("");
       wait(700).then(() => showReveal({ found: true, celebrate: true }));
     } else {
-      game.reveal(progress.steps[i].choice);
-      showReveal({ found: false, celebrate: true });
+      buddy.setBase("smirk"); // « tu verras bien »: no sticker that would give the gift away
+      showReveal({ found: false, celebrate: true, hidden: true });
     }
   }
 
-  function showReveal({ found, celebrate }) {
+  function showReveal({ found, celebrate, hidden = false }) {
     if (closed) return;
+    teaser = hidden;
     revealLabel.textContent = found ? pick(ui.foundSelf) : ui.revealed;
+    answerText.textContent = hidden ? ui.openToSee : gift.answer;
+    answerCard.classList.toggle("is-teaser", hidden);
     revealText.textContent = revealOf(gift, i).text;
+    revealText.hidden = hidden;
     const done = status() === "done";
     goOpen.hidden = done;
     revealActions.replaceChildren(
@@ -648,6 +658,10 @@ function openStep(i, returnFocus) {
     if (!celebrate) return;
     gsap.from(reveal.children, { opacity: 0, y: 16, duration: 0.6, stagger: 0.12, ease: "power2.out", clearProps: "all" });
     reveal.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    if (hidden) {
+      sfx("pop");
+      return;
+    }
     flash();
     sfx("reveal");
     answerCard.classList.remove("is-glowing");
@@ -662,6 +676,49 @@ function openStep(i, returnFocus) {
     commit(P.open(progress, i));
     syncFaces(); // the next gift is now playable: load its stickers
     sfx("tap");
+    if (teaser) unveil();
+    else goOn();
+  }
+
+  /** After « Voir la réponse » and the gift opened: now the answer shows, with its effect. */
+  function unveil() {
+    teaser = false;
+    walkPending = true;
+    game.reveal(progress.steps[i].choice);
+    answerText.textContent = gift.answer;
+    answerCard.classList.remove("is-teaser");
+    revealText.hidden = false;
+    goOpen.hidden = true;
+    buddy.setBase(revealOf(gift, i).face || variant("joy"));
+    buddy.jump();
+    const next = h(
+      "button",
+      {
+        class: "btn btn-primary",
+        type: "button",
+        onclick(e) {
+          bump(e.currentTarget);
+          e.currentTarget.disabled = true;
+          sfx("tap");
+          goOn();
+        },
+      },
+      ui.next,
+    );
+    revealActions.replaceChildren(next);
+    gsap.fromTo(answerCard, { rotationY: 90 }, { rotationY: 0, duration: 0.55, ease: "back.out(2)", clearProps: "transform" });
+    gsap.from([revealText, next], { opacity: 0, y: 12, duration: 0.5, stagger: 0.12, delay: 0.3, ease: "power2.out", clearProps: "all" });
+    flash();
+    sfx("reveal");
+    answerCard.classList.remove("is-glowing");
+    void answerCard.offsetWidth;
+    answerCard.classList.add("is-glowing");
+    wait(380).then(() => !closed && playEffect(revealOf(gift, i).effect, centerOf(answerCard)));
+  }
+
+  /** Gift opened: a kiss, the sheet closes, the path walks on (or the ad break plays). */
+  function goOn() {
+    walkPending = false;
     buddy.setBase(variant("kiss"));
     buddy.jump();
     wait(650)
@@ -674,6 +731,7 @@ function openStep(i, returnFocus) {
   }
 
   function close({ render = true } = {}) {
+    if (walkPending) return goOn();
     if (closed) return Promise.resolve();
     closed = true;
     clearTimeout(confirmTimer);
@@ -709,21 +767,12 @@ function openStep(i, returnFocus) {
   sheet.focus({ preventScroll: true });
 
   if (status() === "active") game.intro();
-  else {
+  else if (surprise) {
+    showReveal({ found: false, celebrate: false, hidden: true });
+  } else {
     game.reveal(progress.steps[i].choice);
     showReveal({ found: progress.steps[i].found, celebrate: false });
   }
-}
-
-/** Warm white flash over everything: the reveal "pop", stronger than a vibration on iPhone. */
-function flash() {
-  if (reduced) return;
-  const veil = h("div", { class: "flash", "aria-hidden": "true" });
-  document.body.append(veil);
-  gsap
-    .timeline({ onComplete: () => veil.remove() })
-    .to(veil, { opacity: 0.75, duration: 0.12, ease: "power1.out" })
-    .to(veil, { opacity: 0, duration: 0.6, ease: "power2.out" });
 }
 
 // ── Final ───────────────────────────────────────────────────
@@ -858,7 +907,38 @@ mountEffects();
 preloadFaces();
 syncFaces();
 const preview = new URLSearchParams(location.search);
-if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
+
+/** ?demo&scene=…: straight to one scene, from the ?test page (demo mode: nothing is saved). */
+function playScene(scene) {
+  const allDone = () => content.gifts.reduce((p, _, i) => P.open(P.solve(p, i, true), i), P.start(progress));
+  const snack = preview.get("snack") || "munch";
+  if (scene === "intro") return show(welcome());
+  if (scene.startsWith("gift-")) {
+    const i = Number(scene.slice(5)) - 1;
+    commit(P.pickSnack(P.unlockAll(P.start(progress)), snack));
+    syncFaces();
+    show(timelineScreen());
+    return wait(900).then(() => timeline && openStep(i, timeline.nodes[i].el));
+  }
+  if (scene === "bonus") {
+    commit(P.pickSnack(allDone(), snack));
+    return show(ending());
+  }
+  if (scene === "final") {
+    commit(P.seeBonus(P.pickSnack(allDone(), snack)));
+    return show(finalScreen({ celebrate: true }));
+  }
+  if (scene === "debrief") return show(debrief());
+  if (scene === "map") {
+    const store = { runs: [], found: Object.keys(content.debrief.endings), secret: true };
+    return show(debriefReport({ onPlay: () => show(debrief()), store }));
+  }
+  show(testScreen());
+}
+
+if (preview.has("test")) show(testScreen());
+else if (isDemo && preview.has("scene")) playScene(preview.get("scene"));
+else if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you
 else if (preview.has("secret")) show(secret({ preview: true })); // the secret ending, without finding the 13 endings
 else if (!progress.started) show(welcome());

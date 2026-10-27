@@ -37,6 +37,8 @@ export const content = {
     snackQuestion: { face: "think", text: "Plutôt Monster Munch ou Brets ?" },
     // Elle part chercher le paquet (text), sort de l'écran et revient avec (back)
     fetch: { face: "wink", text: "Ok ça marche, je reviens !", back: "Et voilà !" },
+    // Le bouton pour ouvrir le paquet (les chips volent partout et restent en tas jusqu'à « Je suis prête »)
+    open: "On ouvre ? 😋",
     snacks: [
       {
         id: "munch",
@@ -84,8 +86,10 @@ export const content = {
     wrong: ["Presque… mais non 😏", "Tu chauffes ? Même pas.", "Essaie encore, je crois en toi."],
     // Messages quand elle trouve toute seule
     foundSelf: ["Trouvé toute seule, bravo !", "Rien ne t'échappe 👀"],
-    // Message quand elle a cliqué sur « Voir la réponse »
+    // Quand elle a cliqué sur « Voir la réponse » : le cadeau reste une surprise jusqu'à ce qu'elle l'ait ouvert
     revealed: "La réponse était…",
+    openToSee: "Ouvre ton cadeau et tu verras bien ! 🎁",
+    next: "Suite ▸",
     gift: "Cadeau n°{n}",
     hint: "Besoin d'un indice ? 👀",
     hintTitle: "Indice",

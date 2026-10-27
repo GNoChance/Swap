@@ -2,9 +2,9 @@
 // and the Nerds bonus between the last gift and the final screen.
 import { content } from "./content.js";
 import { sfx, unlockAudio } from "./audio.js";
-import { crisps, nerds, goldDust } from "./effects.js";
+import { crisps, nerds, goldDust, clearEffects } from "./effects.js";
 import { createAvatar, variant, preloadFaces } from "./avatar.js";
-import { h, svg, bump } from "./dom.js";
+import { h, svg, bump, shake, flash } from "./dom.js";
 
 const gsap = window.gsap;
 // Always the full animations, even with the iPhone setting « Réduire les animations » on (user's choice:
@@ -293,7 +293,33 @@ export function welcomeScreen({ onBegin }) {
     await sleep(900);
   }
 
-  /** She fetches the packet, hugs it, tugs it open (harder and harder), it bursts, and she crunches in. */
+  /** « On ouvre ? »: one button, resolves when she taps it. */
+  function askOpen() {
+    return new Promise((resolve) => {
+      const button = h(
+        "button",
+        {
+          class: "btn btn-primary intro-choice",
+          type: "button",
+          onclick(e) {
+            e.stopPropagation();
+            if (button.disabled) return;
+            button.disabled = true;
+            bump(button);
+            gsap.to(choices, { autoAlpha: 0, duration: 0.25, onComplete: () => (choices.hidden = true) });
+            resolve();
+          },
+        },
+        intro.open,
+      );
+      choices.replaceChildren(button);
+      choices.hidden = false;
+      gsap.set(choices, { autoAlpha: 1 });
+      gsap.from(button, { opacity: 0, scale: 0.8, duration: 0.45, ease: "back.out(2.4)", clearProps: "opacity,transform" });
+    });
+  }
+
+  /** She fetches the packet and hugs it; « On ouvre ? »; a tug, and PAFF: crisps everywhere, piling up at the bottom. */
   async function snack() {
     await fetchPacket();
     if (clock.cancelled) return;
@@ -301,24 +327,26 @@ export function welcomeScreen({ onBegin }) {
     buddy.set(snackPick.hug);
     buddy.jump(12);
     sfx("pop");
-    await sleep(1100);
+    await sleep(700);
+    if (clock.cancelled) return;
+    await askOpen();
     if (clock.cancelled) return;
 
     buddy.set(snackPick.tear);
-    for (let k = 1; k <= 3; k++) {
-      if (clock.cancelled) return;
-      sfx("rattle");
-      gsap.to(stage, { keyframes: { rotation: [0, -3 * k, 3 * k, -2 * k, 2 * k, 0] }, duration: 0.42, ease: "none" });
-      await sleep(560);
-    }
+    sfx("rattle");
+    gsap.to(stage, { keyframes: { rotation: [0, -5, 5, -4, 4, 0] }, duration: 0.4, ease: "none" });
+    await sleep(450);
     if (clock.cancelled) return;
 
     buddy.set(snackPick.wow);
     sfx("rip");
-    gsap.fromTo(stage, { scale: 1.1 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" });
+    sfx("reveal");
+    flash();
+    shake(el, 18);
+    gsap.fromTo(stage, { scale: 1.2 }, { scale: 1, duration: 0.8, ease: "elastic.out(1, 0.4)" });
     const r = buddy.el.getBoundingClientRect();
-    crisps({ x: r.left + r.width / 2, y: r.top + r.height * 0.48 }, { onBounce: makeCrunch(), kind: snackPick.id });
-    await sleep(1400);
+    crisps({ x: r.left + r.width / 2, y: r.top + r.height * 0.48 }, { onBounce: makeCrunch(), kind: snackPick.id, amount: 3, rain: true, stay: true });
+    await sleep(1600);
     if (clock.cancelled) return;
     buddy.set(snackPick.bite);
     buddy.jump(10);
@@ -339,6 +367,7 @@ export function welcomeScreen({ onBegin }) {
       gsap.set(stage, { x: 0, y: 0, rotation: 0, scale: 1 });
       gsap.set(buddy.el, { autoAlpha: 1 });
       // skipping never skips the crisps question: she still gets her packet
+      if (snackPick) choices.hidden = true; // « On ouvre ? » if she skipped while it was on screen
       await askSnack();
       buddy.set(snackPick.eat);
       bubble.show(snackPick.text);
@@ -356,6 +385,7 @@ export function welcomeScreen({ onBegin }) {
     bubble.hide();
     buddy.set(variant("joy"));
     buddy.jump();
+    clearEffects(); // the pile of crisps stays on the welcome screen only
     onBegin(snackPick?.id);
   }
 

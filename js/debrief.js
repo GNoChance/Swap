@@ -1,7 +1,7 @@
 // Debrief, The Quarry style: Mini Cyrielle asks, every answer forks the golden path,
 // and each branch leads to its own ending. Her answers are kept for you (?debrief).
 import { content } from "./content.js";
-import { fill, addDebriefRun, secretUnlocked } from "./logic.js";
+import { fill, addDebriefRun, secretUnlocked, debriefTree } from "./logic.js";
 import { sfx, unlockAudio, startMusic, stopMusic } from "./audio.js";
 import { playEffect, hearts, confetti } from "./effects.js";
 import { createAvatar } from "./avatar.js";
@@ -22,6 +22,58 @@ function svgEl(tag, attrs) {
   const el = document.createElementNS(NS, tag);
   for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
   return el;
+}
+
+/**
+ * Every ending of the debrief on one map: the branches to the endings already found in gold, the one just
+ * reached glowing (its edges have the class is-current, to be drawn in), the rest dotted with a « ? »,
+ * and the secret ending underneath (🔒 until found).
+ */
+export function completionMap(store, current) {
+  const d = content.debrief;
+  const tree = debriefTree(d);
+  const byId = Object.fromEntries(tree.map((t) => [t.id, t]));
+  const W = 320;
+  const pos = (t) => [16 + t.x * (W - 32), 14 + t.y * 136];
+  const climb = (id, set) => {
+    for (let t = byId[id]; t; t = byId[t.parent]) set.add(t.id);
+    return set;
+  };
+  const lit = new Set();
+  (store?.found || []).forEach((id) => byId[id] && climb(id, lit));
+  const now = current ? climb(current, new Set()) : new Set();
+  const state = (id) => (now.has(id) ? " is-current" : lit.has(id) ? " is-found" : "");
+
+  const map = svgEl("svg", { class: "debrief-map", viewBox: `0 0 ${W} 196`, "aria-hidden": "true" });
+  for (const t of tree) {
+    if (!t.parent) continue;
+    const [x0, y0] = pos(byId[t.parent]);
+    const [x1, y1] = pos(t);
+    const my = (y0 + y1) / 2;
+    map.append(svgEl("path", { d: `M${x0} ${y0} C${x0} ${my} ${x1} ${my} ${x1} ${y1}`, class: `map-edge${state(t.id)}` }));
+  }
+  for (const t of tree) {
+    const [x, y] = pos(t);
+    if (!t.ending) {
+      map.append(svgEl("circle", { cx: x, cy: y, r: 3.6, class: `map-node${state(t.id)}` }));
+      continue;
+    }
+    const known = lit.has(t.id) || now.has(t.id);
+    const dot = svgEl("g", { class: `map-end${state(t.id)}`, transform: `translate(${x} ${y})` });
+    const label = svgEl("text", { y: 2.4, "text-anchor": "middle" });
+    label.textContent = known ? d.endings[t.id].n : "?";
+    dot.append(svgEl("circle", { r: 7.2 }), label);
+    map.append(dot);
+  }
+  // the secret ending, under the row of endings
+  const all = Object.keys(d.endings).every((id) => lit.has(id) || now.has(id));
+  map.append(svgEl("path", { d: `M${W / 2} 158 L${W / 2} 172`, class: `map-edge${store?.secret ? " is-found" : all ? " is-current" : ""}` }));
+  const secret = svgEl("g", { class: `map-end map-secret${store?.secret ? " is-found" : ""}`, transform: `translate(${W / 2} 182)` });
+  const mark = svgEl("text", { y: 3.6, "text-anchor": "middle" });
+  mark.textContent = store?.secret ? "✦" : "🔒";
+  secret.append(svgEl("circle", { r: 10 }), mark);
+  map.append(secret);
+  return map;
 }
 
 export function starField() {
@@ -223,7 +275,14 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack, onSecret })
       duration: 0.45,
       onComplete() {
         if (left) return;
-        ending.firstChild.append(pathSvg);
+        // the map of every ending found so far, the path of this run drawn in
+        const map = completionMap(store, id);
+        ending.firstChild.append(map);
+        map.querySelectorAll(".map-edge.is-current").forEach((edge, k) => {
+          const length = edge.getTotalLength();
+          gsap.fromTo(edge, { strokeDasharray: length, strokeDashoffset: length }, { strokeDashoffset: 0, duration: 0.5, delay: 0.4 + k * 0.35, ease: "power2.out" });
+        });
+        gsap.from(map.querySelector(".map-end.is-current"), { scale: 0, transformOrigin: "50% 50%", duration: 0.5, delay: 0.5 + map.querySelectorAll(".map-edge.is-current").length * 0.35, ease: "back.out(3)" });
         endAvatar.append(buddy.el);
         stage.remove();
         gsap.fromTo(ending, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5 });
@@ -276,10 +335,10 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack, onSecret })
 
 // ── ?debrief: what she answered, for you ────────────────────
 
-export function debriefReport({ onPlay }) {
+/** store: what to show (her saved answers by default; the ?test page passes a full one). */
+export function debriefReport({ onPlay, store = loadDebrief() }) {
   const d = content.debrief;
   const r = d.report;
-  const store = loadDebrief();
   const endings = Object.entries(d.endings).sort(([, a], [, b]) => a.n - b.n);
   const total = endings.length;
   const date = (iso) => {
@@ -323,6 +382,7 @@ export function debriefReport({ onPlay }) {
       runs,
       h("h2", { class: "recap-title" }, `${r.endings} : ${store.found.length} / ${total}`),
       found,
+      completionMap(store, null),
       h("p", { class: "report-secret" }, `${r.secret} : `, h("strong", {}, store.secret ? r.secretFound : r.secretNotYet)),
       h(
         "button",
