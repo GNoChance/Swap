@@ -1,6 +1,6 @@
 // The UBB surprise, at the end of her first debrief: a fake iPhone notification drops in, the screen flashes red,
-// Mini Cycy shows up in the UBB jersey… then Nini and Dédé burst in, match tickets in hand, and the tickets fill
-// the screen. It plays over the debrief's ending; a tap cuts a pause short or writes the current line at once.
+// Kevin comes running (he did everything right!), Mini Cycy hops in wearing the UBB jersey… then Nini and Dédé
+// burst in, match tickets in hand, knock Kevin off the screen, and the tickets fill the screen. It plays over the debrief's ending; a tap cuts a pause short or writes the current line at once.
 import { content } from "./content.js";
 import { seeUbb } from "./logic.js";
 import { sfx, unlockAudio, stopMusic } from "./audio.js";
@@ -56,16 +56,18 @@ export function playUbb({ preview = false, onDone } = {}) {
   const alarm = h("div", { class: "ubb-alarm", "aria-hidden": "true" });
   const alarmText = h("p", { class: "ubb-alarm-text" }, u.alarm);
 
-  // Nini, Mini Cycy, Dédé: Nini and Dédé come in tickets in hand (their stickers hold them)
+  // Kevin comes first, then Mini Cycy; Nini and Dédé come in tickets in hand (their stickers hold them)
   const small = Math.round(Math.min(114, (innerWidth - 28) * 0.31));
   const cycy = createAvatar({ face: f.cycy, size: Math.round(small * 1.06) });
+  const kevin = createAvatar({ face: f.kevin, size: small });
   const nini = createAvatar({ face: f.nini, size: small });
   const dede = createAvatar({ face: f.dede, size: small });
   const tickets = [ticket(u.ticket), ticket(u.ticket)];
   const niniSlot = h("div", { class: "ubb-actor", hidden: true }, nini.el);
-  const cycySlot = h("div", { class: "ubb-actor" }, cycy.el);
+  const cycySlot = h("div", { class: "ubb-actor", hidden: true }, cycy.el);
+  const kevinSlot = h("div", { class: "ubb-actor" }, kevin.el);
   const dedeSlot = h("div", { class: "ubb-actor", hidden: true }, dede.el);
-  const cast = h("div", { class: "ubb-cast" }, niniSlot, cycySlot, dedeSlot);
+  const cast = h("div", { class: "ubb-cast" }, niniSlot, cycySlot, kevinSlot, dedeSlot);
 
   const bubble = createBubble();
   const speaker = h("p", { class: "secret-name" });
@@ -156,7 +158,7 @@ export function playUbb({ preview = false, onDone } = {}) {
   async function run() {
     document.body.append(el);
     document.body.classList.add("is-ubb"); // the sound button would sit on the notification
-    gsap.set([scene, alarm, alarmText, closing, cycySlot], { autoAlpha: 0 });
+    gsap.set([scene, alarm, alarmText, closing, kevinSlot], { autoAlpha: 0 });
     gsap.set(notif, { yPercent: -170 });
     await sleep(250);
 
@@ -177,44 +179,74 @@ export function playUbb({ preview = false, onDone } = {}) {
     await sleep(2400);
     clearInterval(shaking);
 
-    // 3. The UBB stripes, and Mini Cycy in the jersey
+    // 3. The blue screen, and Kevin comes running: what's going on?
     gsap.to([alarm, alarmText], { autoAlpha: 0, duration: 0.3 });
     gsap.to(scene, { autoAlpha: 1, duration: 0.4 });
     await sleep(350);
-    gsap.fromTo(cycySlot, { autoAlpha: 0, y: 180 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "back.out(1.6)" });
+    gsap.fromTo(kevinSlot, { autoAlpha: 1, x: innerWidth / 2 + 140 }, { x: 0, duration: 0.9, ease: "power3.out" });
+    gsap.to(kevinSlot, { keyframes: { y: [0, -30, 0, -18, 0] }, duration: 0.9, ease: "none" });
     sfx("whoosh");
-    await sleep(650);
+    await sleep(1000);
+    kevin.set(f.kevinTalk);
+    await line("kevin", u.kevinText);
+    await wait(1300 + u.kevinText.length * 30);
+
+    // 4. Mini Cycy hops in from the left, in her new jersey; Kevin makes room
+    quiet();
+    const kevinBefore = kevinSlot.getBoundingClientRect().left;
+    cycySlot.hidden = false;
+    const kevinAfter = kevinSlot.getBoundingClientRect().left;
+    gsap.from(kevinSlot, { x: kevinBefore - kevinAfter, duration: 0.6, ease: "power2.out" });
+    gsap.fromTo(cycySlot, { x: -innerWidth / 2 - 140 }, { x: 0, duration: 0.9, ease: "power3.out" });
+    gsap.to(cycySlot, { keyframes: { y: [0, -34, 0, -20, 0] }, duration: 0.9, ease: "none" });
+    sfx("whoosh");
+    await sleep(900);
     sfx("reveal");
     cycy.jump(24);
-    await wait(900);
+    kevin.set(f.kevinWow);
+    kevin.jump(12);
+    await wait(1100);
     cycy.set(f.cycyTalk);
-    await line("cycy", u.cycyText);
+    kevin.set(f.kevinPout);
+    await line("cycy", u.cycyText, "left");
     await wait(1500 + u.cycyText.length * 30);
 
-    // 4. The twist: suddenly, very surprised
+    // 5. The twist: suddenly, very surprised
     quiet();
     await sleep(600);
     cycy.set(f.cycyTwist);
     cycy.jump(16);
+    kevin.set(f.kevinWow);
     sfx("alert");
     shake(cycySlot, 8);
     await sleep(1300);
 
-    // 5. Nini and Dédé burst in, tickets in hand; Mini Cycy slides over to the middle
+    // 6. Nini and Dédé burst in, tickets in hand… and Dédé sends Kevin flying off the screen.
+    // Kevin leaves the row where he stands (absolute), so Mini Cycy slides over to the middle at once.
+    const kevinBox = kevinSlot.getBoundingClientRect();
+    const castBox = cast.getBoundingClientRect();
     const before = cycySlot.getBoundingClientRect().left;
+    kevinSlot.classList.add("is-ejected");
+    kevinSlot.style.left = `${kevinBox.left - castBox.left}px`;
+    kevinSlot.style.top = `${kevinBox.top - castBox.top}px`;
     niniSlot.hidden = dedeSlot.hidden = false;
     const after = cycySlot.getBoundingClientRect().left;
     gsap.from(cycySlot, { x: before - after, duration: 0.5, ease: "power2.out" });
     gsap.fromTo(niniSlot, { x: -innerWidth / 2 - 140 }, { x: 0, duration: 0.55, ease: "back.out(1.3)" });
     gsap.fromTo(dedeSlot, { x: innerWidth / 2 + 140 }, { x: 0, duration: 0.55, ease: "back.out(1.3)" });
     sfx("whoosh");
+    setTimeout(() => {
+      kevin.set(f.kevinOut);
+      sfx("boing");
+      gsap.to(kevinSlot, { x: innerWidth, y: -innerHeight * 0.45, rotation: 420, duration: 0.9, ease: "power1.in", onComplete: () => (kevinSlot.hidden = true) });
+    }, 220);
     await sleep(450);
     flash();
     shake(scene, 18);
     sfx("unlock");
     await wait(1700);
 
-    // 6. Dédé shouts, everyone cheers, tickets up in the air
+    // 7. Dédé shouts, everyone cheers, tickets up in the air
     dede.set(f.dedeShout);
     nini.set(f.niniCheer);
     cycy.set(f.cycyCheer);
@@ -227,7 +259,7 @@ export function playUbb({ preview = false, onDone } = {}) {
     shake(bubble.el, 8);
     await wait(2400);
 
-    // 7. Close-up on the tickets
+    // 8. Close-up on the tickets
     quiet();
     closeUp();
     if (!preview) saveDebrief(seeUbb(loadDebrief()));

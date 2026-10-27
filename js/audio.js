@@ -211,6 +211,11 @@ const sounds = {
     tone({ freq: 988, type: "square", dur: 0.08, gain: 0.06 });
     tone({ freq: 1480, type: "square", at: 0.09, dur: 0.14, gain: 0.06 });
   },
+  /** Cartoon boing: someone gets sent flying. */
+  boing() {
+    tone({ freq: 180, glideTo: 720, type: "triangle", dur: 0.4, gain: 0.14 });
+    tone({ freq: 360, glideTo: 1440, at: 0.02, dur: 0.3, gain: 0.05 });
+  },
   /** Stadium air horn. */
   horn() {
     [349.2, 352, 440].forEach((freq) => tone({ freq, type: "sawtooth", dur: 0.95, gain: 0.045, attack: 0.03 }));

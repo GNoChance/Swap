@@ -573,14 +573,19 @@ export const content = {
       end: { duo: "duo-bite" },
     },
     // Surprise UBB : à la fin de son premier débrief, une fausse notif tombe, l'écran clignote en rouge,
-    // Mini Cycy arrive en maillot… puis Nini et Dédé débarquent avec les billets. Une seule fois ; ensuite
-    // le bouton « Revoir la surprise » sur les fins du débrief. Aperçu : ?ubb
+    // Kevin arrive sans comprendre, Mini Cycy arrive en maillot… puis Nini et Dédé débarquent avec les billets
+    // et éjectent Kevin. Une seule fois ; ensuite le bouton « Revoir la surprise » sur les fins du débrief. Aperçu : ?ubb
     ubb: {
       delay: 3000, // ms après l'affichage de sa fin
       notif: { icon: "🎁", title: "🚨 ALERTE", time: "maintenant", text: "Un maillot UBB vient de disparaître du sac de cadeaux…" },
       alarm: "⚠ ALERTE ⚠",
-      names: { cycy: "Mini Cycy", nini: "Nini", dede: "Dédé" },
+      names: { cycy: "Mini Cycy", kevin: "Kevin", nini: "Nini", dede: "Dédé" },
       faces: {
+        kevin: "kevin-shocked", // il arrive en courant
+        kevinTalk: "kevin-think", // « il se passe quoi ? »
+        kevinWow: "kevin-surprised", // Mini Cycy arrive en maillot, puis le twist
+        kevinPout: "kevin-pout", // pendant qu'elle explique
+        kevinOut: "kevin-shocked", // éjecté par Dédé
         cycy: "maillot-joy", // elle arrive en sautant
         cycyTalk: "maillot-wink", // pendant sa phrase
         cycyTwist: "maillot-surprised", // d'un coup, super surprise
@@ -590,6 +595,7 @@ export const content = {
         dede: "dede-ticket-joy",
         dedeShout: "dede-ticket-raise", // quand il hurle, billet levé
       },
+      kevinText: "Il se passe quoi ? J'avais pourtant tout bien fait !",
       cycyText: "J'étais trop impatiente, j'ai pas pu m'empêcher de le mettre !",
       dedeText: "Allez allez UBB UBB !!",
       ticket: { kicker: "Billet · Rugby", home: "UBB", away: "STORMERS", meta: "Place réservée" },

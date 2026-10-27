@@ -2836,7 +2836,9 @@ body.is-ubb .mute {
 }
 
 .ubb-cast {
+  position: relative;
   display: flex;
+  width: 100%; /* its left edge stays put when Kevin leaves the row */
   align-items: flex-end;
   justify-content: center;
   margin-top: 14px;
@@ -2850,12 +2852,22 @@ body.is-ubb .mute {
   display: none;
 }
 
+/* Kevin, knocked off the screen by Dédé: out of the row, flying over everyone */
+.ubb-actor.is-ejected {
+  position: absolute;
+  z-index: 2;
+}
+
+.ubb-say[data-who="kevin"] .secret-name {
+  color: #a9bcff;
+}
+
 .ubb-say[data-who="nini"] .secret-name {
   color: #f2b5c4;
 }
 
 .ubb-say[data-who="dede"] .secret-name {
-  color: #a9bcff;
+  color: #9fdcc2;
 }
 
 .ubb-say.is-shout .bubble-text {
