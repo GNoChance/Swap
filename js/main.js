@@ -209,7 +209,7 @@ function timelineScreen({ intro = false, walkFrom } = {}) {
 
   const buddy = createAvatar({
     face: "wink",
-    size: 72,
+    size: 92,
     className: "tl-avatar",
     tappable: true,
     onTap: () => sfx("tap"),
@@ -501,7 +501,7 @@ function openStep(i, returnFocus) {
 
   // Mini Cyrielle peeks from the bottom of the sheet (sticky) and reacts.
   const surprise = status() === "revealed" && !progress.steps[i].found; // answer asked for, gift not opened yet
-  const buddy = createAvatar({ face: status() === "active" ? variant("think") : surprise ? "smirk" : revealOf(gift, i).face || "wink", size: 58 });
+  const buddy = createAvatar({ face: status() === "active" ? variant("think") : surprise ? "smirk" : revealOf(gift, i).face || "wink", size: 78 });
   const buddyDock = h("div", { class: "sheet-buddy", "aria-hidden": "true" }, buddy.el);
 
   const feedback = h("p", { class: "feedback", "aria-live": "polite" });

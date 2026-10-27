@@ -2875,7 +2875,7 @@ p {
   bottom: 0;
   z-index: 4;
   height: 0;
-  margin-top: 70px; /* at the very end of the sheet she stands below the content */
+  margin-top: 96px; /* at the very end of the sheet she stands below the content */
   pointer-events: none;
 }
 
