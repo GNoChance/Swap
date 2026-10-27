@@ -2814,7 +2814,7 @@ body.is-ubb .mute {
   text-shadow: 0 0 22px rgba(90, 0, 0, 0.6);
 }
 
-/* The jersey: wide bordeaux and navy stripes, darker at the edges */
+/* Navy blue, darker at the edges (the user didn't like the bordeaux and navy stripes) */
 .ubb-scene {
   position: absolute;
   inset: 0;
@@ -2824,9 +2824,7 @@ body.is-ubb .mute {
   align-items: center;
   justify-content: center;
   padding: calc(var(--sat) + 24px) calc(var(--sar) + 14px) calc(var(--sab) + 24px) calc(var(--sal) + 14px);
-  background:
-    radial-gradient(ellipse at 50% 42%, rgba(8, 6, 20, 0) 25%, rgba(8, 6, 20, 0.72) 100%),
-    repeating-linear-gradient(90deg, #6d1530 0 52px, #1d2448 52px 104px);
+  background: radial-gradient(ellipse at 50% 42%, #2c3a7a, #1d2448 55%, #0d1230 100%);
 }
 
 .ubb-stage {

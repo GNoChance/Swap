@@ -12,7 +12,7 @@ import { h, shake, flash } from "./dom.js";
 
 const gsap = window.gsap;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const COLORS = ["#7a1733", "#1d2448", "#f3e9dc", "#c9a15b"]; // confetti: bordeaux, navy, cream, gold
+const COLORS = ["#a3224a", "#6f8fe8", "#f3e9dc", "#c9a15b"]; // confetti: bordeaux, light blue (seen on the navy), cream, gold
 const HAND = 0.18; // the ticket in their sticker's hands, against its close-up size
 
 /** A match ticket, drawn at its close-up size. */
