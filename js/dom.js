@@ -35,9 +35,10 @@ export function shake(el, strength = 10) {
   });
 }
 
-/** Warm white flash over everything: the reveal "pop", stronger than a vibration on iPhone. */
-export function flash() {
+/** Warm white flash over everything: the reveal "pop", stronger than a vibration on iPhone. color: another tint. */
+export function flash(color) {
   const veil = h("div", { class: "flash", "aria-hidden": "true" });
+  if (color) veil.style.background = color;
   document.body.append(veil);
   gsap
     .timeline({ onComplete: () => veil.remove() })

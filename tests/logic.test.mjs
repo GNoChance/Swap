@@ -106,6 +106,9 @@ test("every sticker named in content.js exists", () => {
   for (const g of content.gifts) [...Object.values(g.unlocksFaces || {}).flat(), ...(g.playFaces || [])].forEach((f) => faces.add(f));
   Object.values(content.bonus.faces).forEach((f) => faces.add(f));
   Object.values(content.debrief.secret.end).forEach((f) => faces.add(f));
+  for (const line of content.debrief.secret.script) {
+    [line.duo, typeof line.enter === "string" && line.enter, ...(line.bite || []), ...Object.values(line.react || {})].filter(Boolean).forEach((f) => faces.add(f));
+  }
   const missing = [...faces].filter((face) => !existsSync(new URL(`../assets/cyrielle/${face}.webp`, import.meta.url)));
   assert.deepEqual(missing, []);
 });
@@ -245,7 +248,7 @@ test("secret dialogue: every line has a speaker and a sticker, Kevin enters befo
   let kevinIn = false;
   for (const line of script) {
     if (line.reply) continue;
-    assert.ok(["cycy", "kevin"].includes(line.who) && line.face && line.text, JSON.stringify(line));
+    assert.ok(["cycy", "kevin"].includes(line.who) && (line.face || line.duo || line.bite) && line.text, JSON.stringify(line));
     if (line.enter) kevinIn = true;
     if (line.who === "kevin") assert.ok(kevinIn, line.text);
   }

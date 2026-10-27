@@ -2695,6 +2695,22 @@ p {
   display: none;
 }
 
+/* The two of them in one sticker (biceps, bite) */
+.secret-duo {
+  width: min(82vw, 330px);
+}
+
+.secret-duo[hidden] {
+  display: none;
+}
+
+.secret-duo-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.45));
+}
+
 .secret-reply {
   min-height: 80px;
 }

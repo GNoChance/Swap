@@ -527,7 +527,9 @@ export const content = {
     },
     // Fin secrète : après la dernière fin découverte, l'écran grésille et ce dialogue démarre.
     // who = qui parle (cycy ou kevin), face = son sticker, reply = un bouton de réponse pour Cyrielle,
-    // enter = Kevin arrive à ce moment-là, sound = un son en plus (drumroll = roulement de tambour).
+    // enter = Kevin arrive à ce moment-là (de dos, avec ce sticker, puis il se retourne), react = le sticker
+    // de l'autre pendant la réplique, sound = un son en plus (drumroll = roulement de tambour),
+    // duo = un sticker où ils sont tous les deux (à la place des deux séparés), bite = la morsure, d'un coup.
     secret: {
       locked: "🔒 Une fin secrète t'attend à {total} / {total}",
       unlocked: "Fin secrète débloquée",
@@ -544,7 +546,7 @@ export const content = {
         { who: "cycy", face: "think2", text: "9 énigmes, une grille de mots croisés, des mots mêlés… et en plein milieu, l'ordinateur a planté." },
         { reply: "Non ?!" },
         { who: "cycy", face: "surprised", text: "Si. Panique totale. Mais on a tout repris." },
-        { who: "cycy", face: "peace", text: "Et moi ? 120 stickers, rien que pour toi : fou rire, bouderie, dodo, fondue, Brets…" },
+        { who: "cycy", face: "peace", text: "Et moi ? 141 stickers, rien que pour toi : fou rire, bouderie, dodo, fondue, Brets…" },
         { who: "cycy", face: "cool", text: "Le site fait plus de 8 000 lignes de code. Oui, 8 000. Pour toi." },
         { who: "cycy", face: "smirk", text: "Ce matin encore, il y avait 7 cadeaux. Et puis 2 de plus se sont glissés dans le lot." },
         { who: "cycy", face: "joy", text: "Et la pub ? Absolument indispensable. Je ne discute pas." },
@@ -552,15 +554,21 @@ export const content = {
         { who: "cycy", face: "smirk", text: "Et tu veux savoir qui se cache derrière tout ça ?" },
         { reply: "Dis-moi !" },
         { who: "cycy", face: "surprised2", text: "Le cerveau de l'opération, c'est…", sound: "drumroll" },
-        { who: "kevin", face: "kevin-shocked", enter: true, text: "Euh… surprise ? 😅" },
-        { who: "kevin", face: "kevin-smug", text: "Oui, c'est moi. 120 stickers, 8 000 lignes de code… même pas fatigué." },
-        { who: "cycy", face: "smirk", text: "Kevin a passé la journée à parler à des stickers." },
-        { who: "kevin", face: "kevin-cry", text: "Tout ça pour voir ton sourire ce soir." },
-        { who: "kevin", face: "kevin-kiss", text: "Je t'aime ♥" },
+        { who: "kevin", face: "kevin-flex-wow", enter: "kevin-back-joy", text: "Euh… surprise ? 😅" },
+        { who: "kevin", face: "kevin-flex-cool", text: "Oui, c'est moi. 141 stickers, 8 000 lignes de code… même pas fatigué." },
+        { who: "cycy", face: "smirk", react: { kevin: "kevin-flex-tongue" }, text: "Kevin a passé la journée à parler à des stickers." },
+        { who: "kevin", face: "kevin-flex-love", text: "Tout ça pour voir ton sourire ce soir." },
+        { who: "kevin", face: "kevin-flex-smirk", text: "Je t'aime ♥" },
         { reply: "Moi aussi ♥" },
+        { who: "kevin", face: "kevin-flex-joy", text: "Et maintenant… admire ces biceps." },
+        { who: "cycy", duo: "duo-look", text: "Oh… 👀" },
+        { who: "cycy", duo: "duo-admire", text: "Ils ont l'air… trop bons." },
+        { who: "kevin", duo: "duo-eye", text: "Euh… pourquoi tu me regardes comme ça ?" },
+        { who: "kevin", bite: ["duo-bite", "duo-bite-hard"], text: "AÏEEE !" },
+        { who: "cycy", duo: "duo-bite", text: "Pardon… c'était plus fort que moi 😋" },
       ],
-      // Les deux stickers sur l'écran de fin
-      end: { cycy: "kiss2", kevin: "kevin-kiss" },
+      // Sur l'écran de fin : un sticker à deux (duo), ou les deux séparés (cycy et kevin)
+      end: { duo: "duo-bite" },
     },
     // Page ?debrief (pour toi)
     report: {
