@@ -19,6 +19,7 @@ import { welcomeScreen, bonusScreen } from "./scenes.js";
 import { pubScreen } from "./pub.js";
 import { debriefScreen, debriefReport } from "./debrief.js";
 import { secretScreen } from "./secret.js";
+import { ubbPreviewScreen } from "./ubb.js";
 import { testScreen } from "./testpage.js";
 
 const gsap = window.gsap;
@@ -941,6 +942,7 @@ else if (isDemo && preview.has("scene")) playScene(preview.get("scene"));
 else if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you
 else if (preview.has("secret")) show(secret({ preview: true })); // the secret ending, without finding the 13 endings
+else if (preview.has("ubb")) show(ubbPreviewScreen()); // the UBB surprise on its own
 else if (!progress.started) show(welcome());
 else if (P.isComplete(progress)) show(ending({ celebrate: false }));
 else if (pubPending()) playPub({ waitForTap: true }); // reloaded during the ad: play it again

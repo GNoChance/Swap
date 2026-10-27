@@ -6,6 +6,7 @@ import { sfx, unlockAudio, startMusic, stopMusic } from "./audio.js";
 import { playEffect, hearts, confetti } from "./effects.js";
 import { createAvatar } from "./avatar.js";
 import { createBubble } from "./scenes.js";
+import { playUbb } from "./ubb.js";
 import { loadDebrief, saveDebrief } from "./state.js";
 import { h, svg, bump, centerOf } from "./dom.js";
 
@@ -258,6 +259,11 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack, onSecret })
     endTitle.textContent = end.title;
     endText.textContent = fill(end.text, values);
     endFound.textContent = fill(d.found, { found: store.found.length, total });
+    // The UBB surprise: once, a few seconds after her first ending (before the secret ending, if it unlocks too);
+    // after that, a button to see it again
+    const ubbButton = () =>
+      h("button", { class: "btn btn-secondary btn-ubb", type: "button", onclick: () => (sfx("tap"), playUbb({ onDone: startMusic })) }, d.ubb.button);
+    if (store.ubb) endSecret.append(ubbButton());
     // The secret ending: a padlock until every ending is found, then it bursts in once; after that, a button
     const unlocking = !store.secret && secretUnlocked(store, Object.keys(d.endings));
     if (store.secret) {
@@ -265,7 +271,21 @@ export function debriefScreen({ values = {}, camp, onReplay, onBack, onSecret })
         h("button", { class: "btn btn-secondary btn-secret", type: "button", onclick: () => (sfx("tap"), onSecret()) }, d.secret.button),
       );
     } else if (!unlocking) endSecret.append(h("p", { class: "debrief-lock" }, fill(d.secret.locked, { total })));
-    if (unlocking) setTimeout(() => !left && glitchTo(onSecret), 4500);
+    if (!store.ubb) {
+      setTimeout(() => {
+        if (left) return;
+        playUbb({
+          onDone() {
+            if (left) return;
+            const button = ubbButton();
+            endSecret.prepend(button);
+            gsap.from(button, { opacity: 0, y: 10, duration: 0.5, ease: "power2.out", clearProps: "opacity,transform" });
+            if (unlocking) glitchTo(onSecret);
+            else startMusic();
+          },
+        });
+      }, 450 + d.ubb.delay);
+    } else if (unlocking) setTimeout(() => !left && glitchTo(onSecret), 4500);
     lastDot.setAttribute("class", "trail-dot is-end");
     lastDot.setAttribute("r", 8);
 
@@ -384,6 +404,7 @@ export function debriefReport({ onPlay, store = loadDebrief() }) {
       found,
       completionMap(store, null),
       h("p", { class: "report-secret" }, `${r.secret} : `, h("strong", {}, store.secret ? r.secretFound : r.secretNotYet)),
+      h("p", { class: "report-secret" }, `${r.ubb} : `, h("strong", {}, store.ubb ? r.ubbSeen : r.secretNotYet)),
       h(
         "button",
         {

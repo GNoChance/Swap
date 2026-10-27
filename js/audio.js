@@ -179,9 +179,49 @@ const sounds = {
   rattle() {
     for (let i = 0; i < 9; i++) noise({ at: Math.random() * 0.28, dur: 0.025, gain: 0.12, filter: 3800 + Math.random() * 1500, q: 2 });
   },
+  /** iPhone-like notification: three quick chimes. */
+  notify() {
+    [1174.7, 1568, 2093].forEach((f, i) => bell(f, i * 0.11, 0.09, 0.6));
+  },
+  /** Alarm siren (~2.6 s): a wail up and down. */
+  siren() {
+    const t = ctx.currentTime;
+    const dur = 2.6;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 2400;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.08, t + 0.06);
+    g.gain.setValueAtTime(0.08, t + dur - 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    lp.connect(g).connect(master);
+    for (const [type, mult] of [["sawtooth", 1], ["square", 1.005]]) {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(620 * mult, t);
+      for (let k = 1; k * 0.65 <= dur; k++) osc.frequency.linearRampToValueAtTime((k % 2 ? 980 : 620) * mult, t + k * 0.65);
+      osc.connect(lp);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+    }
+  },
+  /** « !! »: two sharp beeps, someone is very surprised. */
+  alert() {
+    tone({ freq: 988, type: "square", dur: 0.08, gain: 0.06 });
+    tone({ freq: 1480, type: "square", at: 0.09, dur: 0.14, gain: 0.06 });
+  },
+  /** Stadium air horn. */
+  horn() {
+    [349.2, 352, 440].forEach((freq) => tone({ freq, type: "sawtooth", dur: 0.95, gain: 0.045, attack: 0.03 }));
+  },
+  /** A crowd roaring in the stands. */
+  crowd() {
+    for (let i = 0; i < 8; i++) noise({ at: i * 0.16, dur: 0.9, gain: 0.07, filter: 600 + Math.random() * 900, q: 0.35 });
+  },
 };
 
-const haptics = { tap: 8, letter: 6, wrong: [30, 40, 30], good: 15, unlock: [12, 30, 20], reveal: [20, 40, 60], final: [30, 50, 30, 50, 80], rip: [20, 20, 40], rattle: [10, 20, 10] };
+const haptics = { tap: 8, letter: 6, wrong: [30, 40, 30], good: 15, unlock: [12, 30, 20], reveal: [20, 40, 60], final: [30, 50, 30, 50, 80], rip: [20, 20, 40], rattle: [10, 20, 10], notify: [30, 60, 30], siren: [200, 100, 200, 100, 200] };
 
 // ── Music box (debrief ambiance): C · G · Am · F, arpeggiated, scheduled a little ahead ──
 

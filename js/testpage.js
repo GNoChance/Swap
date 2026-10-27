@@ -29,6 +29,7 @@ export function testScreen() {
         link("Débrief", "?demo&scene=debrief"),
         link("Carte des fins", "?demo&scene=map", "toutes trouvées"),
         link("Fin secrète", "?secret"),
+        link("Surprise UBB", "?ubb", "la séquence seule"),
         link("Ses réponses au débrief", "?debrief&demo"),
       ]),
       group("Avant de lui donner le téléphone", [link("Remettre à zéro", "?reset", "efface sa progression et ses réponses au débrief")]),

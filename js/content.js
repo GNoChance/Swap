@@ -572,6 +572,32 @@ export const content = {
       // Sur l'écran de fin : un sticker à deux (duo), ou les deux séparés (cycy et kevin)
       end: { duo: "duo-bite" },
     },
+    // Surprise UBB : à la fin de son premier débrief, une fausse notif tombe, l'écran clignote en rouge,
+    // Mini Cycy arrive en maillot… puis Nini et Dédé débarquent avec les billets. Une seule fois ; ensuite
+    // le bouton « Revoir la surprise » sur les fins du débrief. Aperçu : ?ubb
+    ubb: {
+      delay: 3000, // ms après l'affichage de sa fin
+      notif: { icon: "🎁", title: "🚨 ALERTE", time: "maintenant", text: "Un maillot UBB vient de disparaître du sac de cadeaux…" },
+      alarm: "⚠ ALERTE ⚠",
+      names: { cycy: "Mini Cycy", nini: "Nini", dede: "Dédé" },
+      faces: {
+        cycy: "maillot-joy", // elle arrive en sautant
+        cycyTalk: "maillot-wink", // pendant sa phrase
+        cycyTwist: "maillot-surprised", // d'un coup, super surprise
+        cycyCheer: "maillot-cheer",
+        nini: "nini-thumbs", // Nini et Dédé débarquent, billet en main
+        niniCheer: "nini-cheer",
+        dede: "dede-thumbs",
+        dedeShout: "dede-cheer", // quand il hurle
+      },
+      cycyText: "J'étais trop impatiente, j'ai pas pu m'empêcher de le mettre !",
+      dedeText: "Allez allez UBB UBB !!",
+      ticket: { kicker: "Billet · Rugby", home: "UBB", away: "STORMERS", meta: "Place réservée" },
+      end: "Direction le stade ! 🏉",
+      back: "Retour",
+      button: "🏉 Revoir la surprise",
+      preview: "▶ Lancer la surprise",
+    },
     // Page ?debrief (pour toi)
     report: {
       title: "Le débrief de Cyrielle",
@@ -583,6 +609,8 @@ export const content = {
       secret: "Fin secrète",
       secretFound: "trouvée ✔",
       secretNotYet: "pas encore",
+      ubb: "Surprise UBB",
+      ubbSeen: "vue ✔",
     },
   },
 

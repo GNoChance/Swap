@@ -106,6 +106,7 @@ test("every sticker named in content.js exists", () => {
   for (const g of content.gifts) [...Object.values(g.unlocksFaces || {}).flat(), ...(g.playFaces || [])].forEach((f) => faces.add(f));
   Object.values(content.bonus.faces).forEach((f) => faces.add(f));
   Object.values(content.debrief.secret.end).forEach((f) => faces.add(f));
+  Object.values(content.debrief.ubb.faces).forEach((f) => faces.add(f));
   for (const line of content.debrief.secret.script) {
     [line.duo, typeof line.enter === "string" && line.enter, ...(line.bite || []), ...Object.values(line.react || {})].filter(Boolean).forEach((f) => faces.add(f));
   }
@@ -241,6 +242,18 @@ test("secret ending: unlocked by the last ending found, remembered across runs",
   store = L.addDebriefRun(store, { ending: ids[0], answers: [] });
   assert.equal(store.secret, true);
   assert.equal(L.seeSecret(null).secret, true);
+});
+
+test("UBB surprise: seen once, remembered across runs and alongside the secret ending", () => {
+  let store = L.addDebriefRun(null, { ending: "taquine", answers: [] });
+  assert.equal(store.ubb, false);
+  store = L.seeUbb(store);
+  store = L.addDebriefRun(store, { ending: "cocooning", answers: [] });
+  assert.equal(store.ubb, true);
+  assert.deepEqual(store.found, ["taquine", "cocooning"]);
+  assert.equal(L.seeSecret(store).ubb, true);
+  assert.equal(L.seeUbb(L.seeSecret(store)).secret, true);
+  assert.equal(L.seeUbb(null).ubb, true);
 });
 
 test("secret dialogue: every line has a speaker and a sticker, Kevin enters before he speaks", () => {

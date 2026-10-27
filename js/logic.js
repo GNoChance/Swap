@@ -344,11 +344,17 @@ export function debriefTree(d) {
   return items.map(({ id, parent, ending, x, depth: level }) => ({ id, parent, ending, x, y: ending ? 1 : level / depth }));
 }
 
-/** Saved debriefs: every run (answers + ending), the set of endings found, and whether the secret ending was seen. */
+/** Saved debriefs: every run (answers + ending), the set of endings found, and whether the secret ending
+ *  and the UBB surprise were seen. */
 export function addDebriefRun(store, run) {
   const runs = Array.isArray(store?.runs) ? store.runs : [];
   const found = Array.isArray(store?.found) ? store.found : [];
-  return { runs: [...runs, run], found: [...new Set([...found, run.ending])], secret: Boolean(store?.secret) };
+  return { runs: [...runs, run], found: [...new Set([...found, run.ending])], secret: Boolean(store?.secret), ubb: Boolean(store?.ubb) };
+}
+
+/** The UBB surprise plays once, at the end of her first debrief. */
+export function seeUbb(store) {
+  return { runs: [], found: [], ...store, ubb: true };
 }
 
 /** The secret ending unlocks once every ending has been found. */
