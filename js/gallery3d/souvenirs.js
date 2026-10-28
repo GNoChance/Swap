@@ -3,7 +3,7 @@
 // the shared code is typed on this phone, then the photos and videos in a row of polaroids, the notes underneath,
 // all kept live. Closes with its button, a tap outside the card, or a swipe down.
 import { museumDate, museumDay, fill } from "../logic.js";
-import { sortItems, checkFile, checkNote, checkName, noteLength, isMine, NOTE_MAX } from "../souvenirs/logic.js";
+import { sortItems, checkFile, checkNote, checkName, noteLength, isMine, shotRatio, NOTE_MAX } from "../souvenirs/logic.js";
 import { openViewer } from "./viewer.js";
 import { h } from "../dom.js";
 
@@ -177,7 +177,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
 
   function polaroid(item) {
     const thumb = item.thumbUrl ? h("img", { src: item.thumbUrl, alt: "", loading: "lazy", draggable: "false" }) : h("span", { class: "g3d-thumb-missing", "aria-hidden": "true" }, "🎞");
-    return h(
+    const fig = h(
       "figure",
       {
         class: `g3d-polaroid is-${item.kind}`,
@@ -193,6 +193,9 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
       h("figcaption", {}, fill(ui.by, { name: item.author })),
       removeButton(item),
     );
+    // shaped like its photo: the whole picture, nothing cropped
+    fig.style.setProperty("--ratio", shotRatio(item.width, item.height));
+    return fig;
   }
 
   const note = (item) => h("blockquote", { class: "g3d-note", "data-id": item.id }, h("p", {}, `❝ ${item.text} ❞`), h("footer", {}, `— ${item.author}`), removeButton(item));

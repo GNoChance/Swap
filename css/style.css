@@ -4291,3 +4291,24 @@ html.is-museum {
 .g3d-confirm .g3d-souvenirs-close {
   margin-top: 0;
 }
+
+/* Souvenirs shaped like their photo: the same height, their own width, the whole picture */
+.g3d-photos {
+  --shot-h: min(21dvh, 170px);
+  align-items: flex-end;
+}
+
+.g3d-polaroid[data-id] {
+  width: auto;
+  aspect-ratio: auto;
+}
+
+.g3d-polaroid[data-id] .g3d-polaroid-shot {
+  flex: none;
+  width: calc(var(--shot-h) * var(--ratio, 0.75));
+  height: var(--shot-h);
+}
+
+.g3d-polaroid[data-id] .g3d-polaroid-shot img {
+  object-fit: contain;
+}

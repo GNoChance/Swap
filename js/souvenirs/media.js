@@ -1,9 +1,9 @@
-// Photos and videos, prepared on the phone before sending: a photo is shrunk to a 2048 px JPEG and a 512 px
-// thumbnail; a video keeps its file and gets a 512 px thumbnail from its first half second.
+// Photos and videos, prepared on the phone before sending: a photo is shrunk to a 3072 px JPEG (sharp when zoomed
+// in) and a 768 px thumbnail; a video keeps its file and gets a 768 px thumbnail from its first half second.
 import { fitWithin } from "./logic.js";
 
-export const FULL = 2048;
-export const THUMB = 512;
+export const FULL = 3072;
+export const THUMB = 768;
 const QUALITY = 0.82;
 const SMALL_FILE = 3e6; // below this a photo is decoded at full size; above, already shrunk while decoding
 
@@ -35,7 +35,7 @@ async function decode(file) {
   return bmp;
 }
 
-/** { full, thumb, width, height }: JPEG blobs, the full one at most 2048 px on its long side. */
+/** { full, thumb, width, height }: JPEG blobs, the full one at most 3072 px on its long side. */
 export async function shrinkPhoto(file) {
   const bmp = await decode(file);
   try {

@@ -116,3 +116,11 @@ test("supabase/setup.sql: the shared account gets its rights (new projects grant
   assert.equal(policies.length, 6);
   for (const p of policies) assert.ok(p.includes(`(auth.jwt() ->> 'email') = '${config.email}'`), p);
 });
+
+test("souvenirs: a polaroid takes its photo's shape, between 9:16 and 16:9", () => {
+  assert.equal(S.shotRatio(4032, 3024), 4 / 3);
+  assert.equal(S.shotRatio(1000, 4000), 9 / 16);
+  assert.equal(S.shotRatio(4000, 500), 16 / 9);
+  assert.equal(S.shotRatio(0, 0), 0.75);
+  assert.equal(S.shotRatio(null, undefined), 0.75);
+});

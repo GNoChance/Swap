@@ -34,6 +34,13 @@ export function fitWithin(w, h, max) {
   return { w: Math.round(w * scale), h: Math.round(h * scale) };
 }
 
+/** A polaroid's shape: its photo's own, between 9:16 and 16:9 (a panorama or a tall screenshot stays readable);
+ *  3:4 when the size isn't known. */
+export function shotRatio(w, h) {
+  if (!(w > 0 && h > 0)) return 0.75;
+  return Math.min(16 / 9, Math.max(9 / 16, w / h));
+}
+
 /** Where a souvenir's files go in the storage bucket (a note has none). */
 export function storagePaths(matchDate, id, kind, type) {
   if (kind === "note") return { path: null, thumb: null };
