@@ -4312,3 +4312,27 @@ html.is-museum {
 .g3d-polaroid[data-id] .g3d-polaroid-shot img {
   object-fit: contain;
 }
+
+/* Full screen zoom: the frame slides between souvenirs, the photo inside it zooms (no CSS transition: JS drives it) */
+.g3d-viewer-stage {
+  overflow: hidden;
+}
+
+.g3d-viewer-frame {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.g3d-viewer-frame img {
+  touch-action: none; /* the page doesn't zoom or scroll: the photo does */
+  transform-origin: 50% 50%;
+  will-change: transform;
+  cursor: zoom-in;
+}
+
+.g3d-viewer[data-zoom]:not([data-zoom="1.00"]) .g3d-viewer-frame img {
+  cursor: grab;
+}
