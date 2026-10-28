@@ -62,3 +62,14 @@ test("souvenirs: no photos or story left in content.js, the panel's texts are th
     assert.ok(ui[key], key);
   assert.equal(content.museum.moreCount, "En savoir plus · {n}");
 });
+
+test("souvenirs: which backend — the fake one on ?souvenirs=fake, Supabase once configured, none before", async () => {
+  const { pickBackend } = await import("../js/souvenirs/store.js");
+  const empty = { url: "", anonKey: "" };
+  const set = { url: "https://x.supabase.co", anonKey: "ey…" };
+  assert.equal(pickBackend({ search: "?musee&souvenirs=fake&device=b", config: empty }), "fake");
+  assert.equal(pickBackend({ search: "?souvenirs=fake", config: set }), "fake");
+  assert.equal(pickBackend({ search: "?musee", config: set }), "supabase");
+  assert.equal(pickBackend({ search: "?musee", config: empty }), null);
+  assert.equal(pickBackend({ search: "", config: { url: "https://x.supabase.co", anonKey: "" } }), null);
+});
