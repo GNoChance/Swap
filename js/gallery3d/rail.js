@@ -56,10 +56,11 @@ export function framingDistance(aspect, vfovDeg, room = ROOM) {
   return Math.max(2.5, Math.min(room.width - 0.6, d));
 }
 
-/** « En savoir plus »: close enough for the painting to fill 95 % of the screen. */
+/** « En savoir plus »: close enough for the painting to fill 88 % of the width (95 % of the height at most), so it
+ *  still fits above the souvenirs panel on a short phone. */
 export function zoomDistance(aspect, vfovDeg, room = ROOM) {
   const { tv, th } = halfTans(aspect, vfovDeg);
-  return Math.max(room.frameW / (2 * th * 0.95), room.frameH / (2 * tv * 0.95));
+  return Math.max(room.frameW / (2 * th * 0.88), room.frameH / (2 * tv * 0.95));
 }
 
 /**
@@ -78,9 +79,10 @@ export function railPose(c, count, aspect, vfovDeg, zoom = 0, room = ROOM) {
   const s = stopLayout(count, room)[stop - 1];
   const d = lerp(framingDistance(aspect, vfovDeg, room), zoomDistance(aspect, vfovDeg, room), zoom);
   const yaw = (-s.side * Math.PI) / 2;
+  // zoomed in, looking straight at the wall, the painting's centre at 25.5 % of the screen: above the souvenirs panel
+  const zoomY = room.paintingY - 0.49 * d * Math.tan((vfovDeg * Math.PI) / 360);
   const face = {
-    // zoomed in, the camera rises to the painting's centre
-    cam: { x: s.wallX - s.side * d, y: lerp(room.eyeY, room.paintingY, zoom), z: s.z, yaw, pitch: lerp(WALK_PITCH, 0, zoom) },
+    cam: { x: s.wallX - s.side * d, y: lerp(room.eyeY, zoomY, zoom), z: s.z, yaw, pitch: lerp(WALK_PITCH, 0, zoom) },
     visitors: { x: s.wallX - s.side * (d - room.visitorsGap), z: s.z, yaw },
   };
   const mix = (a, b) => Object.fromEntries(Object.keys(a).map((key) => [key, lerp(a[key], b[key], focus)]));

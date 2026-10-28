@@ -52,6 +52,20 @@ test("rail: at a stop Mini Cycy and Kevin stand under the cartel, feet on screen
   }
 });
 
+test("rail: zoomed in, the painting fills the width above the souvenirs panel", () => {
+  const half = Math.tan((55 * Math.PI) / 360);
+  for (const aspect of [393 / 852, 375 / 667]) {
+    const { cam } = railPose(1, 14, aspect, 55, 1);
+    const d = Math.abs(cam.x - stopLayout(14)[0].wallX);
+    assert.equal(cam.pitch, 0);
+    const y = (h) => 0.5 - (0.5 * (h - cam.y)) / (d * half); // 0 top, 1 bottom
+    const top = y(ROOM.paintingY + ROOM.frameH / 2);
+    const bottom = y(ROOM.paintingY - ROOM.frameH / 2);
+    assert.ok(top > 0.06 && bottom < 0.45, `${aspect}: frame from ${top.toFixed(2)} to ${bottom.toFixed(2)}`);
+    assert.ok(ROOM.frameW / (2 * d * half * aspect) > 0.85, `${aspect}: frame width`);
+  }
+});
+
 test("rail: walking looks down the corridor, a stop faces its painting", () => {
   const walk = railPose(1.5, 14, 0.46, 55);
   assert.equal(walk.focus, 0);

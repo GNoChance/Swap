@@ -6,12 +6,13 @@
 import * as THREE from "./vendor/three.module.min.js";
 import { Reflector } from "./vendor/Reflector.js";
 import { content } from "./content.js";
-import { nextMatchIndex, museumReaction } from "./logic.js";
+import { nextMatchIndex, museumReaction, cartelText } from "./logic.js";
 import { ROOM, railPose, springStep } from "./gallery3d/rail.js";
 import { loadFonts, paintingCanvas, cartelCanvas, parquetCanvas, plasterCanvas, haloCanvas } from "./gallery3d/textures.js";
 import { buildRoom } from "./gallery3d/room.js";
 import { addDecor } from "./gallery3d/decor.js";
 import { createVisitors } from "./gallery3d/visitors.js";
+import { souvenirPanel } from "./gallery3d/souvenirs.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { confetti } from "./effects.js";
 import { h } from "./dom.js";
@@ -54,7 +55,9 @@ export function museum3dScreen({ onBack, onFail }) {
     },
     m.back,
   );
-  const el = h("section", { class: "screen screen-g3d" }, view, track, overlays, loader, backButton);
+  const moreButton = h("button", { class: "g3d-more", type: "button", onclick: openSouvenirs }, m.more);
+  const el = h("section", { class: "screen screen-g3d" }, view, track, overlays, moreButton, loader, backButton);
+  el.dataset.panel = "closed";
 
   let left = false;
   let renderer = null;
@@ -74,6 +77,9 @@ export function museum3dScreen({ onBack, onFail }) {
   let frame = 0;
   let last = 0;
   let wasMoving = false;
+  const zoom = { v: 0 }; // « En savoir plus »: 0 in the corridor, 1 close to the painting
+  let panel = null;
+  let busy = false; // opening or closing the souvenirs
 
   function layoutTrack() {
     stopH = innerHeight;
@@ -90,7 +96,7 @@ export function museum3dScreen({ onBack, onFail }) {
 
   /** Places the camera; returns the visitors' pose. */
   function applyPose() {
-    const { cam, visitors: pose } = railPose(spring.x, count, size.w / size.h, VFOV, 0, ROOM);
+    const { cam, visitors: pose } = railPose(spring.x, count, size.w / size.h, VFOV, zoom.v, ROOM);
     camera.position.set(cam.x, cam.y, cam.z);
     camera.rotation.set(cam.pitch, cam.yaw, 0, "YXZ");
     camera.updateMatrixWorld();
@@ -106,6 +112,7 @@ export function museum3dScreen({ onBack, onFail }) {
   }
 
   function startWalking() {
+    hideMore();
     if (stepTimer) return;
     lastStop = -1;
     clearTimeout(nap);
@@ -156,10 +163,9 @@ export function museum3dScreen({ onBack, onFail }) {
     showState();
   }
 
-  /** The painting at stop k, projected on screen (CSS px), for the tests. */
-  function frameRect(k) {
-    if (k < 1 || k > count) return "";
-    const box = new THREE.Box3().setFromObject(room.frames[k - 1]);
+  /** An object of the scene, projected on screen: [left, top, right, bottom] in CSS px. */
+  function screenRect(object) {
+    const box = new THREE.Box3().setFromObject(object);
     const xs = [];
     const ys = [];
     for (const x of [box.min.x, box.max.x])
@@ -169,7 +175,72 @@ export function museum3dScreen({ onBack, onFail }) {
           xs.push(((p.x + 1) / 2) * size.w);
           ys.push(((1 - p.y) / 2) * size.h);
         }
-    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map(Math.round).join(",");
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map(Math.round);
+  }
+
+  /** The painting at stop k on screen, for the tests. */
+  const frameRect = (k) => (k >= 1 && k <= count ? screenRect(room.frames[k - 1]).join(",") : "");
+
+  /** « En savoir plus » under the cartel of the painting she stopped at. */
+  function showMore(k) {
+    if (panel || busy || k < 1 || k > count) return hideMore();
+    const [l, , r, b] = screenRect(room.cartels[k - 1]);
+    moreButton.style.left = `${(l + r) / 2}px`;
+    moreButton.style.top = `${Math.min(b + 10, size.h - 120)}px`;
+    gsap.fromTo(moreButton, { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: "power2.out" });
+  }
+
+  function hideMore() {
+    gsap.killTweensOf(moreButton);
+    gsap.set(moreButton, { autoAlpha: 0 });
+  }
+
+  /** One frame, outside the spring's loop (the zoom). */
+  function renderNow() {
+    visitors.update(clock(), applyPose(), camera);
+    renderer.render(room.scene, camera);
+  }
+
+  function zoomTo(v, duration) {
+    return new Promise((resolve) => gsap.to(zoom, { v, duration, ease: "power2.inOut", onUpdate: renderNow, onComplete: resolve }));
+  }
+
+  async function openSouvenirs() {
+    const k = settledAt;
+    if (busy || panel || left || k < 1 || k > count || el.dataset.moving !== "0") return;
+    busy = true;
+    sfx("tap");
+    hideMore();
+    clearTimeout(nap);
+    document.documentElement.classList.add("is-locked");
+    el.dataset.panel = "opening";
+    const match = matches[k - 1];
+    const upcoming = match.score ? null : k - 1 === next ? "next" : "soon";
+    const text = cartelText(match, { clubs, labels: m, venues: m.venues, upcoming });
+    await zoomTo(1, 0.7);
+    if (left) return;
+    // the score, or « UBB – Bayonne » for a match still to come
+    panel = souvenirPanel(match, { labels: m, title: text.teams || text.title, onClose: closeSouvenirs });
+    el.append(panel.el);
+    sfx("pop");
+    await panel.open();
+    busy = false;
+    if (!left) el.dataset.panel = "open";
+  }
+
+  async function closeSouvenirs() {
+    if (busy || !panel || left) return;
+    busy = true;
+    el.dataset.panel = "closing";
+    await panel.close();
+    panel.el.remove();
+    panel = null;
+    await zoomTo(0, 0.6);
+    busy = false;
+    if (left) return;
+    document.documentElement.classList.remove("is-locked");
+    el.dataset.panel = "closed";
+    showMore(settledAt);
   }
 
   /** Came to rest at stop k. */
@@ -182,6 +253,7 @@ export function museum3dScreen({ onBack, onFail }) {
     el.dataset.tris = String(renderer.info.render.triangles);
     el.dataset.stop = String(k);
     el.dataset.frame = frameRect(k);
+    showMore(k);
   }
 
   function tick(now) {
@@ -319,6 +391,7 @@ export function museum3dScreen({ onBack, onFail }) {
       clearTimeout(resizeTimer);
       clearTimeout(nap);
       clearInterval(stepTimer);
+      gsap.killTweensOf([zoom, moreButton]);
       visitors?.dispose();
       decor?.dispose();
       room?.dispose();

@@ -3772,3 +3772,154 @@ html.is-museum {
     opacity: 0.45;
   }
 }
+
+/* « En savoir plus » under the cartel, and the souvenirs panel rising from the bottom */
+.g3d-more {
+  position: fixed;
+  z-index: 6;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid rgba(184, 147, 90, 0.7);
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--ivory);
+  background: linear-gradient(180deg, #8c2a42, var(--wine) 55%, #6a1a2d);
+  box-shadow: 0 10px 22px -10px rgba(122, 31, 53, 0.7);
+  translate: -50% 0;
+  visibility: hidden;
+}
+
+.g3d-souvenirs {
+  position: fixed;
+  inset: 0;
+  z-index: 45; /* under « ← Accueil » and the sound button */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.g3d-souvenirs-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 60vh;
+  max-height: 60dvh;
+  overflow-y: auto;
+  padding: 10px 20px calc(var(--sab) + 16px);
+  border-radius: 26px 26px 0 0;
+  text-align: center;
+  background: var(--ivory);
+  box-shadow: 0 -18px 40px -20px rgba(43, 26, 30, 0.45);
+}
+
+.g3d-souvenirs-grip {
+  width: 44px;
+  height: 5px;
+  margin-bottom: 6px;
+  border-radius: 3px;
+  background: rgba(43, 26, 30, 0.18);
+}
+
+.g3d-souvenirs-title {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.g3d-souvenirs-date {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.g3d-photos {
+  display: flex;
+  flex: none; /* the polaroids keep their shape, the card scrolls instead */
+  gap: 14px;
+  width: calc(100% + 40px);
+  margin: 8px -20px 0;
+  padding: 8px 20px 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.g3d-polaroid {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: min(38vw, 170px, 21dvh);
+  aspect-ratio: 0.82;
+  margin: 0;
+  padding: 10px 10px 30px;
+  background: #fff;
+  box-shadow: 0 8px 18px -8px rgba(43, 26, 30, 0.4);
+  scroll-snap-align: start;
+  rotate: -2deg;
+}
+
+.g3d-polaroid:nth-child(even) {
+  rotate: 2deg;
+}
+
+.g3d-polaroid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.g3d-polaroid.is-empty {
+  border: 1px dashed rgba(184, 147, 90, 0.6);
+  color: var(--ink-soft);
+}
+
+.g3d-polaroid.is-empty span {
+  font-size: 1.8rem;
+  opacity: 0.6;
+}
+
+.g3d-polaroid figcaption {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-style: italic;
+}
+
+.g3d-souvenirs-meet {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-style: italic;
+  color: var(--wine);
+}
+
+.g3d-souvenirs-story {
+  max-width: 440px;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.g3d-souvenirs-close {
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0 26px;
+  border: 1px solid rgba(184, 147, 90, 0.7);
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--wine);
+  background: rgba(255, 253, 249, 0.85);
+}
