@@ -36,6 +36,22 @@ test("rail: at a stop the whole frame is on screen, clear of the top buttons, ph
   }
 });
 
+test("rail: at a stop Mini Cycy and Kevin stand under the cartel, feet on screen", () => {
+  const half = Math.tan((55 * Math.PI) / 360);
+  // a point's height on screen (0 top, 1 bottom), the camera looking `pitch` below the horizon
+  const screenY = (y, dist, pitch) => 0.5 + (0.5 * Math.tan(Math.atan((ROOM.eyeY - y) / dist) + pitch)) / half;
+  for (const aspect of [393 / 852, 375 / 667]) {
+    const { cam } = railPose(1, 14, aspect, 55);
+    const wall = framingDistance(aspect, 55);
+    const cartelBottom = screenY(ROOM.cartelY - ROOM.cartelH / 2, wall, cam.pitch);
+    const head = screenY(ROOM.visitorH, ROOM.visitorsGap, cam.pitch);
+    const feet = screenY(0, ROOM.visitorsGap, cam.pitch);
+    assert.ok(head > cartelBottom + 0.02, `${aspect}: head at ${head.toFixed(2)}, cartel down to ${cartelBottom.toFixed(2)}`);
+    assert.ok(feet < 0.98, `${aspect}: feet at ${feet.toFixed(2)}`);
+    assert.ok(feet - head > 0.2, `${aspect}: ${((feet - head) * 100).toFixed(0)} % of the screen tall`); // still big
+  }
+});
+
 test("rail: walking looks down the corridor, a stop faces its painting", () => {
   const walk = railPose(1.5, 14, 0.46, 55);
   assert.equal(walk.focus, 0);

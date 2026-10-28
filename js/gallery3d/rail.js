@@ -16,8 +16,8 @@ export const ROOM = {
   cartelY: 0.8, // centre of the cartel
   cartelW: 1.66,
   cartelH: 0.83, // a 1024 × 512 canvas
-  visitorsGap: 2.2, // camera → visitors
-  visitorH: 1.15,
+  visitorsGap: 2.5, // camera → visitors: they stand under the cartel, feet on screen
+  visitorH: 0.72, // chibis: about a quarter of the screen tall
 };
 
 const WALK_PITCH = -0.12; // looking slightly down: the visitors' feet stay on screen

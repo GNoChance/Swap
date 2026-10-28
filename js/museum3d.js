@@ -6,16 +6,21 @@
 import * as THREE from "./vendor/three.module.min.js";
 import { Reflector } from "./vendor/Reflector.js";
 import { content } from "./content.js";
-import { nextMatchIndex } from "./logic.js";
+import { nextMatchIndex, museumReaction } from "./logic.js";
 import { ROOM, railPose, springStep } from "./gallery3d/rail.js";
 import { loadFonts, paintingCanvas, cartelCanvas, parquetCanvas, plasterCanvas, haloCanvas } from "./gallery3d/textures.js";
 import { buildRoom } from "./gallery3d/room.js";
 import { addDecor } from "./gallery3d/decor.js";
+import { createVisitors } from "./gallery3d/visitors.js";
 import { sfx, unlockAudio } from "./audio.js";
+import { confetti } from "./effects.js";
 import { h } from "./dom.js";
 
 const gsap = window.gsap;
 const VFOV = 55;
+const NAP = 25000; // standing still this long in front of a painting: they sit down and doze off
+const GOLD = ["#c9a15b", "#e6cb8f", "#f3dfb0", "#7a1733", "#ffffff"];
+const clock = () => performance.now() / 1000;
 
 /** onFail: no WebGL after all, or the context is lost (iPhone in the background): the CSS gallery takes over. */
 export function museum3dScreen({ onBack, onFail }) {
@@ -56,6 +61,11 @@ export function museum3dScreen({ onBack, onFail }) {
   let camera = null;
   let room = null;
   let decor = null;
+  let visitors = null;
+  let lastStop = -1; // the stop they last reacted at
+  let reactions = 0;
+  let stepTimer = null;
+  let nap = null;
   let stopH = innerHeight;
   let size = { w: innerWidth, h: innerHeight };
   let spring = { x: 0, v: 0 };
@@ -78,12 +88,72 @@ export function museum3dScreen({ onBack, onFail }) {
     );
   }
 
+  /** Places the camera; returns the visitors' pose. */
   function applyPose() {
-    const { cam } = railPose(spring.x, count, size.w / size.h, VFOV, 0, ROOM);
+    const { cam, visitors: pose } = railPose(spring.x, count, size.w / size.h, VFOV, 0, ROOM);
     camera.position.set(cam.x, cam.y, cam.z);
     camera.rotation.set(cam.pitch, cam.yaw, 0, "YXZ");
+    camera.updateMatrixWorld();
     intro.style.opacity = Math.max(0, 1 - spring.x * 2.4).toFixed(3);
     intro.style.visibility = spring.x > 0.45 ? "hidden" : "";
+    return pose;
+  }
+
+  function showState() {
+    el.dataset.faces = visitors.faces();
+    el.dataset.reactions = String(reactions);
+    el.dataset.swapped = visitors.isSwapped() ? "1" : "0";
+  }
+
+  function startWalking() {
+    if (stepTimer) return;
+    lastStop = -1;
+    clearTimeout(nap);
+    visitors.walking(true);
+    visitors.swap(false);
+    sfx("step");
+    stepTimer = setInterval(() => sfx("step"), 340);
+    showState();
+  }
+
+  function stopWalking() {
+    clearInterval(stepTimer);
+    stepTimer = null;
+    visitors.walking(false);
+  }
+
+  /** Arrived at stop k: they look, cheer, sulk… once per stop, only where the camera comes to rest. */
+  function react(k) {
+    if (k === lastStop) return;
+    lastStop = k;
+    reactions++;
+    clearTimeout(nap);
+    if (k === 0) visitors.set("look");
+    else if (k === stops - 1) {
+      visitors.set("turn");
+      visitors.swap(true);
+      sfx("reveal");
+    } else {
+      const match = matches[k - 1];
+      const reaction = museumReaction(match);
+      visitors.set(reaction);
+      sfx("ding");
+      if (reaction === "lose") setTimeout(() => lastStop === k && sfx("sadTrombone"), 350);
+      else if (reaction === "win" || reaction === "final") {
+        visitors.jump(clock());
+        if (reaction === "final") {
+          sfx("final");
+          confetti(GOLD);
+        } else setTimeout(() => lastStop === k && sfx("applause"), 300);
+      }
+      nap = setTimeout(() => {
+        if (left || lastStop !== k) return;
+        visitors.set("sleep");
+        showState();
+        request();
+      }, NAP);
+    }
+    showState();
   }
 
   /** The painting at stop k, projected on screen (CSS px), for the tests. */
@@ -105,6 +175,8 @@ export function museum3dScreen({ onBack, onFail }) {
   /** Came to rest at stop k. */
   function settle(k) {
     settledAt = k;
+    stopWalking();
+    react(k);
     room.aimSpot(k >= 1 && k <= count ? k - 1 : -1);
     renderer.render(room.scene, camera); // with the spot on it
     el.dataset.tris = String(renderer.info.render.triangles);
@@ -121,12 +193,12 @@ export function museum3dScreen({ onBack, onFail }) {
     const moving = Math.abs(spring.x - target) > 0.002 || Math.abs(spring.v) > 0.004;
     if (!moving) spring = { x: target, v: 0 };
     if (moving && !wasMoving) room.aimSpot(-1);
-    applyPose();
+    const animating = visitors.update(clock(), applyPose(), camera);
     renderer.render(room.scene, camera);
     el.dataset.moving = moving ? "1" : "0";
     if (wasMoving && !moving) settle(Math.round(target));
     wasMoving = moving;
-    if (moving) request();
+    if (moving || animating) request();
   }
 
   function request() {
@@ -137,6 +209,7 @@ export function museum3dScreen({ onBack, onFail }) {
 
   function onScroll() {
     target = Math.max(0, Math.min(stops - 1, scrollY / stopH));
+    if (Math.abs(target - settledAt) > 0.01) startWalking();
     el.dataset.moving = "1";
     wasMoving = true;
     request();
@@ -160,7 +233,7 @@ export function museum3dScreen({ onBack, onFail }) {
         target = k;
         spring = { x: k, v: 0 };
       }
-      applyPose();
+      visitors.update(clock(), applyPose(), camera);
       settle(settledAt);
     }, 200);
   }
@@ -214,7 +287,10 @@ export function museum3dScreen({ onBack, onFail }) {
       end: m.end,
       endNote: m.endNote,
     });
-    applyPose();
+    visitors = await createVisitors(THREE, { faces: m.faces, room: ROOM });
+    if (left) return visitors.dispose();
+    room.scene.add(visitors.group);
+    visitors.update(clock(), applyPose(), camera);
     renderer.render(room.scene, camera);
     settle(0);
     el.dataset.moving = "0";
@@ -241,6 +317,9 @@ export function museum3dScreen({ onBack, onFail }) {
       removeEventListener("resize", onResize);
       cancelAnimationFrame(frame);
       clearTimeout(resizeTimer);
+      clearTimeout(nap);
+      clearInterval(stepTimer);
+      visitors?.dispose();
       decor?.dispose();
       room?.dispose();
       if (renderer) {
