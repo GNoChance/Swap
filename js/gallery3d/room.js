@@ -1,7 +1,7 @@
 // The gallery's room: plaster walls, a waxed herringbone floor that mirrors the room, the ceiling, and the paintings
 // (relief frame, canvas, cartel, the spot's pool of light on the wall). Lighting: a soft sky, daylight from the
 // skylight, and one real spot that follows the painting she's looking at; the other pools of light are painted.
-import { stopLayout } from "./rail.js";
+import { stopLayout, corridorEnds } from "./rail.js";
 
 export function buildRoom(THREE, { count, room, canvases, works, Reflector, anisotropy = 1, mirrorSize }) {
   const scene = new THREE.Scene();
@@ -22,8 +22,7 @@ export function buildRoom(THREE, { count, room, canvases, works, Reflector, anis
   };
   const material = (m) => (owned.push(m), m);
 
-  const zStart = room.spacing; // a little behind the entrance
-  const zEnd = -(count + 1) * room.spacing - 4; // the end wall
+  const { zStart, zEnd } = corridorEnds(count, room);
   const length = zStart - zEnd;
   const zMid = (zStart + zEnd) / 2;
 

@@ -10,6 +10,7 @@ import { nextMatchIndex } from "./logic.js";
 import { ROOM, railPose, springStep } from "./gallery3d/rail.js";
 import { loadFonts, paintingCanvas, cartelCanvas, parquetCanvas, plasterCanvas, haloCanvas } from "./gallery3d/textures.js";
 import { buildRoom } from "./gallery3d/room.js";
+import { addDecor } from "./gallery3d/decor.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { h } from "./dom.js";
 
@@ -54,6 +55,7 @@ export function museum3dScreen({ onBack, onFail }) {
   let renderer = null;
   let camera = null;
   let room = null;
+  let decor = null;
   let stopH = innerHeight;
   let size = { w: innerWidth, h: innerHeight };
   let spring = { x: 0, v: 0 };
@@ -105,6 +107,7 @@ export function museum3dScreen({ onBack, onFail }) {
     settledAt = k;
     room.aimSpot(k >= 1 && k <= count ? k - 1 : -1);
     renderer.render(room.scene, camera); // with the spot on it
+    el.dataset.tris = String(renderer.info.render.triangles);
     el.dataset.stop = String(k);
     el.dataset.frame = frameRect(k);
   }
@@ -202,6 +205,15 @@ export function museum3dScreen({ onBack, onFail }) {
       anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
       mirrorSize: { w: Math.round((size.w * pixelRatio) / 2), h: Math.round((size.h * pixelRatio) / 2) },
     });
+    decor = addDecor(THREE, room.scene, {
+      count,
+      room: ROOM,
+      finalIndex: matches.findIndex((match) => match.final),
+      title: m.title,
+      subtitle: m.subtitle,
+      end: m.end,
+      endNote: m.endNote,
+    });
     applyPose();
     renderer.render(room.scene, camera);
     settle(0);
@@ -229,6 +241,7 @@ export function museum3dScreen({ onBack, onFail }) {
       removeEventListener("resize", onResize);
       cancelAnimationFrame(frame);
       clearTimeout(resizeTimer);
+      decor?.dispose();
       room?.dispose();
       if (renderer) {
         renderer.dispose();

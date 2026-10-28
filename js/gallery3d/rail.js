@@ -34,6 +34,11 @@ export function stopLayout(count, room = ROOM) {
   });
 }
 
+/** The corridor runs from a little behind the entrance to the end wall, a few metres past the last stop. */
+export function corridorEnds(count, room = ROOM) {
+  return { zStart: room.spacing, zEnd: -(count + 1) * room.spacing - 4 };
+}
+
 const halfTans = (aspect, vfovDeg) => {
   const tv = Math.tan((vfovDeg * Math.PI) / 360);
   return { tv, th: tv * aspect };

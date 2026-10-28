@@ -1,7 +1,7 @@
 // The 3D gallery's camera rail and spring: pure maths, no Three.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ROOM, stopLayout, framingDistance, zoomDistance, railPose, springStep } from "../js/gallery3d/rail.js";
+import { ROOM, stopLayout, corridorEnds, framingDistance, zoomDistance, railPose, springStep } from "../js/gallery3d/rail.js";
 
 test("rail: paintings alternate left and right, one spacing apart", () => {
   const stops = stopLayout(14);
@@ -9,6 +9,12 @@ test("rail: paintings alternate left and right, one spacing apart", () => {
   assert.deepEqual(stops.slice(0, 3).map((s) => s.side), [-1, 1, -1]);
   assert.equal(stops[1].z - stops[0].z, -ROOM.spacing);
   assert.equal(stops[0].wallX, -ROOM.width / 2);
+});
+
+test("rail: the corridor starts behind the entrance and ends past the last stop", () => {
+  const { zStart, zEnd } = corridorEnds(14);
+  assert.ok(zStart > railPose(0, 14, 0.46, 55).cam.z);
+  assert.ok(zEnd < railPose(15, 14, 0.46, 55).visitors.z - 3);
 });
 
 test("rail: framing fits phones held upright and stays inside the room", () => {
