@@ -12,8 +12,25 @@ const DOUBLE = 2.5;
 const day = (iso) => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-/** items: photos and videos (with url), index: the one tapped. */
-export function openViewer(items, index, { labels, onClose = () => {} }) {
+/** items: photos and videos (with url), index: the one tapped. cover (optional): { is(item), choose(item) } for
+ *  « ⭐ Mettre sur le tableau ». */
+export function openViewer(items, index, { labels, onClose = () => {}, cover = null }) {
+  const ui = labels.souvenirsUi;
+  const coverButton = h("button", {
+    class: "g3d-pill g3d-cover",
+    type: "button",
+    hidden: true,
+    async onclick() {
+      const item = items[index];
+      coverButton.disabled = true;
+      try {
+        await cover.choose(item);
+      } catch {
+        /* no network: the button comes back */
+      }
+      showCover();
+    },
+  });
   const stage = h("div", { class: "g3d-viewer-stage" });
   const caption = h("p", { class: "g3d-viewer-caption" });
   const prev = h("button", { class: "g3d-viewer-nav", type: "button", "aria-label": "←", onclick: () => go(-1) }, "‹");
@@ -23,6 +40,7 @@ export function openViewer(items, index, { labels, onClose = () => {} }) {
     { class: "g3d-viewer", role: "dialog", "aria-modal": "true", "aria-label": labels.souvenirs },
     stage,
     h("div", { class: "g3d-viewer-bar" }, prev, caption, next),
+    coverButton,
     h("button", { class: "g3d-souvenirs-close g3d-viewer-close", type: "button", onclick: close }, labels.close),
   );
 
@@ -64,6 +82,17 @@ export function openViewer(items, index, { labels, onClose = () => {} }) {
     el.dataset.zoom = "1.00";
     caption.textContent = `${item.author} · ${day(item.created_at)}`;
     prev.hidden = next.hidden = items.length < 2;
+    showCover();
+  }
+
+  /** The ⭐ button: only for a photo of a played match; « Sur le tableau » once it is the painting's. */
+  function showCover() {
+    const item = items[index];
+    coverButton.hidden = !cover || item.kind !== "photo";
+    if (coverButton.hidden) return;
+    const on = cover.is(item);
+    coverButton.textContent = on ? ui.isCover : ui.cover;
+    coverButton.disabled = on;
   }
 
   function go(step) {

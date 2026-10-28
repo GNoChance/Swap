@@ -65,8 +65,9 @@ function roundRect(g, x, y, w, h, r) {
   g.roundRect(x, y, w, h, r);
 }
 
-/** A match painting, 1024 × 768: mat, two fields of colour (UBB, the opponent), the date, the two logos. */
-export async function paintingCanvas(match, { clubs, labels, upcoming }) {
+/** A match painting, 1024 × 768: mat, two fields of colour (UBB, the opponent), the date, the two logos; photo (an
+ *  image, optional): a small square print of the match tucked into the bottom-right corner (Kevin's sketch). */
+export async function paintingCanvas(match, { clubs, labels, upcoming }, photo = null) {
   const { width: W, height: H, medals } = PAINTING;
   const c = canvas(W, H);
   const g = c.getContext("2d");
@@ -127,8 +128,29 @@ export async function paintingCanvas(match, { clubs, labels, upcoming }) {
   g.fillStyle = "#fbf9f5";
   g.fillText("×", W / 2, medals[0].y);
 
+  if (photo && !upcoming) print(g, inner, photo);
   if (upcoming) veil(g, inner, labels[upcoming]);
   return c;
+}
+
+/** The match's photo as a small square print in the canvas's bottom-right corner, a little over its edge: cropped
+ *  square from its centre, a white border, a soft shadow. Clear of the opponent's medallion. */
+export const PRINT = { size: 190, border: 10, overhang: 24 };
+function print(g, inner, photo) {
+  const { size: s, border: b, overhang: o } = PRINT;
+  const x = inner.x + inner.w - s + o;
+  const y = inner.y + inner.h - s + o;
+  g.save();
+  g.shadowColor = "rgba(0, 0, 0, 0.35)";
+  g.shadowBlur = 18;
+  g.shadowOffsetY = 6;
+  g.fillStyle = "#fff";
+  g.fillRect(x - b, y - b, s + 2 * b, s + 2 * b);
+  g.restore();
+  const w = photo.naturalWidth || photo.width;
+  const h = photo.naturalHeight || photo.height;
+  const side = Math.min(w, h);
+  g.drawImage(photo, (w - side) / 2, (h - side) / 2, side, side, x, y, s, s);
 }
 
 /** A match still to come: a pleated linen sheet over the canvas, with its tag. */

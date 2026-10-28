@@ -78,6 +78,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
   let closed = false;
   let name = savedName();
   let viewer = null; // the full screen, if open
+  let coverId = null; // the photo on this match's painting
 
   // kept across renders: a live insert must not wipe a note being typed
   const fileInput = h("input", {
@@ -186,7 +187,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
         tabindex: "0",
         onclick() {
           const media = items.filter((i) => i.kind !== "note");
-          viewer = openViewer(media, media.indexOf(item), { labels, onClose: () => (viewer = null) });
+          viewer = openViewer(media, media.indexOf(item), { labels, onClose: () => (viewer = null), cover });
         },
       },
       h("div", { class: "g3d-polaroid-shot" }, thumb, item.kind === "video" && h("span", { class: "g3d-play", "aria-hidden": "true" }, "▶")),
@@ -429,8 +430,18 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
     if (closed) return;
     render();
     unsubscribe ??= store.subscribe(match.date, onChange);
+    if (match.score) store.paintingPhotos().then((p) => (coverId = p[match.date]?.id ?? null), () => {});
     watchers.add(watch);
   }
+
+  /** « ⭐ Mettre sur le tableau » in the full screen of a photo, for a match already played. */
+  const cover = match.score && {
+    is: (item) => item.id === coverId,
+    async choose(item) {
+      await store.setCover(match.date, item.id);
+      coverId = item.id;
+    },
+  };
 
   /** Done with this panel: no live channel, no full screen, no upload news left behind. */
   function dispose() {

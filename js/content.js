@@ -682,6 +682,8 @@ export const content = {
       cancel: "Annuler",
       by: "{name}",
       drop: "Dépose tes photos et vidéos ici",
+      cover: "⭐ Mettre sur le tableau",
+      isCover: "⭐ Sur le tableau",
     },
     // Vous deux, de dos : walk = pendant qu'elle fait défiler, look = à l'entrée, point = match à venir,
     // win / lose / final = selon le score, sleep = 25 s sans bouger devant un tableau, turn = au bout du couloir

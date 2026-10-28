@@ -97,6 +97,7 @@ export function buildRoom(THREE, { count, room, canvases, works, Reflector, anis
   const card = material(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }));
 
   const frames = [];
+  const faces = []; // each painting's canvas, to put a photo on it later
   const cartels = [];
   const groups = [];
   stopLayout(count, room).forEach((s, i) => {
@@ -113,6 +114,7 @@ export function buildRoom(THREE, { count, room, canvases, works, Reflector, anis
     const face = new THREE.Mesh(new THREE.PlaneGeometry(canvasW, canvasH), material(new THREE.MeshBasicMaterial({ map: texture(work.painting) })));
     face.position.z = 0.032;
     frame.add(back, face);
+    faces.push(face);
     const wood = work.final ? gold : black;
     for (const [w, h, x, y] of [
       [room.frameW, bar, 0, (canvasH + bar) / 2],
@@ -160,5 +162,15 @@ export function buildRoom(THREE, { count, room, canvases, works, Reflector, anis
     owned.forEach((o) => (o.isTexture ? freeTexture(o) : o.dispose()));
   }
 
-  return { scene, frames, cartels, aimSpot, dispose };
+  /** Painting i gets a new canvas (its match's photo came, changed or went); the old one is freed. */
+  function setPainting(i, canvas) {
+    const m = faces[i].material;
+    const old = m.map;
+    m.map = texture(canvas);
+    m.needsUpdate = true;
+    owned.splice(owned.indexOf(old), 1);
+    freeTexture(old);
+  }
+
+  return { scene, frames, cartels, aimSpot, setPainting, dispose };
 }

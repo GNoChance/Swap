@@ -88,6 +88,7 @@ export function museum3dScreen({ onBack, onFail }) {
   let panel = null;
   let store = null; // shared souvenirs (null until configured)
   let counts = {}; // match date → photos and videos, once unlocked
+  const drawn = {}; // match date → the photo now on its painting
   let busy = false; // opening or closing the souvenirs
 
   function layoutTrack() {
@@ -208,6 +209,44 @@ export function museum3dScreen({ onBack, onFail }) {
     moreButton.dataset.count = String(n);
   }
 
+  const loadPhoto = (url) =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous"; // a texture from another origin must be CORS-clean
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+
+  /** Each played match's photo on its painting, on a phone where the code was typed. Quiet on any failure: the
+   *  painting stays as it is. Redraws only a painting whose photo changed. */
+  async function refreshPaintings() {
+    if (!store || !room || left) return;
+    let photos;
+    try {
+      if (!(await store.isUnlocked())) return;
+      photos = await store.paintingPhotos();
+    } catch {
+      return;
+    }
+    for (const [i, match] of matches.entries()) {
+      if (left) return;
+      if (!match.score) continue; // a match to come keeps its drape
+      const want = photos[match.date] || null;
+      if ((want?.id ?? null) === (drawn[match.date] ?? null)) continue;
+      const img = want && (await loadPhoto(want.url));
+      if (want && !img) continue;
+      if (left) return;
+      room.setPainting(i, await paintingCanvas(match, { clubs, labels: m, venues: m.venues, upcoming: null }, img || null));
+      drawn[match.date] = want?.id ?? null;
+    }
+    el.dataset.covers = Object.entries(drawn)
+      .filter(([, id]) => id)
+      .map(([date, id]) => `${date}:${id}`)
+      .join(",");
+    request();
+  }
+
   /** Fresh counts, quietly: a locked phone or no network just shows no count. */
   async function refreshCounts() {
     if (!store || !(await store.isUnlocked().catch(() => false))) return;
@@ -281,6 +320,7 @@ export function museum3dScreen({ onBack, onFail }) {
     showMore(settledAt);
     if (settledAt >= 1 && settledAt <= count) armNap(settledAt);
     refreshCounts();
+    refreshPaintings();
   }
 
   /** Came to rest at stop k: they react, then the framing is refreshed. */
@@ -439,6 +479,8 @@ export function museum3dScreen({ onBack, onFail }) {
     renderer.compile(room.scene, camera); // every shader now, under the loader, rather than at the first painting
     renderNow();
     arrive(0);
+    el.dataset.covers = "";
+    refreshPaintings();
     el.dataset.moving = "0";
     el.dataset.ready = "1";
     gsap.to(loader, { autoAlpha: 0, duration: 0.5, onComplete: () => loader.remove() });

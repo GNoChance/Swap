@@ -29,6 +29,7 @@ export function createFakeStore({ deviceId }) {
     failNext: () => (failNext = true),
     expire: () => localStorage.removeItem(sessionKey),
     slow: 0,
+    brokenCovers: false, // the paintings' photo links lead nowhere (an expired link, no network)
     stats: { channels: 0, running: 0, maxRunning: 0 },
   });
 
@@ -109,7 +110,7 @@ export function createFakeStore({ deviceId }) {
       const out = {};
       for (const date of new Set(db.rows.map((r) => r.match_date))) {
         const photo = pickCover(db.rows.filter((r) => r.match_date === date), db.covers[date]);
-        if (photo) out[date] = { id: photo.id, url: db.files[photo.thumb] || db.files[photo.path] };
+        if (photo) out[date] = { id: photo.id, url: hooks.brokenCovers ? `/souvenirs-introuvable/${photo.id}.jpg` : db.files[photo.thumb] || db.files[photo.path] };
       }
       return out;
     },
