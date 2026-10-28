@@ -209,7 +209,9 @@ export function museumScreen({ onBack }) {
   let walking = false;
   let lastStop = -1;
   let stepTimer = null;
+  let nap = null; // 25 s standing still in front of a painting: they sit down and doze off
   const bobs = [];
+  const NAP = 25000;
 
   function setFaces(key) {
     cycy.set(m.faces.cycy[key]);
@@ -220,8 +222,10 @@ export function museumScreen({ onBack }) {
     if (walking) return;
     walking = true;
     lastStop = -1;
+    clearTimeout(nap);
     setFaces("walk");
     end.classList.remove("is-shown");
+    visitors.classList.remove("is-swapped");
     [cycy, kevin].forEach((a, k) =>
       bobs.push(gsap.to(a.el.parentElement, { y: -7, rotation: k ? 2.5 : -2.5, duration: 0.17, repeat: -1, yoyo: true, ease: "sine.inOut", delay: k * 0.17 })),
     );
@@ -243,6 +247,7 @@ export function museumScreen({ onBack }) {
     if (k === 0) return setFaces("look");
     if (k === stops - 1) {
       setFaces("turn");
+      visitors.classList.add("is-swapped"); // their kisses fly towards each other
       end.classList.add("is-shown");
       gsap.fromTo(end.children, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.15, ease: "power2.out" });
       sfx("reveal");
@@ -257,7 +262,7 @@ export function museumScreen({ onBack }) {
       setTimeout(() => lastStop === k && sfx("sadTrombone"), 350);
       return;
     }
-    setFaces("win");
+    setFaces(match.final ? "final" : "win");
     [cycy, kevin].forEach((a, i) => setTimeout(() => a.jump(20), i * 110));
     if (match.final) {
       sfx("final");
@@ -283,6 +288,8 @@ export function museumScreen({ onBack }) {
     const k = Math.round(p);
     if (Math.abs(p - k) < 0.06) arrive(k);
     else setFaces("look");
+    clearTimeout(nap);
+    if (k > 0 && k < stops - 1) nap = setTimeout(() => setFaces("sleep"), NAP);
   }
 
   let resizeTimer = null;
@@ -314,6 +321,7 @@ export function museumScreen({ onBack }) {
       removeEventListener("resize", onResize);
       cancelAnimationFrame(frame);
       clearTimeout(idle);
+      clearTimeout(nap);
       stopWalking();
     },
   };

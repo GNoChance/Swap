@@ -3703,6 +3703,10 @@ html.is-museum {
   gap: 4px;
 }
 
+.mu-visitors.is-swapped {
+  flex-direction: row-reverse;
+}
+
 .mu-visitor {
   filter: drop-shadow(0 8px 8px rgba(43, 26, 30, 0.22));
 }

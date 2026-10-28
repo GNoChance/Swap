@@ -650,10 +650,11 @@ export const content = {
     next: "La prochaine œuvre",
     end: "À suivre…",
     endNote: "La suite s'écrit ensemble.",
-    // Stickers provisoires, en attendant les stickers de dos
+    // Vous deux, de dos : walk = pendant qu'elle fait défiler, look = à l'entrée, point = match à venir,
+    // win / lose / final = selon le score, sleep = 25 s sans bouger devant un tableau, turn = au bout du couloir
     faces: {
-      cycy: { walk: "maillot-wink", look: "maillot-think", point: "maillot-thumbs", win: "maillot-cheer", lose: "maillot-cry", turn: "maillot-kiss" },
-      kevin: { walk: "kevin-smug", look: "kevin-think", point: "kevin-wink", win: "kevin-cheer", lose: "kevin-pout", turn: "kevin-kiss" },
+      cycy: { walk: "dos-cycy-shy", look: "dos-cycy-think", point: "dos-cycy-wink", win: "dos-cycy-cheer", lose: "dos-cycy-cry", final: "dos-cycy-joy", sleep: "dos-cycy-sleep", turn: "dos-cycy-kiss" },
+      kevin: { walk: "dos-kevin-glasses", look: "dos-kevin-think", point: "dos-kevin-wink", win: "dos-kevin-cheer", lose: "dos-kevin-shock", final: "dos-kevin-joy", sleep: "dos-kevin-sleep", turn: "dos-kevin-kiss" },
     },
     clubs: {
       ubb: { name: "UBB", logo: "ubb.svg", color: "#7a1733" },
