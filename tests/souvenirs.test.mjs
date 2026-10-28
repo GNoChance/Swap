@@ -91,11 +91,13 @@ test("supabase/setup.sql: private table and bucket, only the shared account, liv
   assert.match(sql, /alter publication supabase_realtime add table public\.souvenirs/);
 });
 
-test("souvenirs: the config ships empty, no code written anywhere in the site's code", async () => {
+test("souvenirs: the config is the public key of Kevin's project (never a secret one), no code written anywhere", async () => {
   const { readFileSync, readdirSync } = await import("node:fs");
   const { config } = await import("../js/souvenirs-config.js");
-  assert.equal(config.url, "");
-  assert.equal(config.anonKey, "");
+  assert.equal(config.url, "https://iyzksvyznyddimilpfha.supabase.co");
+  const payload = JSON.parse(Buffer.from(config.anonKey.split(".")[1], "base64url").toString());
+  assert.equal(payload.role, "anon"); // a service_role key here would open everything to anyone
+  assert.equal(payload.ref, "iyzksvyznyddimilpfha");
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "vendor" ? [] : walk(`${dir}/${e.name}`)) : [`${dir}/${e.name}`]));
   const root = new URL("../js", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
   // a code written down: password: "…" / password = "…" (a password field, type: "password", is fine)
