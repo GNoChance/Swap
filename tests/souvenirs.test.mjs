@@ -99,7 +99,8 @@ test("souvenirs: the config is the public key of Kevin's project (never a secret
   assert.equal(payload.role, "anon"); // a service_role key here would open everything to anyone
   assert.equal(payload.ref, "iyzksvyznyddimilpfha");
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "vendor" ? [] : walk(`${dir}/${e.name}`)) : [`${dir}/${e.name}`]));
-  const root = new URL("../js", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
+  // fileURLToPath, not a hand-made path: the drive letter may come as c: or C: (on c: this failed now and then)
+  const root = (await import("node:url")).fileURLToPath(new URL("../js", import.meta.url));
   // a code written down: password: "…" / password = "…" (a password field, type: "password", is fine)
   const written = /password["']?\s*[:=]\s*["'`]\w/i;
   assert.match('{ password: "hunter2" }', written); // the guard itself works
