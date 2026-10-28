@@ -23,6 +23,12 @@ function canvas(w, h) {
   return c;
 }
 
+/** Frees a texture and, for a canvas texture, its source canvas at once (iOS Safari caps a page's canvas memory). */
+export function freeTexture(t) {
+  if (t?.isCanvasTexture && t.image) t.image.width = t.image.height = 0;
+  t?.dispose();
+}
+
 export function loadFonts() {
   return Promise.all(
     [`italic 500 40px ${SERIF}`, `600 40px ${SERIF}`, `400 40px ${SANS}`, `600 40px ${SANS}`].map((font) => document.fonts.load(font)),

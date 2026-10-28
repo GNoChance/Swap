@@ -83,7 +83,7 @@ export function museum3dScreen({ onBack, onFail }) {
 
   function layoutTrack() {
     stopH = innerHeight;
-    track.style.height = `${stops * stopH}px`;
+    track.style.height = `calc(${(stops - 1) * stopH}px + 100lvh)`;
     track.replaceChildren(
       ...Array.from({ length: stops }, (_, k) => {
         const stop = h("div", { class: "mu-stop", "aria-hidden": "true" });
@@ -96,7 +96,7 @@ export function museum3dScreen({ onBack, onFail }) {
 
   /** Places the camera; returns the visitors' pose. */
   function applyPose() {
-    const { cam, visitors: pose } = railPose(spring.x, count, size.w / size.h, VFOV, zoom.v, ROOM);
+    const { cam, visitors: pose } = railPose(spring.x, count, size.w / size.h, VFOV, zoom.v, ROOM, spring.v);
     camera.position.set(cam.x, cam.y, cam.z);
     camera.rotation.set(cam.pitch, cam.yaw, 0, "YXZ");
     camera.updateMatrixWorld();
@@ -243,11 +243,24 @@ export function museum3dScreen({ onBack, onFail }) {
     showMore(settledAt);
   }
 
-  /** Came to rest at stop k. */
-  function settle(k) {
-    settledAt = k;
+  /** Came to rest at stop k: they react, then the framing is refreshed. */
+  function arrive(k) {
     stopWalking();
     react(k);
+    refresh(k);
+  }
+
+  /** A finger held between two paintings: they stop and look, no reaction, no button. */
+  function pause() {
+    stopWalking();
+    visitors.set("look");
+    showState();
+    hideMore();
+  }
+
+  /** At rest at stop k: the spot, the state for the tests, « En savoir plus » (also after a resize, no reaction). */
+  function refresh(k) {
+    settledAt = k;
     room.aimSpot(k >= 1 && k <= count ? k - 1 : -1);
     renderer.render(room.scene, camera); // with the spot on it
     el.dataset.tris = String(renderer.info.render.triangles);
@@ -259,16 +272,19 @@ export function museum3dScreen({ onBack, onFail }) {
   function tick(now) {
     frame = 0;
     if (left) return;
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
     spring = springStep(spring, target, dt);
     const moving = Math.abs(spring.x - target) > 0.002 || Math.abs(spring.v) > 0.004;
     if (!moving) spring = { x: target, v: 0 };
-    if (moving && !wasMoving) room.aimSpot(-1);
     const animating = visitors.update(clock(), applyPose(), camera);
     renderer.render(room.scene, camera);
     el.dataset.moving = moving ? "1" : "0";
-    if (wasMoving && !moving) settle(Math.round(target));
+    if (wasMoving && !moving) {
+      const k = Math.round(target);
+      if (Math.abs(target - k) < 0.03) arrive(k);
+      else pause();
+    }
     wasMoving = moving;
     if (moving || animating) request();
   }
@@ -280,6 +296,7 @@ export function museum3dScreen({ onBack, onFail }) {
   }
 
   function onScroll() {
+    if (!visitors) return; // still loading: build() starts from the top
     target = Math.max(0, Math.min(stops - 1, scrollY / stopH));
     if (Math.abs(target - settledAt) > 0.01) startWalking();
     el.dataset.moving = "1";
@@ -291,10 +308,10 @@ export function museum3dScreen({ onBack, onFail }) {
   function onResize() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (left || !renderer) return;
+      if (left || !visitors) return; // still loading: build() takes the size at the end
       const sameWidth = Math.abs(innerWidth - size.w) < 2;
       size = { w: innerWidth, h: innerHeight };
-      renderer.setSize(size.w, size.h);
+      renderer.setSize(size.w, size.h, false);
       camera.aspect = size.w / size.h;
       camera.updateProjectionMatrix();
       // Safari's bars coming and going only change the height a little: the stops stay where they are
@@ -305,8 +322,10 @@ export function museum3dScreen({ onBack, onFail }) {
         target = k;
         spring = { x: k, v: 0 };
       }
-      visitors.update(clock(), applyPose(), camera);
-      settle(settledAt);
+      // walking: the walk goes on and arrives by itself; at rest: reframe only, never a second reaction
+      if (wasMoving) return request();
+      renderNow();
+      refresh(settledAt);
     }, 200);
   }
 
@@ -323,7 +342,7 @@ export function museum3dScreen({ onBack, onFail }) {
     }
     const pixelRatio = Math.min(devicePixelRatio || 1, 2);
     renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(size.w, size.h);
+    renderer.setSize(size.w, size.h, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
@@ -362,9 +381,19 @@ export function museum3dScreen({ onBack, onFail }) {
     visitors = await createVisitors(THREE, { faces: m.faces, room: ROOM });
     if (left) return visitors.dispose();
     room.scene.add(visitors.group);
-    visitors.update(clock(), applyPose(), camera);
-    renderer.render(room.scene, camera);
-    settle(0);
+    // she may have scrolled or turned the phone while it loaded: start at the entrance, at the current size
+    size = { w: innerWidth, h: innerHeight };
+    renderer.setSize(size.w, size.h, false);
+    camera.aspect = size.w / size.h;
+    camera.updateProjectionMatrix();
+    layoutTrack();
+    scrollTo(0, 0);
+    target = 0;
+    spring = { x: 0, v: 0 };
+    wasMoving = false;
+    document.documentElement.classList.remove("is-locked");
+    renderNow();
+    arrive(0);
     el.dataset.moving = "0";
     el.dataset.ready = "1";
     gsap.to(loader, { autoAlpha: 0, duration: 0.5, onComplete: () => loader.remove() });
@@ -378,6 +407,7 @@ export function museum3dScreen({ onBack, onFail }) {
       addEventListener("scroll", onScroll, { passive: true });
       addEventListener("resize", onResize);
       addEventListener("pointerdown", unlockAudio, { once: true });
+      document.documentElement.classList.add("is-locked"); // no scrolling under « La galerie ouvre ses portes… »
       layoutTrack();
       scrollTo(0, 0);
       build().catch(fail);

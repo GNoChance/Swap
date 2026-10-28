@@ -259,6 +259,15 @@ test("museum: matches in chronological order, every club has a name, a colour an
   }
 });
 
+test("museum: every SVG logo has a size of its own (Safari draws an SVG without one at 0 × 0 in a canvas)", async () => {
+  const { readFileSync } = await import("node:fs");
+  for (const club of Object.values(content.museum.clubs).filter((c) => c.logo.endsWith(".svg"))) {
+    const root = /<svg[^>]*>/.exec(readFileSync(new URL(`../assets/logos/${club.logo}`, import.meta.url), "utf8"))[0];
+    assert.match(root, /\swidth="[\d.]+(px)?"/, club.logo);
+    assert.match(root, /\sheight="[\d.]+(px)?"/, club.logo);
+  }
+});
+
 test("museum: nothing from the tickets but the stand, row and seat (no name, ticket or barcode number)", () => {
   const text = JSON.stringify(content.museum);
   assert.doesNotMatch(text, /guarato|sicard|nicolas/i);

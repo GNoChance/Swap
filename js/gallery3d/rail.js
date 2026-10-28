@@ -56,18 +56,19 @@ export function framingDistance(aspect, vfovDeg, room = ROOM) {
   return Math.max(2.5, Math.min(room.width - 0.6, d));
 }
 
-/** « En savoir plus »: close enough for the painting to fill 88 % of the width (95 % of the height at most), so it
- *  still fits above the souvenirs panel on a short phone. */
+/** « En savoir plus »: close enough for the painting to fill 88 % of the width, but never more than 34 % of the
+ *  height: it has to fit between the top buttons and the souvenirs panel, upright or sideways. */
 export function zoomDistance(aspect, vfovDeg, room = ROOM) {
   const { tv, th } = halfTans(aspect, vfovDeg);
-  return Math.max(room.frameW / (2 * th * 0.88), room.frameH / (2 * tv * 0.95));
+  return Math.max(room.frameW / (2 * th * 0.88), room.frameH / (2 * tv * 0.34));
 }
 
 /**
  * Where the camera and the visitors are at scroll position c. yaw: the camera looks along (-sin yaw, 0, -cos yaw).
- * focus: 1 facing a painting, 0 walking. zoom: 0..1, « En savoir plus ».
+ * focus: 1 facing a painting, 0 walking. zoom: 0..1, « En savoir plus ». speed: stops per second; a fast fling
+ * keeps looking down the corridor instead of whipping left and right at every painting it passes.
  */
-export function railPose(c, count, aspect, vfovDeg, zoom = 0, room = ROOM) {
+export function railPose(c, count, aspect, vfovDeg, zoom = 0, room = ROOM, speed = 0) {
   const stop = Math.round(c);
   const walk = {
     cam: { x: 0, y: room.eyeY, z: -c * room.spacing + room.visitorsGap, yaw: 0, pitch: WALK_PITCH },
@@ -75,12 +76,12 @@ export function railPose(c, count, aspect, vfovDeg, zoom = 0, room = ROOM) {
   };
   if (stop < 1 || stop > count) return { ...walk, focus: 0, stop };
 
-  const focus = smooth(clamp01(1 - Math.abs(c - stop) / 0.5));
+  const focus = smooth(clamp01(1 - Math.abs(c - stop) / 0.5)) * clamp01(1 - (Math.abs(speed) - 1.5) / 2.5);
   const s = stopLayout(count, room)[stop - 1];
   const d = lerp(framingDistance(aspect, vfovDeg, room), zoomDistance(aspect, vfovDeg, room), zoom);
   const yaw = (-s.side * Math.PI) / 2;
-  // zoomed in, looking straight at the wall, the painting's centre at 25.5 % of the screen: above the souvenirs panel
-  const zoomY = room.paintingY - 0.49 * d * Math.tan((vfovDeg * Math.PI) / 360);
+  // zoomed in, looking straight at the wall, the painting's centre at 26 % of the screen: above the souvenirs panel
+  const zoomY = room.paintingY - 0.48 * d * Math.tan((vfovDeg * Math.PI) / 360);
   const face = {
     cam: { x: s.wallX - s.side * d, y: lerp(room.eyeY, zoomY, zoom), z: s.z, yaw, pitch: lerp(WALK_PITCH, 0, zoom) },
     visitors: { x: s.wallX - s.side * (d - room.visitorsGap), z: s.z, yaw },

@@ -38,12 +38,12 @@ export function souvenirPanel(match, { labels, title, onClose }) {
     if (e.target === el) onClose();
   });
 
-  // a swipe down on the card (not on the photo row, which scrolls sideways)
+  // a swipe down on the card, only from its top (the card scrolls when it is long; the photo row scrolls sideways)
   let startY = null;
   card.addEventListener(
     "touchstart",
     (e) => {
-      startY = e.target.closest(".g3d-photos") ? null : e.touches[0].clientY;
+      startY = e.target.closest(".g3d-photos") || card.scrollTop > 0 ? null : e.touches[0].clientY;
     },
     { passive: true },
   );
@@ -51,6 +51,12 @@ export function souvenirPanel(match, { labels, title, onClose }) {
     "touchmove",
     (e) => {
       if (startY === null) return;
+      if (card.scrollTop > 0) {
+        // she is scrolling the card after all
+        startY = null;
+        gsap.to(card, { y: 0, duration: 0.3, ease: "back.out(2)" });
+        return;
+      }
       const dy = Math.max(0, e.touches[0].clientY - startY);
       gsap.set(card, { y: dy });
     },

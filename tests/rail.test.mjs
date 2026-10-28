@@ -18,7 +18,7 @@ test("rail: the corridor starts behind the entrance and ends past the last stop"
 });
 
 test("rail: framing fits phones held upright and stays inside the room", () => {
-  for (const aspect of [393 / 852, 375 / 667, 1440 / 900]) {
+  for (const aspect of [393 / 852, 375 / 667, 393 / 659, 1440 / 900]) {
     const d = framingDistance(aspect, 55);
     assert.ok(d >= 2.5 && d <= ROOM.width - 0.6, `${aspect}: ${d}`);
     assert.ok(zoomDistance(aspect, 55) < d);
@@ -54,16 +54,24 @@ test("rail: at a stop Mini Cycy and Kevin stand under the cartel, feet on screen
 
 test("rail: zoomed in, the painting fills the width above the souvenirs panel", () => {
   const half = Math.tan((55 * Math.PI) / 360);
-  for (const aspect of [393 / 852, 375 / 667]) {
+  // phones upright (393 × 659 = Safari with its bars), sideways, a PC screen
+  for (const aspect of [393 / 852, 375 / 667, 393 / 659, 852 / 393, 1440 / 900]) {
     const { cam } = railPose(1, 14, aspect, 55, 1);
     const d = Math.abs(cam.x - stopLayout(14)[0].wallX);
     assert.equal(cam.pitch, 0);
     const y = (h) => 0.5 - (0.5 * (h - cam.y)) / (d * half); // 0 top, 1 bottom
     const top = y(ROOM.paintingY + ROOM.frameH / 2);
     const bottom = y(ROOM.paintingY - ROOM.frameH / 2);
-    assert.ok(top > 0.06 && bottom < 0.45, `${aspect}: frame from ${top.toFixed(2)} to ${bottom.toFixed(2)}`);
-    assert.ok(ROOM.frameW / (2 * d * half * aspect) > 0.85, `${aspect}: frame width`);
+    // under the « ← Accueil » and sound buttons (top 8 %), above the panel (from 45 %)
+    assert.ok(top > 0.08 && bottom < 0.45, `${aspect}: frame from ${top.toFixed(2)} to ${bottom.toFixed(2)}`);
+    if (aspect < 1) assert.ok(ROOM.frameW / (2 * d * half * aspect) > 0.7, `${aspect}: frame width`); // on a short screen the height caps it
   }
+});
+
+test("rail: a fast fling looks down the corridor, it turns to a painting only once it slows down", () => {
+  assert.equal(railPose(1, 14, 0.46, 55, 0, ROOM, 8).focus, 0);
+  assert.equal(railPose(1, 14, 0.46, 55, 0, ROOM, -8).cam.yaw, 0);
+  assert.equal(railPose(1, 14, 0.46, 55, 0, ROOM, 1).focus, 1);
 });
 
 test("rail: walking looks down the corridor, a stop faces its painting", () => {

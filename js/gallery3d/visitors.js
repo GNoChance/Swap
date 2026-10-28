@@ -2,7 +2,7 @@
 // always turned to the camera, a soft round shadow under each, mirrored in the waxed floor. Walking they bob along
 // out of step; in front of a painting their sticker changes with the match (content.museum.faces).
 import { ROOM } from "./rail.js";
-import { shadowCanvas } from "./textures.js";
+import { shadowCanvas, freeTexture } from "./textures.js";
 
 const SPREAD = 0.27; // each side of the pose's centre: shoulder to shoulder, slightly overlapping
 
@@ -128,7 +128,7 @@ export async function createVisitors(THREE, { faces, room = ROOM }) {
     update,
     dispose() {
       Object.values(textures).forEach((t) => t?.dispose());
-      shadowTexture.dispose();
+      freeTexture(shadowTexture);
       shadowMaterial.dispose();
       shadowGeometry.dispose();
       people.forEach((p) => (p.material.dispose(), p.body.geometry.dispose()));

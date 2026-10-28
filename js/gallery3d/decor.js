@@ -2,7 +2,7 @@
 // a spot fixture over each painting, velvet benches and potted plants along the walls, the velvet rope in front of
 // the final, the entrance's frieze and the end wall. Repeated pieces are instanced: few draw calls on a phone.
 import { stopLayout, corridorEnds } from "./rail.js";
-import { wallTextCanvas } from "./textures.js";
+import { wallTextCanvas, freeTexture } from "./textures.js";
 
 const RAIL_Y = 3.55; // the picture rail (cimaise) the paintings hang from
 const SERIF = "'Cormorant Garamond', Georgia, serif";
@@ -202,7 +202,7 @@ export function addDecor(THREE, scene, { count, room, finalIndex, title, subtitl
   return {
     dispose() {
       added.forEach((o) => scene.remove(o));
-      owned.forEach((o) => o.dispose());
+      owned.forEach((o) => (o.isTexture ? freeTexture(o) : o.dispose()));
     },
   };
 }

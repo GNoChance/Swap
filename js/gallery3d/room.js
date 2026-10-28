@@ -2,6 +2,7 @@
 // (relief frame, canvas, cartel, the spot's pool of light on the wall). Lighting: a soft sky, daylight from the
 // skylight, and one real spot that follows the painting she's looking at; the other pools of light are painted.
 import { stopLayout, corridorEnds } from "./rail.js";
+import { freeTexture } from "./textures.js";
 
 export function buildRoom(THREE, { count, room, canvases, works, Reflector, anisotropy = 1, mirrorSize }) {
   const scene = new THREE.Scene();
@@ -154,7 +155,7 @@ export function buildRoom(THREE, { count, room, canvases, works, Reflector, anis
   function dispose() {
     scene.traverse((o) => o.geometry?.dispose());
     mirror.dispose();
-    owned.forEach((o) => o.dispose());
+    owned.forEach((o) => (o.isTexture ? freeTexture(o) : o.dispose()));
   }
 
   return { scene, frames, cartels, aimSpot, dispose };

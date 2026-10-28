@@ -3812,6 +3812,7 @@ html.is-museum {
   max-height: 60vh;
   max-height: 60dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 10px 20px calc(var(--sab) + 16px);
   border-radius: 26px 26px 0 0;
   text-align: center;
