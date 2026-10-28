@@ -3728,3 +3728,47 @@ html.is-museum {
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
+
+/* Gallery of our matches in 3D (museum3d.js): the canvas stays put while the page scrolls the snap stops */
+.screen-g3d {
+  display: block;
+  padding: 0;
+  background: #f3efe8;
+}
+
+.g3d-view {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.g3d-view canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.g3d-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 0 24px;
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  text-align: center;
+  color: var(--ink);
+  background: #f3efe8;
+}
+
+.g3d-loader p {
+  animation: g3d-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes g3d-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}

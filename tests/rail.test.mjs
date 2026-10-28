@@ -20,6 +20,16 @@ test("rail: framing fits phones held upright and stays inside the room", () => {
   assert.ok(framingDistance(393 / 852, 55) > framingDistance(1440 / 900, 55));
 });
 
+test("rail: at a stop the whole frame is on screen, clear of the top buttons, phone upright or sideways", () => {
+  for (const aspect of [393 / 852, 375 / 667, 852 / 393, 1440 / 900]) {
+    const d = framingDistance(aspect, 55);
+    const top = ROOM.eyeY + d * Math.tan((55 * Math.PI) / 360 + railPose(1, 14, aspect, 55).cam.pitch);
+    const visible = 2 * d * Math.tan((55 * Math.PI) / 360);
+    // 10 % of the screen above the frame: the « ← Accueil » and sound buttons sit there
+    assert.ok(top + 1e-9 >= ROOM.paintingY + ROOM.frameH / 2 + 0.1 * visible, `${aspect}: top of the screen at ${top.toFixed(2)} m`);
+  }
+});
+
 test("rail: walking looks down the corridor, a stop faces its painting", () => {
   const walk = railPose(1.5, 14, 0.46, 55);
   assert.equal(walk.focus, 0);

@@ -169,26 +169,30 @@ function veil(g, inner, tag) {
   g.fillText(tag, cx, cy + 2);
 }
 
-/** A cartel, 1024 × 400: the white card under each painting. */
+/** A cartel, 1024 × 512: the white card under each painting. Big type: on a phone it is read from across the room. */
 export function cartelCanvas(match, ctx) {
   const W = 1024;
-  const H = 400;
+  const H = 512;
   const c = canvas(W, H);
   const g = c.getContext("2d");
   const text = cartelText(match, ctx);
   g.fillStyle = "#fff";
   g.fillRect(0, 0, W, H);
-  const pad = 52;
+  const pad = 46;
   const max = W - pad * 2;
+  // the seat on two lines: the stand, then the row and the two seats
+  const cut = text.seat.indexOf(` · ${ctx.labels.row} `);
+  const seat = cut > 0 ? [text.seat.slice(0, cut), text.seat.slice(cut + 3)] : [text.seat];
+  const body = { font: `400 {s} ${SANS}`, size: 38, color: "rgba(43, 26, 30, 0.78)" };
   const rows = [
-    { text: text.title, font: `600 {s} ${SERIF}`, size: 66, color: match.final ? "#8e6e3c" : INK, gap: 14 },
-    text.teams && { text: text.teams, font: `600 {s} ${SANS}`, size: 30, color: INK },
-    ...text.lines.map((line) => ({ text: line, font: `400 {s} ${SANS}`, size: 30, color: "rgba(43, 26, 30, 0.75)" })),
-    text.note && { text: text.note, font: `italic 600 {s} ${SANS}`, size: 28, color: "rgba(43, 26, 30, 0.75)" },
-    { text: text.seat, font: `600 {s} ${SANS}`, size: 30, color: "#7a1733", rule: true },
+    { text: text.title, font: `600 {s} ${SERIF}`, size: 78, color: match.final ? "#8e6e3c" : INK, gap: 10 },
+    text.teams && { text: text.teams, font: `600 {s} ${SANS}`, size: 38, color: INK },
+    ...text.lines.map((line) => ({ ...body, text: line })),
+    text.note && { ...body, text: text.note, font: `italic 600 {s} ${SANS}`, size: 34 },
+    ...seat.map((line, k) => ({ text: line, font: `600 {s} ${SANS}`, size: 38, color: "#7a1733", rule: k === 0 })),
   ].filter(Boolean);
   // fewer rows: a little more air between them, the block stays centred
-  const lead = rows.length > 5 ? 1.32 : 1.45;
+  const lead = rows.length > 6 ? 1.2 : 1.3;
   const heights = rows.map((r) => r.size * lead + (r.gap || 0) + (r.rule ? 22 : 0));
   let y = (H - heights.reduce((a, b) => a + b, 0)) / 2;
   g.textBaseline = "top";

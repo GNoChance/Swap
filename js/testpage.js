@@ -17,6 +17,7 @@ export function testScreen() {
       group("Accueil et galerie", [
         link("Page d'accueil", "./", "la vraie, avec sa progression"),
         link("Galerie des matchs", "?musee"),
+        link("Galerie (version CSS)", "?musee&css", "celle de secours, sans 3D"),
         link("Tout rejouer depuis le début", "?rejouer", "rien n'est enregistré, pas de badge démo"),
       ]),
       group("Début", [link("Intro et choix des chips", "?demo&scene=intro")]),

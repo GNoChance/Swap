@@ -13,9 +13,9 @@ export const ROOM = {
   frameW: 1.9,
   frameH: 1.45,
   paintingY: 2.05, // centre of the frame
-  cartelY: 0.98, // centre of the cartel
-  cartelW: 1.3,
-  cartelH: 0.5,
+  cartelY: 0.8, // centre of the cartel
+  cartelW: 1.66,
+  cartelH: 0.83, // a 1024 × 512 canvas
   visitorsGap: 2.2, // camera → visitors
   visitorH: 1.15,
 };
@@ -39,11 +39,15 @@ const halfTans = (aspect, vfovDeg) => {
   return { tv, th: tv * aspect };
 };
 
-/** Camera → wall distance at a stop: the painting within 86 % of the width, painting + cartel within 62 % of the height. */
+/** Camera → wall distance at a stop: the painting within 86 % of the width, painting + cartel within 62 % of the height,
+ *  and far enough for the frame's top to stay on screen although the camera looks slightly down, with 10 % of the
+ *  screen to spare above it (the « ← Accueil » and sound buttons). */
 export function framingDistance(aspect, vfovDeg, room = ROOM) {
   const { tv, th } = halfTans(aspect, vfovDeg);
   const block = room.paintingY + room.frameH / 2 - (room.cartelY - room.cartelH / 2);
-  const d = Math.max(room.frameW / (2 * th * 0.86), block / (2 * tv * 0.62));
+  const above = room.paintingY + room.frameH / 2 - room.eyeY;
+  const top = above / (Math.tan((vfovDeg * Math.PI) / 360 + WALK_PITCH) - 0.1 * 2 * tv);
+  const d = Math.max(room.frameW / (2 * th * 0.86), block / (2 * tv * 0.62), top);
   return Math.max(2.5, Math.min(room.width - 0.6, d));
 }
 

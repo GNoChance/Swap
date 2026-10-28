@@ -85,12 +85,31 @@ function home() {
   return homeScreen({
     onResume: resume,
     onReplay: () => location.assign(`${location.pathname}?rejouer`),
-    onMuseum: () => show(museum()),
+    onMuseum: openMuseum,
   });
 }
 
-function museum() {
-  return museumScreen({ onBack: () => show(home()) });
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return Boolean(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+/** The gallery in 3D, loaded only now (three.js is heavy); the CSS corridor if there is no WebGL, if loading fails,
+ *  or with ?musee&css. */
+async function openMuseum() {
+  const onBack = () => show(home());
+  const css = () => show(museumScreen({ onBack }));
+  if (new URLSearchParams(location.search).has("css") || !hasWebGL()) return css();
+  try {
+    const { museum3dScreen } = await import("./museum3d.js");
+    show(museum3dScreen({ onBack, onFail: css }));
+  } catch {
+    css();
+  }
 }
 
 /** « Revoir mon parcours »: where she left the swap (the final screen once it is all open: her recap, the debrief). */
@@ -985,6 +1004,6 @@ else if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you
 else if (preview.has("secret")) show(secret({ preview: true })); // the secret ending, without finding the 13 endings
 else if (preview.has("ubb")) show(ubbPreviewScreen()); // the UBB surprise on its own
-else if (preview.has("musee")) show(museum()); // the gallery of our matches
+else if (preview.has("musee")) openMuseum(); // the gallery of our matches
 else if (isReplay) show(welcome()); // « Tout rejouer depuis le début »: the intro, nothing saved
 else show(home());
