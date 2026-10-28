@@ -99,5 +99,18 @@ test("souvenirs: the config ships empty, no code written anywhere in the site's 
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "vendor" ? [] : walk(`${dir}/${e.name}`)) : [`${dir}/${e.name}`]));
   const root = new URL("../js", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
   // a code written down: password: "…" / password = "…" (a password field, type: "password", is fine)
-  for (const file of walk(root)) assert.doesNotMatch(readFileSync(file, "utf8"), /password["']?s*[:=]s*["'`]w/i, file);
+  const written = /password["']?\s*[:=]\s*["'`]\w/i;
+  assert.match('{ password: "hunter2" }', written); // the guard itself works
+  assert.doesNotMatch('h("input", { type: "password" })', written);
+  for (const file of walk(root)) assert.doesNotMatch(readFileSync(file, "utf8"), written, file);
+});
+
+test("supabase/setup.sql: the shared account gets its rights (new projects grant nothing), and only it", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { config } = await import("../js/souvenirs-config.js");
+  const sql = readFileSync(new URL("../supabase/setup.sql", import.meta.url), "utf8").toLowerCase();
+  assert.match(sql, /grant select, insert, delete on public\.souvenirs to authenticated/);
+  const policies = sql.match(/create policy[^;]+;/g);
+  assert.equal(policies.length, 6);
+  for (const p of policies) assert.ok(p.includes(`(auth.jwt() ->> 'email') = '${config.email}'`), p);
 });

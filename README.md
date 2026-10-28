@@ -172,7 +172,7 @@ Dans « En savoir plus », chacun ajoute photos, vidéos et notes depuis le site
 5. **Project Settings** → **API** : copier **Project URL** et la clé **anon public**, et les envoyer à Claude (ou les coller dans `js/souvenirs-config.js`). Ne jamais envoyer le code lui-même par écrit.
 
 - **Supprimer un souvenir** : **Table Editor** → `souvenirs` → cocher la ligne → **Delete** ; puis **Storage** → `souvenirs` → le dossier du match (sa date) → supprimer ses fichiers (`<id>-full.jpg`, `<id>-thumb.jpg` ou la vidéo).
-- **Changer le code** : **Authentication** → **Users** → le compte → **Reset password** / nouveau mot de passe ; les téléphones devront le retaper.
+- **Changer le code** : **Authentication** → **Users** → supprimer le compte `famille@swap-cyrielle.app`, puis le recréer (étape 4) avec le nouveau code. Les souvenirs ne sont pas liés au compte, rien n'est perdu ; tous les téléphones devront taper le nouveau code. (« Reset password » enverrait un e-mail à une adresse qui n'existe pas.)
 - **Place** : l'offre gratuite donne 1 Go de fichiers (des milliers de photos ; une vidéo prend jusqu'à 50 Mo). **Storage** montre l'espace utilisé.
 
 ## Journal

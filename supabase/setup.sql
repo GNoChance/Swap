@@ -1,6 +1,7 @@
 -- Souvenirs partagés du Swap de Cyrielle : à coller une fois dans Supabase → SQL Editor → Run.
 -- On peut le relancer sans risque : chaque étape vérifie ce qui existe déjà.
--- Seul le compte partagé (connecté avec le code) peut lire, ajouter ou supprimer. Les visiteurs sans code : rien.
+-- Seul le compte partagé (famille@swap-cyrielle.app, connecté avec le code) peut lire, ajouter ou supprimer.
+-- Les visiteurs sans code, ou tout autre compte : rien.
 
 -- ── La table des souvenirs : une ligne par photo, vidéo ou note ──
 create table if not exists public.souvenirs (
@@ -22,13 +23,16 @@ create index if not exists souvenirs_match on public.souvenirs (match_date, crea
 
 alter table public.souvenirs enable row level security;
 revoke all on public.souvenirs from anon;
+-- depuis mai 2026, une nouvelle table n'a plus aucun droit par défaut : on les donne aux comptes connectés,
+-- et les règles ci-dessous les réservent au seul compte partagé
+grant select, insert, delete on public.souvenirs to authenticated;
 
 drop policy if exists "souvenirs lecture" on public.souvenirs;
-create policy "souvenirs lecture" on public.souvenirs for select to authenticated using (true);
+create policy "souvenirs lecture" on public.souvenirs for select to authenticated using ((auth.jwt() ->> 'email') = 'famille@swap-cyrielle.app');
 drop policy if exists "souvenirs ajout" on public.souvenirs;
-create policy "souvenirs ajout" on public.souvenirs for insert to authenticated with check (true);
+create policy "souvenirs ajout" on public.souvenirs for insert to authenticated with check ((auth.jwt() ->> 'email') = 'famille@swap-cyrielle.app');
 drop policy if exists "souvenirs suppression" on public.souvenirs;
-create policy "souvenirs suppression" on public.souvenirs for delete to authenticated using (true);
+create policy "souvenirs suppression" on public.souvenirs for delete to authenticated using ((auth.jwt() ->> 'email') = 'famille@swap-cyrielle.app');
 
 -- ── Le stockage des fichiers : privé, 50 Mo par fichier, photos JPEG et vidéos MP4 / MOV ──
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -36,11 +40,11 @@ values ('souvenirs', 'souvenirs', false, 52428800, array['image/jpeg', 'video/mp
 on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "souvenirs fichiers lecture" on storage.objects;
-create policy "souvenirs fichiers lecture" on storage.objects for select to authenticated using (bucket_id = 'souvenirs');
+create policy "souvenirs fichiers lecture" on storage.objects for select to authenticated using (bucket_id = 'souvenirs' and (auth.jwt() ->> 'email') = 'famille@swap-cyrielle.app');
 drop policy if exists "souvenirs fichiers ajout" on storage.objects;
-create policy "souvenirs fichiers ajout" on storage.objects for insert to authenticated with check (bucket_id = 'souvenirs');
+create policy "souvenirs fichiers ajout" on storage.objects for insert to authenticated with check (bucket_id = 'souvenirs' and (auth.jwt() ->> 'email') = 'famille@swap-cyrielle.app');
 drop policy if exists "souvenirs fichiers suppression" on storage.objects;
-create policy "souvenirs fichiers suppression" on storage.objects for delete to authenticated using (bucket_id = 'souvenirs');
+create policy "souvenirs fichiers suppression" on storage.objects for delete to authenticated using (bucket_id = 'souvenirs' and (auth.jwt() ->> 'email') = 'famille@swap-cyrielle.app');
 
 -- ── En direct : les ajouts et suppressions arrivent tout seuls sur les autres téléphones ──
 do $$
