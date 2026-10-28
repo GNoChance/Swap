@@ -4174,3 +4174,120 @@ html.is-museum {
   outline: 3px dashed var(--gold);
   outline-offset: -10px;
 }
+
+/* A souvenir in full screen, and the little × on one's own */
+.g3d-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 47; /* over the panel, under « ← Accueil » and the sound button */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: calc(var(--sat) + 64px) 12px calc(var(--sab) + 18px);
+  background: rgba(14, 9, 10, 0.94);
+}
+
+.g3d-viewer-stage {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+}
+
+.g3d-viewer-stage img,
+.g3d-viewer-stage video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+  object-fit: contain;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+
+.g3d-viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.g3d-viewer-caption {
+  flex: 1;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  text-align: center;
+  color: #f3e9dc;
+}
+
+.g3d-viewer-nav {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(243, 233, 220, 0.4);
+  border-radius: 50%;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #f3e9dc;
+  background: transparent;
+}
+
+.g3d-viewer-nav[hidden] {
+  visibility: hidden;
+  display: grid;
+}
+
+.g3d-viewer .g3d-viewer-close {
+  margin-top: 0;
+}
+
+.g3d-polaroid[data-id],
+.g3d-note[data-id] {
+  position: relative;
+}
+
+.g3d-polaroid[data-id] {
+  cursor: pointer;
+}
+
+.g3d-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(43, 26, 30, 0.2);
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* a bigger target than it looks */
+.g3d-remove::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.g3d-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.g3d-confirm .g3d-souvenirs-close {
+  margin-top: 0;
+}

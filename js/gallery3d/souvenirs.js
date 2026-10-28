@@ -3,7 +3,8 @@
 // the shared code is typed on this phone, then the photos and videos in a row of polaroids, the notes underneath,
 // all kept live. Closes with its button, a tap outside the card, or a swipe down.
 import { museumDate, museumDay, fill } from "../logic.js";
-import { sortItems, checkFile, checkNote, checkName, noteLength, NOTE_MAX } from "../souvenirs/logic.js";
+import { sortItems, checkFile, checkNote, checkName, noteLength, isMine, NOTE_MAX } from "../souvenirs/logic.js";
+import { openViewer } from "./viewer.js";
 import { h } from "../dom.js";
 
 const gsap = window.gsap;
@@ -43,6 +44,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
   let unsubscribe = null;
   let closed = false;
   let name = savedName();
+  let viewer = null; // the full screen, if open
 
   // kept across renders: a live insert must not wipe a note being typed
   const fileInput = h("input", {
@@ -118,17 +120,77 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
     setState("offline", h("p", { class: "g3d-code-error", role: "alert" }, ui.network), h("button", { class: "g3d-pill", type: "button", onclick: load }, "↻"));
   }
 
+  /** The little × on what this phone added. */
+  const removeButton = (item) =>
+    isMine(item, store.deviceId) &&
+    h(
+      "button",
+      {
+        class: "g3d-remove",
+        type: "button",
+        "aria-label": ui.remove,
+        onclick(e) {
+          e.stopPropagation(); // not the full screen
+          confirmRemove(item);
+        },
+      },
+      "×",
+    );
+
   function polaroid(item) {
     const thumb = item.thumbUrl ? h("img", { src: item.thumbUrl, alt: "", loading: "lazy", draggable: "false" }) : h("span", { class: "g3d-thumb-missing", "aria-hidden": "true" }, "🎞");
     return h(
       "figure",
-      { class: `g3d-polaroid is-${item.kind}`, "data-id": item.id },
+      {
+        class: `g3d-polaroid is-${item.kind}`,
+        "data-id": item.id,
+        role: "button",
+        tabindex: "0",
+        onclick() {
+          const media = items.filter((i) => i.kind !== "note");
+          viewer = openViewer(media, media.indexOf(item), { labels, onClose: () => (viewer = null) });
+        },
+      },
       h("div", { class: "g3d-polaroid-shot" }, thumb, item.kind === "video" && h("span", { class: "g3d-play", "aria-hidden": "true" }, "▶")),
       h("figcaption", {}, fill(ui.by, { name: item.author })),
+      removeButton(item),
     );
   }
 
-  const note = (item) => h("blockquote", { class: "g3d-note", "data-id": item.id }, h("p", {}, `❝ ${item.text} ❞`), h("footer", {}, `— ${item.author}`));
+  const note = (item) => h("blockquote", { class: "g3d-note", "data-id": item.id }, h("p", {}, `❝ ${item.text} ❞`), h("footer", {}, `— ${item.author}`), removeButton(item));
+
+  function confirmRemove(item) {
+    addError.textContent = "";
+    const yes = h(
+      "button",
+      {
+        class: "g3d-pill g3d-confirm-remove",
+        type: "button",
+        async onclick() {
+          yes.disabled = true;
+          try {
+            await store.remove(item);
+            items = items.filter((i) => i.id !== item.id);
+            addArea.replaceChildren();
+            if (!closed) render();
+          } catch (err) {
+            if (err.message === "locked") return closed || showLocked();
+            addError.textContent = ui.network;
+            yes.disabled = false;
+          }
+        },
+      },
+      ui.remove,
+    );
+    addArea.replaceChildren(
+      h(
+        "div",
+        { class: "g3d-confirm", role: "alertdialog" },
+        h("p", {}, ui.confirm),
+        h("div", { class: "g3d-add-menu" }, yes, h("button", { class: "g3d-souvenirs-close g3d-confirm-cancel", type: "button", onclick: () => addArea.replaceChildren() }, ui.cancel)),
+      ),
+    );
+  }
 
   /** An upload on its way: its progress, or « Échec · Réessayer ». */
   function pendingPolaroid(job) {
@@ -322,6 +384,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
     } else {
       if (!items.some((i) => i.id === change.id)) return;
       items = items.filter((i) => i.id !== change.id);
+      if (viewer) (viewer.close(), (viewer = null)); // what it showed may be gone
     }
     render();
   }
@@ -396,6 +459,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
     close() {
       closed = true;
       unsubscribe?.();
+      viewer?.close();
       return new Promise((resolve) => {
         gsap.to(el, { backgroundColor: "rgba(20, 12, 14, 0)", duration: 0.35 });
         gsap.to(card, { yPercent: 105, duration: 0.4, ease: "power2.in", onComplete: resolve });
