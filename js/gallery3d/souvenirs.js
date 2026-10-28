@@ -1,6 +1,6 @@
 // « En savoir plus »: the souvenirs of a match, in a panel rising from the bottom over the zoomed-in painting.
-// A row of polaroids that scrolls sideways (photos from assets/souvenirs/<date>/) and the story of the day; empty
-// polaroids (« Souvenirs à venir ») until Kevin adds some, and « Rendez-vous le … » for a match still to come.
+// A row of polaroids that scrolls sideways; empty polaroids (« Souvenirs à venir ») until some are added, and
+// « Rendez-vous le … » for a match still to come.
 // Closes with its button, a tap outside the card, or a swipe down.
 import { museumDate, museumDay, fill } from "../logic.js";
 import { h } from "../dom.js";
@@ -9,15 +9,7 @@ const gsap = window.gsap;
 const SWIPE = 80; // px down to close
 
 export function souvenirPanel(match, { labels, title, onClose }) {
-  const photos = match.photos.length
-    ? match.photos.map((file, i) =>
-        h(
-          "figure",
-          { class: "g3d-polaroid" },
-          h("img", { src: `assets/souvenirs/${match.date}/${file}`, alt: `${labels.souvenirs} ${i + 1}`, loading: "lazy", draggable: "false" }),
-        ),
-      )
-    : Array.from({ length: 3 }, () => h("figure", { class: "g3d-polaroid is-empty" }, h("span", { "aria-hidden": "true" }, "📷"), h("figcaption", {}, labels.empty)));
+  const photos = Array.from({ length: 3 }, () => h("figure", { class: "g3d-polaroid is-empty" }, h("span", { "aria-hidden": "true" }, "📷"), h("figcaption", {}, labels.empty)));
 
   const closeButton = h("button", { class: "g3d-souvenirs-close", type: "button", onclick: () => onClose() }, labels.close);
   const card = h(
@@ -29,7 +21,6 @@ export function souvenirPanel(match, { labels, title, onClose }) {
     h("p", { class: "g3d-souvenirs-date" }, `${museumDate(match.date)} · ${labels.venues[match.venue]}`),
     h("div", { class: "g3d-photos" }, photos),
     !match.score && h("p", { class: "g3d-souvenirs-meet" }, fill(labels.meet, { day: museumDay(match.date) })),
-    match.story && h("p", { class: "g3d-souvenirs-story" }, match.story),
     closeButton,
   );
   const el = h("div", { class: "g3d-souvenirs" }, card);

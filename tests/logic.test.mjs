@@ -274,14 +274,10 @@ test("museum: nothing from the tickets but the stand, row and seat (no name, tic
   assert.doesNotMatch(text, /\d{6,}/);
 });
 
-test("museum: 14 matches, a venue and souvenirs on each", () => {
+test("museum: 14 matches, a venue on each", () => {
   const { matches, venues } = content.museum;
   assert.equal(matches.length, 14);
-  for (const m of matches) {
-    assert.ok(venues[m.venue], m.date);
-    assert.ok(Array.isArray(m.photos) && typeof m.story === "string", m.date);
-    for (const f of m.photos) assert.ok(existsSync(new URL(`../assets/souvenirs/${m.date}/${f}`, import.meta.url)), f);
-  }
+  for (const m of matches) assert.ok(venues[m.venue], m.date);
   assert.deepEqual(matches.filter((m) => m.venue === "atlantique").map((m) => m.opponent), ["toulouse", "pau"]);
 });
 

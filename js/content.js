@@ -637,9 +637,8 @@ export const content = {
   // La galerie des matchs (?musee), un tableau par match, du plus ancien au plus récent.
   // score: [UBB, adversaire], ou null pour un match à venir : après le match, remplace null par le score,
   // par exemple score: [38, 12]. seat = ta place sur le billet ; la sienne est celle d'à côté (+1).
-  // venue = le stade (voir venues). Souvenirs (« En savoir plus ») : dépose les photos dans
-  // assets/souvenirs/<date du match>/ puis écris leurs noms dans photos, par exemple photos: ["1.jpg", "2.jpg"],
-  // et l'anecdote dans story. Vides, le panneau affiche « Souvenirs à venir ».
+  // venue = le stade (voir venues). Les souvenirs (« En savoir plus ») ne sont plus ici : photos, vidéos et notes
+  // s'ajoutent depuis le site et vivent dans Supabase (voir README, « Souvenirs partagés »).
   museum: {
     kicker: "Galerie",
     title: "Kevin & Cyrielle · Saison UBB",
@@ -659,6 +658,31 @@ export const content = {
     meet: "Rendez-vous le {day}",
     close: "Fermer",
     loading: "La galerie ouvre ses portes…",
+    moreCount: "En savoir plus · {n}",
+    // Le panneau des souvenirs partagés
+    souvenirsUi: {
+      locked: "Souvenirs privés",
+      enter: "Entrer le code",
+      code: "Code",
+      unlock: "Valider",
+      badCode: "Code incorrect",
+      add: "+ Ajouter",
+      media: "Photo ou vidéo",
+      note: "Écrire une note",
+      notePlaceholder: "Un souvenir de ce match…",
+      publish: "Publier",
+      name: "Ton prénom ?",
+      next: "Continuer",
+      network: "Pas de réseau, réessaie",
+      failed: "Échec · Réessayer",
+      tooBig: "Vidéo trop lourde : raccourcis-la dans Photos (50 Mo max)",
+      notMedia: "Ce fichier n'est ni une photo ni une vidéo",
+      confirm: "Supprimer ce souvenir ?",
+      remove: "Supprimer",
+      cancel: "Annuler",
+      by: "{name}",
+      drop: "Dépose tes photos et vidéos ici",
+    },
     // Vous deux, de dos : walk = pendant qu'elle fait défiler, look = à l'entrée, point = match à venir,
     // win / lose / final = selon le score, sleep = 25 s sans bouger devant un tableau, turn = au bout du couloir
     faces: {
@@ -683,12 +707,12 @@ export const content = {
       pau: { name: "Pau", logo: "pau.png", color: "#0f6b3a" },
     },
     matches: [
-      { date: "2025-04-06", opponent: "ulster", competition: "Huitième de finale · Champions Cup", score: [43, 31], venue: "chaban", stand: "Face latérale haute", row: 19, seat: 224, photos: [], story: "" },
-      { date: "2025-12-13", opponent: "scarlets", competition: "Phase de poules · Champions Cup", score: [50, 21], venue: "chaban", stand: "Présidentielle basse", row: 10, seat: 90, photos: [], story: "" },
-      { date: "2026-02-14", opponent: "castres", competition: "17e journée · Top 14", score: [57, 32], venue: "chaban", stand: "Honneur bas", row: 2, seat: 176, photos: [], story: "" },
-      { date: "2026-03-22", opponent: "toulouse", competition: "19e journée · Top 14", score: [44, 20], venue: "atlantique", stand: "Tribune Ouest · Bloc 05", row: 58, seat: 9, photos: [], story: "" },
-      { date: "2026-04-05", opponent: "leicester", competition: "Huitième de finale · Champions Cup", score: [64, 14], venue: "chaban", stand: "Virage Sud bas centre", row: 7, seat: 95, photos: [], story: "" },
-      { date: "2026-05-16", opponent: "perpignan", competition: "24e journée · Top 14", score: [37, 32], venue: "chaban", stand: "Virage Edenauto bas centre", row: 8, seat: 115, photos: [], story: "" },
+      { date: "2025-04-06", opponent: "ulster", competition: "Huitième de finale · Champions Cup", score: [43, 31], venue: "chaban", stand: "Face latérale haute", row: 19, seat: 224 },
+      { date: "2025-12-13", opponent: "scarlets", competition: "Phase de poules · Champions Cup", score: [50, 21], venue: "chaban", stand: "Présidentielle basse", row: 10, seat: 90 },
+      { date: "2026-02-14", opponent: "castres", competition: "17e journée · Top 14", score: [57, 32], venue: "chaban", stand: "Honneur bas", row: 2, seat: 176 },
+      { date: "2026-03-22", opponent: "toulouse", competition: "19e journée · Top 14", score: [44, 20], venue: "atlantique", stand: "Tribune Ouest · Bloc 05", row: 58, seat: 9 },
+      { date: "2026-04-05", opponent: "leicester", competition: "Huitième de finale · Champions Cup", score: [64, 14], venue: "chaban", stand: "Virage Sud bas centre", row: 7, seat: 95 },
+      { date: "2026-05-16", opponent: "perpignan", competition: "24e journée · Top 14", score: [37, 32], venue: "chaban", stand: "Virage Edenauto bas centre", row: 8, seat: 115 },
       {
         date: "2026-05-23",
         opponent: "leinster",
@@ -701,16 +725,14 @@ export const content = {
         stand: "Présidentielle haute",
         row: 20,
         seat: 124,
-        photos: [],
-        story: "",
       },
-      { date: "2026-06-06", opponent: "clermont", competition: "26e journée · Top 14", score: [31, 34], venue: "chaban", stand: "Virage Sud bas centre", row: 37, seat: 110, photos: [], story: "" },
-      { date: "2026-09-05", opponent: "racing", competition: "1re journée · Top 14", score: [64, 5], venue: "chaban", stand: "Virage Sud bas", row: 8, seat: 191, photos: [], story: "" },
-      { date: "2026-09-20", opponent: "stadeFrancais", competition: "3e journée · Top 14", score: [40, 10], venue: "chaban", stand: "Virage Sud bas centre", row: 10, seat: 103, photos: [], story: "" },
-      { date: "2026-10-03", opponent: "lou", competition: "5e journée · Top 14", score: [51, 28], venue: "chaban", stand: "Virage Sud bas centre", row: 17, seat: 87, photos: [], story: "" },
-      { date: "2026-10-31", opponent: "bayonne", competition: "8e journée · Top 14", score: null, venue: "chaban", stand: "Virage Sud bas centre", row: 25, seat: 82, photos: [], story: "" },
-      { date: "2026-12-13", opponent: "stormers", competition: "Phase de poules · Champions Cup", score: null, venue: "chaban", stand: "Virage Edenauto bas centre", row: 31, seat: 143, photos: [], story: "" },
-      { date: "2026-12-20", opponent: "pau", competition: "12e journée · Top 14", score: null, venue: "atlantique", stand: "Tribune Sud · Bloc 22", row: 57, seat: 13, photos: [], story: "" },
+      { date: "2026-06-06", opponent: "clermont", competition: "26e journée · Top 14", score: [31, 34], venue: "chaban", stand: "Virage Sud bas centre", row: 37, seat: 110 },
+      { date: "2026-09-05", opponent: "racing", competition: "1re journée · Top 14", score: [64, 5], venue: "chaban", stand: "Virage Sud bas", row: 8, seat: 191 },
+      { date: "2026-09-20", opponent: "stadeFrancais", competition: "3e journée · Top 14", score: [40, 10], venue: "chaban", stand: "Virage Sud bas centre", row: 10, seat: 103 },
+      { date: "2026-10-03", opponent: "lou", competition: "5e journée · Top 14", score: [51, 28], venue: "chaban", stand: "Virage Sud bas centre", row: 17, seat: 87 },
+      { date: "2026-10-31", opponent: "bayonne", competition: "8e journée · Top 14", score: null, venue: "chaban", stand: "Virage Sud bas centre", row: 25, seat: 82 },
+      { date: "2026-12-13", opponent: "stormers", competition: "Phase de poules · Champions Cup", score: null, venue: "chaban", stand: "Virage Edenauto bas centre", row: 31, seat: 143 },
+      { date: "2026-12-20", opponent: "pau", competition: "12e journée · Top 14", score: null, venue: "atlantique", stand: "Tribune Sud · Bloc 22", row: 57, seat: 13 },
     ],
   },
 
