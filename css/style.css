@@ -4061,3 +4061,116 @@ html.is-museum {
   font-weight: 600;
   color: var(--wine);
 }
+
+/* Adding souvenirs: the « + » polaroid, its menu, the forms, uploads on their way */
+.g3d-add {
+  border: 1px dashed rgba(184, 147, 90, 0.8);
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--wine);
+  cursor: pointer;
+}
+
+.g3d-add-plus {
+  font-family: var(--sans);
+  font-size: 2.6rem;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.g3d-add-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.g3d-add-area:empty,
+.g3d-add-error:empty {
+  display: none;
+}
+
+.g3d-add-menu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.g3d-add-error {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #b3121c;
+}
+
+.g3d-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+
+.g3d-note-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(184, 147, 90, 0.7);
+  border-radius: 12px;
+  font-family: var(--serif);
+  font-size: 16px; /* no zoom on focus (iPhone) */
+  line-height: 1.35;
+  color: var(--ink);
+  background: #fff;
+  resize: vertical;
+}
+
+.g3d-note-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.g3d-note-count {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.g3d-note-count.is-over {
+  font-weight: 600;
+  color: #b3121c;
+}
+
+.g3d-polaroid.is-uploading .g3d-polaroid-shot::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 14px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--wine) calc(var(--progress, 0) * 100%), rgba(122, 23, 51, 0.15) 0);
+}
+
+.g3d-polaroid.is-uploading .g3d-polaroid-shot {
+  animation: g3d-breathe 1.4s ease-in-out infinite;
+}
+
+.g3d-retry {
+  padding: 8px 12px;
+  border: 1px solid #b3121c;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #b3121c;
+  background: #fff;
+}
+
+.g3d-souvenirs-card.is-dropping {
+  outline: 3px dashed var(--gold);
+  outline-offset: -10px;
+}
