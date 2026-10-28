@@ -211,6 +211,15 @@ const sounds = {
     tone({ freq: 988, type: "square", dur: 0.08, gain: 0.06 });
     tone({ freq: 1480, type: "square", at: 0.09, dur: 0.14, gain: 0.06 });
   },
+  /** A soft footstep on the museum's parquet. */
+  step() {
+    noise({ dur: 0.07, gain: 0.07, filter: 420 + Math.random() * 120, q: 0.9 });
+    tone({ freq: 95, glideTo: 70, dur: 0.08, gain: 0.05 });
+  },
+  /** Polite museum applause (~1.6 s). */
+  applause() {
+    for (let i = 0; i < 34; i++) noise({ at: Math.random() * 1.5, dur: 0.03, gain: 0.05 + Math.random() * 0.04, filter: 1400 + Math.random() * 1800, q: 1.4 });
+  },
   /** Cartoon boing: someone gets sent flying. */
   boing() {
     tone({ freq: 180, glideTo: 720, type: "triangle", dur: 0.4, gain: 0.14 });

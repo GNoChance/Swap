@@ -2,7 +2,7 @@
 import { content } from "./content.js";
 import * as P from "./logic.js";
 import { fill, pick } from "./logic.js";
-import { isDemo, loadProgress, saveProgress, loadMuted, saveMuted } from "./state.js";
+import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted } from "./state.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { mountEffects, playEffect, fireworks, hearts, goldDust } from "./effects.js";
 import { h, svg, icons, seal, shake, bump, centerOf, flash } from "./dom.js";
@@ -20,6 +20,8 @@ import { pubScreen } from "./pub.js";
 import { debriefScreen, debriefReport } from "./debrief.js";
 import { secretScreen } from "./secret.js";
 import { ubbPreviewScreen } from "./ubb.js";
+import { homeScreen } from "./home.js";
+import { museumScreen } from "./museum.js";
 import { testScreen } from "./testpage.js";
 
 const gsap = window.gsap;
@@ -67,6 +69,7 @@ function show(screen) {
   const enter = () => {
     previous?.el.remove();
     previous?.leave?.();
+    homeButton.hidden = Boolean(screen.noHome);
     window.scrollTo(0, 0);
     app.append(screen.el);
     gsap.fromTo(screen.el, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.2 : 0.6, ease: "power1.out" });
@@ -74,6 +77,28 @@ function show(screen) {
   };
   if (!previous) return enter();
   gsap.to(previous.el, { opacity: 0, duration: 0.3, ease: "power1.in", onComplete: enter });
+}
+
+// ── Home page & gallery of our matches ──────────────────────
+
+function home() {
+  return homeScreen({
+    onResume: resume,
+    onReplay: () => location.assign(`${location.pathname}?rejouer`),
+    onMuseum: () => show(museum()),
+  });
+}
+
+function museum() {
+  return museumScreen({ onBack: () => show(home()) });
+}
+
+/** « Revoir mon parcours »: where she left the swap (the final screen once it is all open: her recap, the debrief). */
+function resume() {
+  if (!progress.started) return show(welcome());
+  if (P.isComplete(progress)) return show(ending({ celebrate: false }));
+  if (pubPending()) return playPub();
+  show(timelineScreen());
 }
 
 // ── Welcome & bonus (scenes.js) ─────────────────────────────
@@ -111,17 +136,17 @@ const pubPending = () => !progress.pub && progress.steps[PUB_STEP]?.status === "
  * preview (?pub): nothing is saved, the page reloads afterwards.
  */
 function playPub({ walkFrom, waitForTap = false, preview = false } = {}) {
-  show(
-    pubScreen({
-      waitForTap,
-      values: textValues(),
-      onDone() {
-        if (preview) return location.replace(location.pathname + (isDemo ? "?demo" : ""));
-        commit(P.seePub(progress));
-        show(timelineScreen({ walkFrom }));
-      },
-    }),
-  );
+  const screen = pubScreen({
+    waitForTap,
+    values: textValues(),
+    onDone() {
+      if (preview) return location.replace(location.pathname + (isDemo ? "?demo" : ""));
+      commit(P.seePub(progress));
+      show(timelineScreen({ walkFrom }));
+    },
+  });
+  screen.noHome = true; // the TV channel's logo sits in that corner
+  show(screen);
 }
 
 /** The debrief; « Rejouer le débrief » starts it again, « Revoir le parcours » goes back to the timeline. */
@@ -886,6 +911,23 @@ renderMute();
 document.body.append(muteButton);
 if (isDemo) document.body.append(h("p", { class: "demo-badge" }, "Mode démo · rien n'est enregistré"));
 
+// Back to the home page from any screen of the swap: a fresh page load, which also leaves ?rejouer and ?demo
+// (her progress is saved at every step, nothing is lost).
+const homeButton = h(
+  "button",
+  {
+    class: "home-button",
+    type: "button",
+    "aria-label": content.home.homeButton,
+    onclick() {
+      sfx("tap");
+      location.assign(location.pathname);
+    },
+  },
+  "⌂",
+);
+document.body.append(homeButton);
+
 // Any first touch wakes the audio up (a reload lands straight on the timeline, without the welcome button).
 for (const type of ["pointerdown", "keydown"]) document.addEventListener(type, unlockAudio, { once: true, capture: true });
 
@@ -943,7 +985,6 @@ else if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you
 else if (preview.has("secret")) show(secret({ preview: true })); // the secret ending, without finding the 13 endings
 else if (preview.has("ubb")) show(ubbPreviewScreen()); // the UBB surprise on its own
-else if (!progress.started) show(welcome());
-else if (P.isComplete(progress)) show(ending({ celebrate: false }));
-else if (pubPending()) playPub({ waitForTap: true }); // reloaded during the ad: play it again
-else show(timelineScreen());
+else if (preview.has("musee")) show(museum()); // the gallery of our matches
+else if (isReplay) show(welcome()); // « Tout rejouer depuis le début »: the intro, nothing saved
+else show(home());

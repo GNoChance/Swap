@@ -7,6 +7,11 @@ const DEBRIEF_KEY = "swap-cyrielle:debrief";
 
 const params = new URLSearchParams(location.search);
 export const isDemo = params.has("demo");
+// ?rejouer (« Tout rejouer depuis le début » on the home page): the swap from the start, gifts unlocking one by one
+// as the first time, but nothing is saved: her progress and her debrief answers stay as they were.
+export const isReplay = params.has("rejouer");
+const transient = isDemo || isReplay;
+let replayDebrief = { runs: [], found: [] }; // in replay, the debrief keeps its endings for the session only
 
 function read(key) {
   try {
@@ -34,7 +39,7 @@ if (params.has("reset")) {
 }
 
 export function loadProgress() {
-  if (isDemo) return initialProgress();
+  if (transient) return initialProgress();
   try {
     return sanitize(JSON.parse(read(KEY)));
   } catch {
@@ -43,7 +48,7 @@ export function loadProgress() {
 }
 
 export function saveProgress(progress) {
-  if (!isDemo) write(KEY, JSON.stringify(progress));
+  if (!transient) write(KEY, JSON.stringify(progress));
 }
 
 export function loadMuted() {
@@ -56,6 +61,7 @@ export function saveMuted(muted) {
 
 /** Her debrief answers ({ runs, found }), kept for you to read at ?debrief. Nothing is saved in ?demo. */
 export function loadDebrief() {
+  if (isReplay) return replayDebrief;
   try {
     return JSON.parse(read(DEBRIEF_KEY)) || { runs: [], found: [] };
   } catch {
@@ -64,5 +70,6 @@ export function loadDebrief() {
 }
 
 export function saveDebrief(store) {
-  if (!isDemo) write(DEBRIEF_KEY, JSON.stringify(store));
+  if (isReplay) replayDebrief = store;
+  else if (!isDemo) write(DEBRIEF_KEY, JSON.stringify(store));
 }

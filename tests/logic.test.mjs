@@ -107,6 +107,7 @@ test("every sticker named in content.js exists", () => {
   Object.values(content.bonus.faces).forEach((f) => faces.add(f));
   Object.values(content.debrief.secret.end).forEach((f) => faces.add(f));
   Object.values(content.debrief.ubb.faces).forEach((f) => faces.add(f));
+  for (const who of Object.values(content.museum.faces)) Object.values(who).forEach((f) => faces.add(f));
   for (const line of content.debrief.secret.script) {
     [line.duo, typeof line.enter === "string" && line.enter, ...(line.bite || []), ...Object.values(line.react || {})].filter(Boolean).forEach((f) => faces.add(f));
   }
@@ -242,6 +243,36 @@ test("secret ending: unlocked by the last ending found, remembered across runs",
   store = L.addDebriefRun(store, { ending: ids[0], answers: [] });
   assert.equal(store.secret, true);
   assert.equal(L.seeSecret(null).secret, true);
+});
+
+test("museum: matches in chronological order, every club has a name, a colour and a logo", () => {
+  const { matches, clubs } = content.museum;
+  for (let i = 1; i < matches.length; i++) assert.ok(matches[i - 1].date < matches[i].date, `${matches[i - 1].date} → ${matches[i].date}`);
+  for (const id of ["ubb", ...matches.map((m) => m.opponent)]) {
+    const club = clubs[id];
+    assert.ok(club?.name && /^#[0-9a-f]{6}$/i.test(club.color), id);
+    assert.ok(existsSync(new URL(`../assets/logos/${club.logo}`, import.meta.url)), club.logo);
+  }
+  for (const m of matches) {
+    assert.ok(m.score === null || (m.score.length === 2 && m.score.every(Number.isInteger)), m.date);
+    assert.ok(m.competition && m.stand && Number.isInteger(m.row) && Number.isInteger(m.seat), m.date);
+  }
+});
+
+test("museum: nothing from the tickets but the stand, row and seat (no name, ticket or barcode number)", () => {
+  const text = JSON.stringify(content.museum);
+  assert.doesNotMatch(text, /guarato|sicard|nicolas/i);
+  assert.doesNotMatch(text, /\d{6,}/);
+});
+
+test("museum: result, date in French, the two seats", () => {
+  assert.equal(L.museumResult({ score: [43, 31] }), "win");
+  assert.equal(L.museumResult({ score: [31, 34] }), "loss");
+  assert.equal(L.museumResult({ score: [20, 20] }), "draw");
+  assert.equal(L.museumResult({ score: null }), "soon");
+  assert.equal(L.museumDate("2025-04-06"), "dimanche 6 avril 2025");
+  assert.equal(L.museumDate("2026-12-13"), "dimanche 13 décembre 2026");
+  assert.equal(L.seatPair(224), "224 et 225");
 });
 
 test("UBB surprise: seen once, remembered across runs and alongside the secret ending", () => {

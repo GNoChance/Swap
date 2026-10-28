@@ -14,6 +14,11 @@ export function testScreen() {
       { class: "report-card" },
       h("h1", { class: "report-title" }, "Page de test"),
       h("p", { class: "test-note" }, "Tout s'ouvre en mode démo : rien n'est enregistré, sauf « Remettre à zéro »."),
+      group("Accueil et galerie", [
+        link("Page d'accueil", "./", "la vraie, avec sa progression"),
+        link("Galerie des matchs", "?musee"),
+        link("Tout rejouer depuis le début", "?rejouer", "rien n'est enregistré, pas de badge démo"),
+      ]),
       group("Début", [link("Intro et choix des chips", "?demo&scene=intro")]),
       group(
         "Cadeaux",

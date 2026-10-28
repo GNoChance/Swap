@@ -3262,3 +3262,465 @@ body.is-ubb .mute {
   color: var(--ink-soft);
   text-align: right;
 }
+
+/* Home page: the swap to see again, and the gallery of our matches */
+.screen-home {
+  justify-content: center;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.home-title {
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 11vw, 3.4rem);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.05;
+  color: var(--wine);
+}
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.home-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-choices[hidden] {
+  display: none;
+}
+
+.home-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 54px;
+  padding: 10px 18px;
+  border: 1px solid rgba(184, 147, 90, 0.6);
+  border-radius: 16px;
+  font-family: var(--sans);
+  color: var(--wine);
+  background: rgba(255, 253, 249, 0.85);
+}
+
+.home-choice-label {
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.home-choice small {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
+.home-museum {
+  margin-top: 6px;
+}
+
+/* The way back to the home page, on the swap's screens (top left, like the sound button on the right) */
+.home-button {
+  position: fixed;
+  top: calc(var(--sat) + 10px);
+  left: calc(var(--sal) + 12px);
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 1.15rem;
+  color: var(--wine);
+  background: rgba(255, 253, 249, 0.82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.home-button[hidden],
+body.is-ubb .home-button {
+  display: none;
+}
+
+.demo-badge {
+  left: calc(var(--sal) + 64px);
+}
+
+/* Gallery of our matches: a white museum corridor in CSS 3D (museum.js places every piece each frame) */
+html.is-museum {
+  scroll-snap-type: y mandatory;
+}
+
+.screen-museum {
+  display: block;
+  padding: 0;
+  background: #ece7df;
+}
+
+.mu-track {
+  position: relative;
+}
+
+.mu-stop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  scroll-snap-align: start;
+  pointer-events: none;
+}
+
+.mu-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  perspective: 700px;
+  perspective-origin: 50% 45%;
+  /* the skylight above, the far end of the corridor fading into the light */
+  background:
+    radial-gradient(ellipse 60% 30% at 50% 45%, #f7f4ee, rgba(247, 244, 238, 0) 70%),
+    linear-gradient(180deg, #ffffff 0%, #f4f0ea 35%, #ece7df 55%, #e2d8c9 100%);
+}
+
+.mu-piece,
+.mu-painting {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  will-change: transform;
+}
+
+.mu-wall {
+  background:
+    linear-gradient(0deg, #d8cfc2 0 22px, #efe9e0 22px 26px, transparent 26px),
+    linear-gradient(180deg, #e6e1d8 0 10px, transparent 10px),
+    #f6f3ee;
+}
+
+.mu-floor {
+  background:
+    repeating-linear-gradient(90deg, rgba(120, 84, 48, 0.12) 0 1px, transparent 1px 46px),
+    linear-gradient(90deg, #d9c2a0, #e3cfb0 50%, #d9c2a0);
+}
+
+.mu-backwall {
+  background:
+    linear-gradient(0deg, #d8cfc2 0 22px, #efe9e0 22px 26px, transparent 26px),
+    linear-gradient(180deg, #f8f6f2, #efe9e0);
+}
+
+/* A painting: frame, canvas (two fields of colour, the date, the two logos) and its cartel */
+.mu-painting {
+  --f: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: var(--tw);
+}
+
+.mu-painting::before {
+  /* the spotlight's pool of light on the wall, gone once the painting turns to her */
+  content: "";
+  position: absolute;
+  inset: -30% -25% -10%;
+  z-index: -1;
+  background: radial-gradient(ellipse 50% 46% at 50% 38%, rgba(255, 244, 214, 0.75), rgba(255, 244, 214, 0) 70%);
+  opacity: calc(1 - var(--f));
+}
+
+.mu-frame {
+  position: relative;
+  width: 100%;
+  padding: 12px;
+  border: 7px solid #1f1a17;
+  background: #fbf9f5;
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.45);
+}
+
+.mu-painting.is-final .mu-frame {
+  border: 9px solid #b8935a;
+  border-image: linear-gradient(135deg, #f3dfb0, #b8935a 40%, #8e6e3c 60%, #e6cb8f) 1;
+}
+
+.mu-canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #f1ece3;
+}
+
+.mu-field {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  border-radius: 3px;
+  opacity: 0.92;
+}
+
+.mu-field-home {
+  top: 7%;
+  height: 40%;
+  background: linear-gradient(180deg, var(--home), color-mix(in srgb, var(--home) 82%, #000));
+}
+
+.mu-field-away {
+  bottom: 7%;
+  height: 40%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--away) 88%, #fff), var(--away));
+}
+
+.mu-canvas-date {
+  position: relative;
+  padding: 2px 10px;
+  font-family: var(--serif);
+  font-size: calc(var(--tw) * 0.055);
+  font-style: italic;
+  color: #2b1a1e;
+  background: rgba(251, 249, 245, 0.92);
+}
+
+.mu-logos {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--tw) * 0.04);
+}
+
+.mu-medal {
+  display: grid;
+  place-items: center;
+  width: calc(var(--tw) * 0.25);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.45);
+}
+
+.mu-logo {
+  width: 74%;
+  height: 74%;
+  object-fit: contain;
+}
+
+.mu-vs {
+  font-family: var(--serif);
+  font-size: calc(var(--tw) * 0.07);
+  color: #fbf9f5;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* A match still to come: a linen sheet over the canvas */
+.mu-veil {
+  position: absolute;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0) 0 14px, rgba(255, 255, 255, 0.35) 18px, rgba(0, 0, 0, 0.06) 26px, rgba(255, 255, 255, 0) 32px),
+    linear-gradient(180deg, #e4ddd2, #cfc6b8);
+}
+
+.mu-veil-tag {
+  padding: 6px 14px;
+  border: 1px solid rgba(43, 26, 30, 0.25);
+  font-family: var(--serif);
+  font-size: calc(var(--tw) * 0.058);
+  font-style: italic;
+  color: #2b1a1e;
+  background: #fbf9f5;
+}
+
+.mu-cartel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  text-align: left;
+  color: rgba(43, 26, 30, 0.75);
+  background: #ffffff;
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.3);
+}
+
+.mu-cartel-title {
+  margin-bottom: 2px;
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: #2b1a1e;
+}
+
+.mu-painting.is-final .mu-cartel-title {
+  color: var(--gold-text);
+}
+
+.mu-cartel-teams {
+  font-weight: 600;
+  color: #2b1a1e;
+}
+
+.mu-cartel-note {
+  font-style: italic;
+}
+
+.mu-cartel-seat {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(43, 26, 30, 0.12);
+  font-weight: 600;
+  color: var(--wine);
+}
+
+.mu-edge {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.mu-edge-l {
+  left: 0;
+}
+
+.mu-edge-r {
+  right: 0;
+}
+
+/* Overlays: the title at the entrance, the end, Mini Cycy and Kevin walking */
+.mu-overlays {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.mu-intro {
+  position: absolute;
+  top: calc(var(--sat) + 70px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.mu-title {
+  font-family: var(--serif);
+  font-size: clamp(2.3rem, 10vw, 3.4rem);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.05;
+  color: #2b1a1e;
+}
+
+.mu-subtitle {
+  font-size: 0.82rem;
+  color: rgba(43, 26, 30, 0.6);
+}
+
+.mu-hint {
+  margin-top: 18px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--wine);
+  animation: mu-hint 1.6s ease-in-out infinite;
+}
+
+@keyframes mu-hint {
+  50% {
+    translate: 0 5px;
+  }
+}
+
+.mu-end {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px;
+  text-align: center;
+  visibility: hidden;
+}
+
+.mu-end.is-shown {
+  visibility: visible;
+}
+
+.mu-end-title {
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 11vw, 3.4rem);
+  font-style: italic;
+  color: #2b1a1e;
+}
+
+.mu-end-note {
+  font-size: 0.9rem;
+  color: rgba(43, 26, 30, 0.65);
+}
+
+.mu-visitors {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--sab) + 14px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+}
+
+.mu-visitor {
+  filter: drop-shadow(0 8px 8px rgba(43, 26, 30, 0.22));
+}
+
+.mu-back {
+  position: fixed;
+  top: calc(var(--sat) + 10px);
+  left: calc(var(--sal) + 12px);
+  z-index: 50;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--wine);
+  background: rgba(255, 253, 249, 0.82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}

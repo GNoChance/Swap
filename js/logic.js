@@ -352,6 +352,27 @@ export function addDebriefRun(store, run) {
   return { runs: [...runs, run], found: [...new Set([...found, run.ending])], secret: Boolean(store?.secret), ubb: Boolean(store?.ubb) };
 }
 
+// ── Museum of our matches ──
+
+/** "win", "loss" or "draw" for UBB; "soon" while the match is still to be played (score: null). */
+export function museumResult(match) {
+  if (!match.score) return "soon";
+  const [ubb, them] = match.score;
+  return ubb > them ? "win" : ubb < them ? "loss" : "draw";
+}
+
+/** "2025-04-06" → "dimanche 6 avril 2025" (read at noon UTC: no timezone shifts the day). */
+export function museumDate(iso) {
+  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(`${iso}T12:00:00Z`),
+  );
+}
+
+/** His seat on the ticket, and hers right next to it. */
+export function seatPair(seat) {
+  return `${seat} et ${seat + 1}`;
+}
+
 /** The UBB surprise plays once, at the end of her first debrief. */
 export function seeUbb(store) {
   return { runs: [], found: [], ...store, ubb: true };
