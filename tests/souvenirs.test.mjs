@@ -91,13 +91,13 @@ test("supabase/setup.sql: private table and bucket, only the shared account, liv
   assert.match(sql, /alter publication supabase_realtime add table public\.souvenirs/);
 });
 
-test("souvenirs: the config ships empty, no code anywhere in the site's code", async () => {
+test("souvenirs: the config ships empty, no code written anywhere in the site's code", async () => {
   const { readFileSync, readdirSync } = await import("node:fs");
   const { config } = await import("../js/souvenirs-config.js");
   assert.equal(config.url, "");
   assert.equal(config.anonKey, "");
   const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "vendor" ? [] : walk(`${dir}/${e.name}`)) : [`${dir}/${e.name}`]));
   const root = new URL("../js", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
-  for (const file of walk(root).filter((f) => !f.endsWith("souvenirs/supabase.js")))
-    assert.doesNotMatch(readFileSync(file, "utf8"), /password/i, file);
+  // a code written down: password: "…" / password = "…" (a password field, type: "password", is fine)
+  for (const file of walk(root)) assert.doesNotMatch(readFileSync(file, "utf8"), /password["']?s*[:=]s*["'`]w/i, file);
 });

@@ -6,13 +6,14 @@
 import * as THREE from "./vendor/three.module.min.js";
 import { Reflector } from "./vendor/Reflector.js";
 import { content } from "./content.js";
-import { nextMatchIndex, museumReaction, cartelText } from "./logic.js";
+import { nextMatchIndex, museumReaction, cartelText, fill } from "./logic.js";
 import { ROOM, railPose, springStep } from "./gallery3d/rail.js";
 import { loadFonts, paintingCanvas, cartelCanvas, parquetCanvas, plasterCanvas, haloCanvas } from "./gallery3d/textures.js";
 import { buildRoom } from "./gallery3d/room.js";
 import { addDecor } from "./gallery3d/decor.js";
 import { createVisitors } from "./gallery3d/visitors.js";
 import { souvenirPanel } from "./gallery3d/souvenirs.js";
+import { createStore } from "./souvenirs/store.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { confetti } from "./effects.js";
 import { h } from "./dom.js";
@@ -84,6 +85,8 @@ export function museum3dScreen({ onBack, onFail }) {
   let wasMoving = false;
   const zoom = { v: 0 }; // « En savoir plus »: 0 in the corridor, 1 close to the painting
   let panel = null;
+  let store = null; // shared souvenirs (null until configured)
+  let counts = {}; // match date → photos and videos, once unlocked
   let busy = false; // opening or closing the souvenirs
 
   function layoutTrack() {
@@ -197,9 +200,24 @@ export function museum3dScreen({ onBack, onFail }) {
   /** The painting at stop k on screen, for the tests. */
   const frameRect = (k) => (k >= 1 && k <= count ? screenRect(room.frames[k - 1]).join(",") : "");
 
+  /** « En savoir plus · n » when the match has souvenirs (known once this phone is unlocked). */
+  function labelMore(k) {
+    const n = (k >= 1 && k <= count && counts[matches[k - 1].date]) || 0;
+    moreButton.textContent = n ? fill(m.moreCount, { n }) : m.more;
+    moreButton.dataset.count = String(n);
+  }
+
+  /** Fresh counts, quietly: a locked phone or no network just shows no count. */
+  async function refreshCounts() {
+    if (!store || !(await store.isUnlocked().catch(() => false))) return;
+    counts = await store.counts().catch(() => counts);
+    if (!left) labelMore(settledAt);
+  }
+
   /** « En savoir plus » under the cartel of the painting she stopped at. */
   function showMore(k) {
     if (panel || busy || k < 1 || k > count) return hideMore();
+    labelMore(k);
     const [l, , r, b] = screenRect(room.cartels[k - 1]);
     moreButton.style.left = `${(l + r) / 2}px`;
     moreButton.style.top = `${Math.min(b + 10, size.h - 120)}px`;
@@ -237,7 +255,7 @@ export function museum3dScreen({ onBack, onFail }) {
     await zoomTo(1, 0.7);
     if (left) return;
     // the score, or « UBB – Bayonne » for a match still to come
-    panel = souvenirPanel(match, { labels: m, title: text.teams || text.title, onClose: closeSouvenirs });
+    panel = souvenirPanel(match, { labels: m, title: text.teams || text.title, onClose: closeSouvenirs, store });
     el.append(panel.el);
     sfx("pop");
     await panel.open();
@@ -256,10 +274,12 @@ export function museum3dScreen({ onBack, onFail }) {
     await zoomTo(0, 0.6);
     busy = false;
     if (left) return;
+    scrollTo(0, settledAt * stopH); // back where she stood, whatever the keyboard did to the page
     document.documentElement.classList.remove("is-locked");
     el.dataset.panel = "closed";
     showMore(settledAt);
     if (settledAt >= 1 && settledAt <= count) armNap(settledAt);
+    refreshCounts();
   }
 
   /** Came to rest at stop k: they react, then the framing is refreshed. */
@@ -267,6 +287,7 @@ export function museum3dScreen({ onBack, onFail }) {
     stopWalking();
     react(k);
     refresh(k);
+    if (k >= 1 && k <= count) refreshCounts();
   }
 
   /** A finger held between two paintings: they stop and look, no reaction, no button. */
@@ -317,6 +338,7 @@ export function museum3dScreen({ onBack, onFail }) {
 
   function onScroll() {
     if (!visitors) return; // still loading: build() starts from the top
+    if (panel || busy) return; // the panel's keyboard or a focused field scrolls the page: the visit stays put
     target = Math.max(0, Math.min(stops - 1, scrollY / stopH));
     if (Math.abs(target - settledAt) > 0.01) startWalking();
     el.dataset.moving = "1";
@@ -398,6 +420,7 @@ export function museum3dScreen({ onBack, onFail }) {
       end: m.end,
       endNote: m.endNote,
     });
+    store = await createStore().catch(() => null);
     visitors = await createVisitors(THREE, { faces: m.faces, room: ROOM });
     if (left) return visitors.dispose();
     room.scene.add(visitors.group);
