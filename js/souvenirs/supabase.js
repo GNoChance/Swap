@@ -2,7 +2,7 @@
 // souvenirs panel first needs it. One shared account opens everything: its e-mail is in the config, the code
 // typed on the site is its password. Files go up by XHR (the library has no upload progress); a souvenir's row is
 // inserted only once its files are up, so nobody ever sees half of one.
-import { checkFile, checkNote, countByMatch, sortItems, storagePaths } from "./logic.js";
+import { checkFile, checkNote, countByMatch, pickCover, sortItems, storagePaths } from "./logic.js";
 import { shrinkPhoto, videoThumb } from "./media.js";
 
 const BUCKET = "souvenirs";
@@ -137,6 +137,27 @@ export function createSupabaseStore(config, deviceId) {
       const { data, error } = await client.from(TABLE).select("match_date, kind").neq("kind", "note");
       if (error) throw failure(error);
       return countByMatch(data);
+    },
+    /** Each match with a photo: { id, url } of the one on its painting (its signed thumbnail). */
+    async paintingPhotos() {
+      const { client } = await session();
+      const [photos, chosen] = await Promise.all([
+        client.from(TABLE).select("id, match_date, kind, path, thumb, created_at").eq("kind", "photo"),
+        client.from("covers").select("match_date, souvenir_id"),
+      ]);
+      if (photos.error) throw failure(photos.error);
+      if (chosen.error) throw failure(chosen.error);
+      const coverOf = Object.fromEntries(chosen.data.map((c) => [c.match_date, c.souvenir_id]));
+      const picks = [...new Set(photos.data.map((p) => p.match_date))]
+        .map((date) => pickCover(photos.data.filter((p) => p.match_date === date), coverOf[date]))
+        .filter(Boolean);
+      const linked = await withUrls(client, picks.map((p) => ({ ...p, path: null }))); // the thumbnail is plenty for a painting
+      return Object.fromEntries(linked.map((p) => [p.match_date, { id: p.id, url: p.thumbUrl }]));
+    },
+    async setCover(matchDate, id) {
+      const { client } = await session();
+      const { error } = await client.from("covers").upsert({ match_date: matchDate, souvenir_id: id, updated_at: new Date().toISOString() }, { onConflict: "match_date" });
+      if (error) throw failure(error);
     },
     async addMedia(matchDate, file, { author, onProgress = () => {} }) {
       const check = checkFile(file);

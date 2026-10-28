@@ -3,7 +3,7 @@
 // BroadcastChannel. Each device (&device=x) has its own session, like two phones. For the tests:
 // window.__souvenirsFake.failNext() makes the next upload fail, .expire() ends this device's session, .slow = ms
 // slows each upload step down, .stats counts the open live channels and the uploads running at once.
-import { checkFile, checkNote, countByMatch, sortItems, storagePaths } from "./logic.js";
+import { checkFile, checkNote, countByMatch, pickCover, sortItems, storagePaths } from "./logic.js";
 import { shrinkPhoto, videoThumb } from "./media.js";
 
 const KEY = "swap-cyrielle:souvenirs-fake";
@@ -11,7 +11,7 @@ const CODE = "test-code";
 const CHANNEL = "souvenirs-fake";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const load = () => JSON.parse(localStorage.getItem(KEY) || '{"rows":[],"files":{}}');
+const load = () => ({ covers: {}, ...JSON.parse(localStorage.getItem(KEY) || '{"rows":[],"files":{}}') });
 const save = (db) => localStorage.setItem(KEY, JSON.stringify(db));
 const dataUrl = (blob) =>
   new Promise((resolve, reject) => {
@@ -102,10 +102,28 @@ export function createFakeStore({ deviceId }) {
       const row = { id: crypto.randomUUID(), match_date: matchDate, kind: "note", path: null, thumb: null, text: check.text, author, device: deviceId, width: null, height: null, created_at: new Date().toISOString() };
       return insert(row, {});
     },
+    /** Each match with a photo: { id, url } of the one on its painting (its thumbnail). */
+    async paintingPhotos() {
+      guard();
+      const db = load();
+      const out = {};
+      for (const date of new Set(db.rows.map((r) => r.match_date))) {
+        const photo = pickCover(db.rows.filter((r) => r.match_date === date), db.covers[date]);
+        if (photo) out[date] = { id: photo.id, url: db.files[photo.thumb] || db.files[photo.path] };
+      }
+      return out;
+    },
+    async setCover(matchDate, id) {
+      guard();
+      const db = load();
+      db.covers[matchDate] = id;
+      save(db);
+    },
     async remove(item) {
       guard();
       const db = load();
       db.rows = db.rows.filter((r) => r.id !== item.id);
+      for (const [date, id] of Object.entries(db.covers)) if (id === item.id) delete db.covers[date]; // like « on delete cascade »
       for (const p of [item.path, item.thumb]) if (p) delete db.files[p];
       save(db);
       sender.postMessage({ type: "delete", id: item.id, match_date: item.match_date });

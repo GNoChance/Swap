@@ -113,7 +113,7 @@ test("supabase/setup.sql: the shared account gets its rights (new projects grant
   const sql = readFileSync(new URL("../supabase/setup.sql", import.meta.url), "utf8").toLowerCase();
   assert.match(sql, /grant select, insert, delete on public\.souvenirs to authenticated/);
   const policies = sql.match(/create policy[^;]+;/g);
-  assert.equal(policies.length, 6);
+  assert.equal(policies.length, 10); // souvenirs 3, its files 3, covers 4
   for (const p of policies) assert.ok(p.includes(`(auth.jwt() ->> 'email') = '${config.email}'`), p);
 });
 
@@ -123,4 +123,29 @@ test("souvenirs: a polaroid takes its photo's shape, between 9:16 and 16:9", () 
   assert.equal(S.shotRatio(4000, 500), 16 / 9);
   assert.equal(S.shotRatio(0, 0), 0.75);
   assert.equal(S.shotRatio(null, undefined), 0.75);
+});
+
+test("souvenirs: the painting's photo — the chosen one, else the first photo, never a video", () => {
+  const items = [
+    { id: "v", kind: "video", created_at: "2026-10-28T08:00:00Z" },
+    { id: "p1", kind: "photo", created_at: "2026-10-28T09:00:00Z" },
+    { id: "n", kind: "note", created_at: "2026-10-28T09:30:00Z" },
+    { id: "p2", kind: "photo", created_at: "2026-10-28T10:00:00Z" },
+  ];
+  assert.equal(S.pickCover(items, "p2").id, "p2");
+  assert.equal(S.pickCover(items, null).id, "p1");
+  assert.equal(S.pickCover(items, "gone").id, "p1"); // the chosen photo was deleted
+  assert.equal(S.pickCover(items, "v").id, "p1"); // a video never goes on the painting
+  assert.equal(S.pickCover([items[0], items[2]], null), null);
+});
+
+test("supabase/setup.sql: the painting's photo per match, kept with its souvenir", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync(new URL("../supabase/setup.sql", import.meta.url), "utf8").toLowerCase();
+  assert.match(sql, /create table if not exists public\.covers/);
+  assert.match(sql, /match_date text primary key/);
+  assert.match(sql, /references public\.souvenirs\(id\) on delete cascade/);
+  assert.match(sql, /grant select, insert, update, delete on public\.covers to authenticated/);
+  assert.match(sql, /revoke all on public\.covers from anon/);
+  for (const action of ["select", "insert", "update", "delete"]) assert.match(sql, new RegExp(`on public\\.covers for ${action} to authenticated`), action);
 });

@@ -54,6 +54,12 @@ export function sortItems(items) {
   return [...items].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
 }
 
+/** The photo on the match's painting: the chosen one, else the first photo added; never a video. */
+export function pickCover(items, coverId) {
+  const photos = sortItems(items.filter((i) => i.kind === "photo"));
+  return photos.find((p) => p.id === coverId) || photos[0] || null;
+}
+
 /** Added from this phone (its random device id): only then can it be deleted here. */
 export const isMine = (item, deviceId) => Boolean(deviceId) && item.device === deviceId;
 

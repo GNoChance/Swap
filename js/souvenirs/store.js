@@ -5,6 +5,7 @@
 // Store: deviceId · isUnlocked() · unlock(code) (rejects "bad-code" | "network") · list(matchDate) (rejects "locked")
 // · counts() · addMedia(matchDate, file, { author, onProgress }) · addNote(matchDate, text, { author })
 // · remove(item) · subscribe(matchDate, onChange({ type: "insert", item } | { type: "delete", id })) → unsubscribe
+// · paintingPhotos() → { [matchDate]: { id, url } } · setCover(matchDate, id)
 import { config } from "../souvenirs-config.js";
 
 const DEVICE_KEY = "swap-cyrielle:device";
