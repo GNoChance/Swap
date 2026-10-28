@@ -6,7 +6,7 @@
 // each frame from the camera position (z_rel: 0 = the screen plane, negative = further away). Anything about to pass
 // behind the eye is hidden, Safari draws those inside out.
 import { content } from "./content.js";
-import { museumResult, museumDate, seatPair } from "./logic.js";
+import { museumResult, museumDate, museumReaction, nextMatchIndex, cartelText } from "./logic.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { confetti } from "./effects.js";
 import { createAvatar, preloadFaces } from "./avatar.js";
@@ -26,7 +26,7 @@ export function museumScreen({ onBack }) {
   const m = content.museum;
   const { clubs, matches } = m;
   const stops = matches.length + 2; // the entrance, one stop per painting, the end
-  const last = matches.length - 1;
+  const next = nextMatchIndex(matches);
   preloadFaces(Object.values(m.faces).flatMap((who) => Object.values(who)));
 
   // ── The corridor ──
@@ -50,18 +50,16 @@ export function museumScreen({ onBack }) {
     );
     canvas.style.setProperty("--home", clubs.ubb.color);
     canvas.style.setProperty("--away", club.color);
-    const veil = soon && h("div", { class: "mu-veil" }, h("span", { class: "mu-veil-tag" }, i === last ? m.next : m.soon));
-    const title = soon ? (i === last ? m.next : m.soon) : `${clubs.ubb.name} ${match.score[0]} – ${match.score[1]} ${club.name}`;
+    const text = cartelText(match, { clubs, labels: m, venues: m.venues, upcoming: soon ? (i === next ? "next" : "soon") : null });
+    const veil = soon && h("div", { class: "mu-veil" }, h("span", { class: "mu-veil-tag" }, text.title));
     const cartel = h(
       "div",
       { class: "mu-cartel" },
-      h("p", { class: "mu-cartel-title" }, title),
-      soon && h("p", { class: "mu-cartel-teams" }, `${clubs.ubb.name} – ${club.name}`),
-      h("p", {}, match.competition),
-      h("p", {}, match.final ? museumDate(match.date) : `${museumDate(match.date)} · ${m.place}`),
-      match.final && h("p", {}, match.place),
-      match.note && h("p", { class: "mu-cartel-note" }, match.note),
-      h("p", { class: "mu-cartel-seat" }, `${match.stand} · ${m.row} ${match.row} · ${m.seats} ${seatPair(match.seat)}`),
+      h("p", { class: "mu-cartel-title" }, text.title),
+      text.teams && h("p", { class: "mu-cartel-teams" }, text.teams),
+      text.lines.map((line) => h("p", {}, line)),
+      text.note && h("p", { class: "mu-cartel-note" }, text.note),
+      h("p", { class: "mu-cartel-seat" }, text.seat),
     );
     // two marks on the edges: the end-to-end test checks which way the painting faces
     const el = h(
@@ -254,17 +252,16 @@ export function museumScreen({ onBack }) {
       return;
     }
     const match = matches[k - 1];
-    const result = museumResult(match);
+    const reaction = museumReaction(match);
     sfx("ding");
-    if (result === "soon") return setFaces("point");
-    if (result === "loss") {
-      setFaces("lose");
+    setFaces(reaction);
+    if (reaction === "point" || reaction === "look") return;
+    if (reaction === "lose") {
       setTimeout(() => lastStop === k && sfx("sadTrombone"), 350);
       return;
     }
-    setFaces(match.final ? "final" : "win");
     [cycy, kevin].forEach((a, i) => setTimeout(() => a.jump(20), i * 110));
-    if (match.final) {
+    if (reaction === "final") {
       sfx("final");
       confetti(GOLD);
     } else setTimeout(() => lastStop === k && sfx("applause"), 300);

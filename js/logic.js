@@ -368,6 +368,39 @@ export function museumDate(iso) {
   );
 }
 
+/** "2026-10-31" → "31 octobre": the day of a match still to come. */
+export function museumDay(iso) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
+}
+
+/** The first match still to be played (« La prochaine œuvre »), or -1. */
+export function nextMatchIndex(matches) {
+  return matches.findIndex((match) => !match.score);
+}
+
+/** How Mini Cycy and Kevin react in front of a match: a key of content.museum.faces. */
+export function museumReaction(match) {
+  const result = museumResult(match);
+  if (result === "soon") return "point";
+  if (result === "loss") return "lose";
+  if (result === "draw") return "look";
+  return match.final ? "final" : "win";
+}
+
+/** What the cartel says. upcoming: "next" (the first match to come), "soon" (the others) or null (played). */
+export function cartelText(match, { clubs, labels, venues, upcoming }) {
+  const club = clubs[match.opponent];
+  const ubb = clubs.ubb.name;
+  const date = museumDate(match.date);
+  return {
+    title: upcoming ? labels[upcoming] : `${ubb} ${match.score[0]} – ${match.score[1]} ${club.name}`,
+    teams: upcoming ? `${ubb} – ${club.name}` : null,
+    lines: match.final ? [match.competition, date, match.place] : [match.competition, `${date} · ${venues[match.venue]}`],
+    note: match.note || null,
+    seat: `${match.stand} · ${labels.row} ${match.row} · ${labels.seats} ${seatPair(match.seat)}`,
+  };
+}
+
 /** His seat on the ticket, and hers right next to it. */
 export function seatPair(seat) {
   return `${seat} et ${seat + 1}`;

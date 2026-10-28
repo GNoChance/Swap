@@ -265,6 +265,47 @@ test("museum: nothing from the tickets but the stand, row and seat (no name, tic
   assert.doesNotMatch(text, /\d{6,}/);
 });
 
+test("museum: 14 matches, a venue and souvenirs on each", () => {
+  const { matches, venues } = content.museum;
+  assert.equal(matches.length, 14);
+  for (const m of matches) {
+    assert.ok(venues[m.venue], m.date);
+    assert.ok(Array.isArray(m.photos) && typeof m.story === "string", m.date);
+    for (const f of m.photos) assert.ok(existsSync(new URL(`../assets/souvenirs/${m.date}/${f}`, import.meta.url)), f);
+  }
+  assert.deepEqual(matches.filter((m) => m.venue === "atlantique").map((m) => m.opponent), ["toulouse", "pau"]);
+});
+
+test("museum: the first match to come is « La prochaine œuvre »", () => {
+  assert.equal(L.nextMatchIndex(content.museum.matches), 11);
+  assert.equal(content.museum.matches[11].opponent, "bayonne");
+  assert.equal(L.nextMatchIndex([{ score: [1, 0] }]), -1);
+});
+
+test("museum: their reaction to each match, the day of a match", () => {
+  assert.equal(L.museumReaction({ score: [43, 31] }), "win");
+  assert.equal(L.museumReaction({ score: [41, 19], final: true }), "final");
+  assert.equal(L.museumReaction({ score: [31, 34] }), "lose");
+  assert.equal(L.museumReaction({ score: [20, 20] }), "look");
+  assert.equal(L.museumReaction({ score: null }), "point");
+  assert.equal(L.museumDay("2026-10-31"), "31 octobre");
+});
+
+test("museum: cartel text", () => {
+  const m = content.museum;
+  const ctx = { clubs: m.clubs, labels: m, venues: m.venues };
+  const toulouse = L.cartelText(m.matches[3], { ...ctx, upcoming: null });
+  assert.equal(toulouse.title, "UBB 44 – 20 Toulouse");
+  assert.ok(toulouse.lines.includes("dimanche 22 mars 2026 · Stade Atlantique"));
+  assert.equal(toulouse.seat, "Tribune Ouest · Bloc 05 · Rang 58 · Places 9 et 10");
+  const bayonne = L.cartelText(m.matches[11], { ...ctx, upcoming: "next" });
+  assert.equal(bayonne.title, "La prochaine œuvre");
+  assert.equal(bayonne.teams, "UBB – Bayonne");
+  const final = L.cartelText(m.matches[6], { ...ctx, upcoming: null });
+  assert.ok(final.lines.includes("Sur écran géant · Stade Chaban-Delmas"));
+  assert.equal(final.note, "Jouée à Bilbao · 2e titre européen d'affilée");
+});
+
 test("museum: result, date in French, the two seats", () => {
   assert.equal(L.museumResult({ score: [43, 31] }), "win");
   assert.equal(L.museumResult({ score: [31, 34] }), "loss");
