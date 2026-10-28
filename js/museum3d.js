@@ -54,6 +54,7 @@ export function museum3dScreen({ onBack, onFail }) {
         left = true;
         timers.forEach(clearTimeout);
         clearInterval(stepTimer);
+        panel?.dispose(); // the full screen, a playing video, the live channel
         sfx("tap");
         onBack();
       },
@@ -466,6 +467,7 @@ export function museum3dScreen({ onBack, onFail }) {
       clearTimeout(nap);
       clearInterval(stepTimer);
       timers.forEach(clearTimeout);
+      panel?.dispose();
       gsap.killTweensOf([zoom, moreButton]);
       visitors?.dispose();
       decor?.dispose();

@@ -22,9 +22,13 @@ function loadLibrary() {
   return library;
 }
 
-/** The library's errors, as the panel knows them. */
+/** The library's errors, as the panel knows them. 42501: the shared account has no rights on the table. */
 function failure(error) {
   if (!error) return new Error("network");
+  if (error.code === "42501") {
+    console.warn("Souvenirs : Supabase refuse l'accès (42501). Relancer supabase/setup.sql dans le SQL Editor du projet.");
+    return new Error("config");
+  }
   const status = Number(error.status ?? error.statusCode);
   if (status === 401 || status === 403 || /jwt|not authorized|row-level security/i.test(error.message || "")) return new Error("locked");
   return new Error("network");
@@ -47,12 +51,18 @@ function upload({ url, anonKey, token, path, blob, onProgress }) {
 }
 
 export function createSupabaseStore(config, deviceId) {
-  const ready = loadLibrary().then((lib) =>
-    lib.createClient(config.url, config.anonKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "swap-cyrielle:souvenirs-auth" } }),
-  );
+  // the client, created on first need; a library that failed to load (no network) is tried again next time
+  let ready = null;
+  const getClient = () =>
+    (ready ??= loadLibrary()
+      .then((lib) => lib.createClient(config.url, config.anonKey, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "swap-cyrielle:souvenirs-auth" } }))
+      .catch((error) => {
+        ready = null;
+        throw error;
+      }));
 
   async function session() {
-    const client = await ready;
+    const client = await getClient();
     const { data } = await client.auth.getSession();
     if (!data.session) throw new Error("locked");
     return { client, token: data.session.access_token };
@@ -70,10 +80,29 @@ export function createSupabaseStore(config, deviceId) {
     return rows.map((r) => ({ ...r, url: links[r.path] || null, thumbUrl: links[r.thumb] || null }));
   }
 
+  /** Links can't be had right now (network): the souvenir shows without them rather than not at all. */
+  async function withUrlsOrNot(client, rows) {
+    try {
+      return await withUrls(client, rows);
+    } catch {
+      return rows.map((r) => ({ ...r, url: null, thumbUrl: null }));
+    }
+  }
+
   async function insert(client, row) {
     const { data, error } = await client.from(TABLE).insert(row).select().single();
     if (error) throw failure(error);
-    return (await withUrls(client, [data]))[0];
+    return (await withUrlsOrNot(client, [data]))[0];
+  }
+
+  /** Was the row written although its answer got lost (a flaky network)? */
+  async function exists(client, id) {
+    try {
+      const { data } = await client.from(TABLE).select("id").eq("id", id);
+      return Boolean(data?.length);
+    } catch {
+      return false;
+    }
   }
 
   return {
@@ -89,7 +118,7 @@ export function createSupabaseStore(config, deviceId) {
     async unlock(code) {
       let client;
       try {
-        client = await ready;
+        client = await getClient();
       } catch {
         throw new Error("network");
       }
@@ -121,21 +150,26 @@ export function createSupabaseStore(config, deviceId) {
       const total = parts.reduce((sum, p) => sum + p.blob.size, 0);
       let done = 0;
       const sent = [];
+      const takeBack = async (error) => {
+        // nothing half-made: files already up are taken back (orphan files are invisible, a broken souvenir is not)
+        if (sent.length) await client.storage.from(BUCKET).remove(sent).catch(() => {});
+        return ["locked", "config"].includes(error.message) ? error : new Error("network");
+      };
       try {
         for (const part of parts) {
           await upload({ url: config.url, anonKey: config.anonKey, token, ...part, onProgress: (f) => onProgress(Math.min(0.99, (done + f * part.blob.size) / total)) });
           sent.push(part.path);
           done += part.blob.size;
         }
-        const row = { id, match_date: matchDate, kind: check.kind, path: paths.path, thumb: media.thumb ? paths.thumb : null, text: null, author, device: deviceId, width: media.width || null, height: media.height || null };
-        const item = await insert(client, row);
-        onProgress(1);
-        return item;
       } catch (error) {
-        // nothing half-made: files already up are taken back
-        if (sent.length) await client.storage.from(BUCKET).remove(sent).catch(() => {});
-        throw error.message === "locked" ? error : new Error("network");
+        throw await takeBack(error);
       }
+      const row = { id, match_date: matchDate, kind: check.kind, path: paths.path, thumb: media.thumb ? paths.thumb : null, text: null, author, device: deviceId, width: media.width || null, height: media.height || null };
+      const { data, error } = await client.from(TABLE).insert(row).select().single();
+      // once the row is in, nothing is taken back: if its answer got lost, look before undoing
+      if (error && !(failure(error).message === "network" && (await exists(client, id)))) throw await takeBack(failure(error));
+      onProgress(1);
+      return (await withUrlsOrNot(client, [data || { ...row, created_at: new Date().toISOString() }]))[0];
     },
     async addNote(matchDate, text, { author }) {
       const check = checkNote(text);
@@ -156,12 +190,12 @@ export function createSupabaseStore(config, deviceId) {
     subscribe(matchDate, onChange) {
       let channel = null;
       let closed = false;
-      ready.then(async (client) => {
+      getClient().then(async (client) => {
         if (closed) return;
         channel = client
           .channel(`souvenirs-${matchDate}-${crypto.randomUUID()}`)
           .on("postgres_changes", { event: "INSERT", schema: "public", table: TABLE, filter: `match_date=eq.${matchDate}` }, async ({ new: row }) => {
-            const [item] = await withUrls(client, [row]).catch(() => [{ ...row, url: null, thumbUrl: null }]);
+            const [item] = await withUrlsOrNot(client, [row]);
             onChange({ type: "insert", item });
           })
           // deletions can't be filtered by match: the panel ignores ids it doesn't show
@@ -170,7 +204,7 @@ export function createSupabaseStore(config, deviceId) {
       });
       return () => {
         closed = true;
-        ready.then((client) => channel && client.removeChannel(channel));
+        if (channel) getClient().then((client) => client.removeChannel(channel));
       };
     },
   };

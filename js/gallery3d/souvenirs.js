@@ -19,6 +19,39 @@ const savedName = () => {
   }
 };
 
+// ── Uploads outlive the panel (she may close it while a video goes up) ──
+// Kept per match, sent one at a time (a dozen 48 Mpx photos decoded at once would make Safari reload the page);
+// any panel open on that match shows them, their progress, and « Échec · Réessayer ».
+const jobs = new Map(); // match date → [{ key, file, author, progress, failed }]
+const watchers = new Set(); // open panels: (date, change) → void
+let queue = Promise.resolve();
+
+const jobsFor = (date) => (jobs.has(date) ? jobs.get(date) : jobs.set(date, []).get(date));
+const notify = (date, change = {}) => watchers.forEach((watch) => watch(date, change));
+
+function runJob(store, date, job) {
+  job.failed = false;
+  job.progress = 0;
+  notify(date);
+  queue = queue.then(async () => {
+    try {
+      const item = await store.addMedia(date, job.file, {
+        author: job.author,
+        onProgress(p) {
+          job.progress = p;
+          notify(date, { progress: job });
+        },
+      });
+      const list = jobsFor(date);
+      list.splice(list.indexOf(job), 1);
+      notify(date, { item });
+    } catch (err) {
+      job.failed = true;
+      notify(date, err.message === "locked" ? { locked: true } : {});
+    }
+  });
+}
+
 const emptyPolaroids = (caption, extra = "") =>
   Array.from({ length: 3 }, () => h("figure", { class: `g3d-polaroid is-empty ${extra}` }, h("span", { "aria-hidden": "true" }, extra ? "🔒" : "📷"), h("figcaption", {}, caption)));
 
@@ -40,7 +73,7 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
   const el = h("div", { class: "g3d-souvenirs" }, card);
   const meet = () => !match.score && h("p", { class: "g3d-souvenirs-meet" }, fill(labels.meet, { day: museumDay(match.date) }));
   let items = [];
-  let pending = []; // uploads on their way: { key, file, progress, failed }
+  const pending = jobsFor(match.date); // this match's uploads on their way (shared with the other panels)
   let unsubscribe = null;
   let closed = false;
   let name = savedName();
@@ -60,8 +93,13 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
   });
   const addArea = h("div", { class: "g3d-add-area" });
   const addError = h("p", { class: "g3d-add-error", role: "alert" });
+  const row = h("div", { class: "g3d-photos" });
+  const notesEl = h("div", { class: "g3d-notes" });
+  const meetEl = meet();
+  let laidOut = false; // the ready layout is in place: later renders only refill the row and the notes
 
   function setState(state, ...children) {
+    laidOut = false;
     el.dataset.state = state;
     body.replaceChildren(...children.flat().filter(Boolean));
   }
@@ -190,6 +228,8 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
         h("div", { class: "g3d-add-menu" }, yes, h("button", { class: "g3d-souvenirs-close g3d-confirm-cancel", type: "button", onclick: () => addArea.replaceChildren() }, ui.cancel)),
       ),
     );
+    // the × may be far down the card (a note at the bottom): bring the question into view
+    addArea.firstChild.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
   /** An upload on its way: its progress, or « Échec · Réessayer ». */
@@ -200,9 +240,9 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
       h(
         "div",
         { class: "g3d-polaroid-shot" },
-        job.failed ? h("button", { class: "g3d-retry", type: "button", onclick: () => upload(job) }, ui.failed) : h("span", { class: "g3d-progress" }),
+        job.failed ? h("button", { class: "g3d-retry", type: "button", onclick: () => runJob(store, match.date, job) }, ui.failed) : h("span", { class: "g3d-progress" }),
       ),
-      h("figcaption", {}, name),
+      h("figcaption", {}, job.author),
     );
     fig.style.setProperty("--progress", job.progress);
     return fig;
@@ -211,21 +251,30 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
   const addPolaroid = () =>
     h("button", { class: "g3d-polaroid g3d-add", type: "button", onclick: toggleMenu }, h("span", { class: "g3d-add-plus", "aria-hidden": "true" }, "+"), h("span", {}, ui.add.replace(/^\+\s*/, "")));
 
+  /** Refills the row and the notes only: the add area stays in place, so a field being typed in keeps the
+   *  keyboard up while uploads finish or others post. */
   function render() {
-    const row = body.querySelector(".g3d-photos");
-    const scroll = row?.scrollLeft || 0;
+    if (!laidOut) {
+      el.dataset.state = "ready";
+      body.replaceChildren(...[row, addArea, addError, meetEl, notesEl, fileInput].filter(Boolean));
+      laidOut = true;
+    }
+    const scroll = row.scrollLeft;
     const media = items.filter((i) => i.kind !== "note");
     const notes = items.filter((i) => i.kind === "note");
-    setState(
-      "ready",
-      h("div", { class: "g3d-photos" }, media.length || pending.length ? [media.map(polaroid), pending.map(pendingPolaroid)] : emptyPolaroids(labels.empty), addPolaroid()),
-      addArea,
-      addError,
-      meet(),
-      notes.length && h("div", { class: "g3d-notes" }, notes.map(note)),
-      fileInput,
-    );
-    body.querySelector(".g3d-photos").scrollLeft = scroll;
+    row.replaceChildren(...(media.length || pending.length ? [...media.map(polaroid), ...pending.map(pendingPolaroid)] : emptyPolaroids(labels.empty)), addPolaroid());
+    notesEl.replaceChildren(...notes.map(note));
+    notesEl.hidden = !notes.length;
+    row.scrollLeft = scroll;
+  }
+
+  /** Uploads (from this panel or an earlier one on the same match) moving on. */
+  function watch(date, change) {
+    if (date !== match.date || closed || !laidOut) return;
+    if (change.progress) return row.querySelector(`[data-key="${change.progress.key}"]`)?.style.setProperty("--progress", change.progress.progress);
+    if (change.locked) return showLocked();
+    if (change.item) keep(change.item);
+    render();
   }
 
   // ── Adding: the « + » menu, the first name once, photos and videos, notes ──
@@ -290,35 +339,10 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
         addError.textContent = check.error === "too-big" ? ui.tooBig : ui.notMedia;
         continue;
       }
-      const job = { key: crypto.randomUUID(), file, progress: 0, failed: false };
+      const job = { key: crypto.randomUUID(), file, author: name, progress: 0, failed: false };
       pending.push(job);
-      upload(job);
+      runJob(store, match.date, job);
     }
-  }
-
-  async function upload(job) {
-    job.failed = false;
-    job.progress = 0;
-    render();
-    try {
-      const item = await store.addMedia(match.date, job.file, {
-        author: name,
-        onProgress(p) {
-          job.progress = p;
-          body.querySelector(`[data-key="${job.key}"]`)?.style.setProperty("--progress", p);
-        },
-      });
-      pending = pending.filter((j) => j !== job);
-      keep(item);
-    } catch (err) {
-      if (err.message === "locked") {
-        pending = [];
-        if (!closed) showLocked();
-        return;
-      }
-      job.failed = true;
-    }
-    if (!closed) render();
   }
 
   function showNoteForm() {
@@ -402,6 +426,17 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
     if (closed) return;
     render();
     unsubscribe ??= store.subscribe(match.date, onChange);
+    watchers.add(watch);
+  }
+
+  /** Done with this panel: no live channel, no full screen, no upload news left behind. */
+  function dispose() {
+    closed = true;
+    unsubscribe?.();
+    unsubscribe = null;
+    watchers.delete(watch);
+    viewer?.close();
+    viewer = null;
   }
 
   if (store) {
@@ -456,10 +491,10 @@ export function souvenirPanel(match, { labels, title, onClose, store }) {
         closeButton.focus({ preventScroll: true });
       });
     },
+    /** Leaving the gallery with the panel open: tidy up at once, without the animation. */
+    dispose,
     close() {
-      closed = true;
-      unsubscribe?.();
-      viewer?.close();
+      dispose();
       return new Promise((resolve) => {
         gsap.to(el, { backgroundColor: "rgba(20, 12, 14, 0)", duration: 0.35 });
         gsap.to(card, { yPercent: 105, duration: 0.4, ease: "power2.in", onComplete: resolve });

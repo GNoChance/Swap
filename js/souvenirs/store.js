@@ -26,17 +26,22 @@ function deviceId() {
   }
 }
 
-let store = null;
+let store = null; // the promise: two calls at once share one store (one Supabase client per page)
 
-/** The store, built once per page load; null while nothing is configured. */
-export async function createStore() {
-  if (store) return store;
+/** The store, built once per page load; null while nothing is configured. A failed build is tried again. */
+export function createStore() {
+  store ??= build().catch((error) => {
+    store = null;
+    throw error;
+  });
+  return store;
+}
+
+async function build() {
   const kind = pickBackend({ search: location.search, config });
   if (!kind) return null;
   const device = (kind === "fake" && new URLSearchParams(location.search).get("device")) || deviceId();
-  store =
-    kind === "fake"
-      ? (await import("./fake.js")).createFakeStore({ deviceId: device })
-      : (await import("./supabase.js")).createSupabaseStore(config, device);
-  return store;
+  return kind === "fake"
+    ? (await import("./fake.js")).createFakeStore({ deviceId: device })
+    : (await import("./supabase.js")).createSupabaseStore(config, device);
 }

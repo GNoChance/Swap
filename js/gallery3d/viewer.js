@@ -50,7 +50,8 @@ export function openViewer(items, index, { labels, onClose = () => {} }) {
   }
 
   let startX = null;
-  stage.addEventListener("touchstart", (e) => (startX = e.touches[0].clientX), { passive: true });
+  // a drag on a video is its scrubber, not a swipe to the next souvenir
+  stage.addEventListener("touchstart", (e) => (startX = e.target.closest("video") ? null : e.touches[0].clientX), { passive: true });
   stage.addEventListener("touchend", (e) => {
     if (startX === null) return;
     const dx = e.changedTouches[0].clientX - startX;
