@@ -219,9 +219,13 @@ export function museum3dScreen({ onBack, onFail }) {
     });
 
   /** Each played match's photo on its painting, on a phone where the code was typed. Quiet on any failure: the
-   *  painting stays as it is. Redraws only a painting whose photo changed. */
+   *  painting stays as it is. Redraws only a painting whose photo changed. A newer refresh takes over: an older one
+   *  still loading (a slow network) never puts back the photo she has just replaced. */
+  let paintRun = 0;
   async function refreshPaintings() {
     if (!store || !room || left) return;
+    const run = ++paintRun;
+    const over = () => left || run !== paintRun;
     let photos;
     try {
       if (!(await store.isUnlocked())) return;
@@ -230,14 +234,15 @@ export function museum3dScreen({ onBack, onFail }) {
       return;
     }
     for (const [i, match] of matches.entries()) {
-      if (left) return;
+      if (over()) return;
       if (!match.score) continue; // a match to come keeps its drape
       const want = photos[match.date] || null;
       if ((want?.id ?? null) === (drawn[match.date] ?? null)) continue;
       const img = want && (await loadPhoto(want.url));
       if (want && !img) continue;
-      if (left) return;
-      room.setPainting(i, await paintingCanvas(match, { clubs, labels: m, venues: m.venues, upcoming: null }, img || null));
+      const canvas = await paintingCanvas(match, { clubs, labels: m, venues: m.venues, upcoming: null }, img || null);
+      if (over()) return;
+      room.setPainting(i, canvas);
       drawn[match.date] = want?.id ?? null;
     }
     el.dataset.covers = Object.entries(drawn)

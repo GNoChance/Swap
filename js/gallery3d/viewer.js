@@ -76,6 +76,8 @@ export function openViewer(items, index, { labels, onClose = () => {}, cover = n
     stage.querySelector("video")?.pause();
     photo = item.kind === "video" ? null : h("img", { src: item.url || item.thumbUrl, alt: "", draggable: "false" });
     const media = photo || h("video", { src: item.url, poster: item.thumbUrl || false, controls: true, playsinline: true, preload: "metadata" });
+    // a photo: fingers anywhere on the stage (above or below it too) zoom the photo, never the page; a video: its player
+    stage.style.touchAction = photo ? "none" : "";
     // the frame slides in (GSAP), the photo inside it zooms: never both on one element
     stage.replaceChildren(h("div", { class: "g3d-viewer-frame" }, media));
     zoom = { s: 1, x: 0, y: 0 };
@@ -112,12 +114,14 @@ export function openViewer(items, index, { labels, onClose = () => {}, cover = n
   // ── Touch: pinch, drag, double tap, swipe ──
   let gesture = null;
   let lastTap = { t: 0, x: 0, y: 0 };
+  let touchedAt = -Infinity; // a phone adds a dblclick after a double tap, which the taps already handled
   const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   const mid = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
 
   stage.addEventListener(
     "touchstart",
     (e) => {
+      touchedAt = performance.now();
       if (e.target.closest("video")) return (gesture = null); // the player's own gesture (scrubber)
       const [a, b] = e.touches;
       if (b && photo) gesture = { kind: "pinch", d0: dist(a, b), s0: zoom.s, m: mid(a, b) };
@@ -148,6 +152,7 @@ export function openViewer(items, index, { labels, onClose = () => {}, cover = n
     { passive: false },
   );
   stage.addEventListener("touchend", (e) => {
+    touchedAt = performance.now();
     const g = gesture;
     if (!g || e.touches.length) return; // a finger still down: the gesture goes on
     gesture = null;
@@ -179,10 +184,13 @@ export function openViewer(items, index, { labels, onClose = () => {}, cover = n
     { passive: false },
   );
   stage.addEventListener("dblclick", (e) => {
-    if (!photo || e.target.closest("video")) return;
+    if (!photo || e.target.closest("video") || performance.now() - touchedAt < 800) return;
     if (zoom.s > 1) apply({ s: 1 });
     else zoomAt(DOUBLE, e.clientX, e.clientY);
   });
+  // Safari's own pinch would zoom the whole page with the photo
+  el.addEventListener("gesturestart", (e) => photo && e.preventDefault());
+
   let drag = null;
   stage.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && zoom.s > 1 && photo) drag = { x: e.clientX, y: e.clientY };

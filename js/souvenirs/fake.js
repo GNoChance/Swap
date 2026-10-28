@@ -2,7 +2,8 @@
 // localStorage (files as data URLs, so small ones only) and every page of the site sees changes live through a
 // BroadcastChannel. Each device (&device=x) has its own session, like two phones. For the tests:
 // window.__souvenirsFake.failNext() makes the next upload fail, .expire() ends this device's session, .slow = ms
-// slows each upload step down, .stats counts the open live channels and the uploads running at once.
+// slows each upload step down, .slowCovers = ms answers the paintings' photos late (as they were when asked), .stats
+// counts the open live channels, the uploads running at once and the times the paintings' photos were asked for.
 import { checkFile, checkNote, countByMatch, pickCover, sortItems, storagePaths } from "./logic.js";
 import { shrinkPhoto, videoThumb } from "./media.js";
 
@@ -30,7 +31,8 @@ export function createFakeStore({ deviceId }) {
     expire: () => localStorage.removeItem(sessionKey),
     slow: 0,
     brokenCovers: false, // the paintings' photo links lead nowhere (an expired link, no network)
-    stats: { channels: 0, running: 0, maxRunning: 0 },
+    slowCovers: 0,
+    stats: { channels: 0, running: 0, maxRunning: 0, coverCalls: 0 },
   });
 
   const unlocked = () => localStorage.getItem(sessionKey) === "1";
@@ -112,6 +114,8 @@ export function createFakeStore({ deviceId }) {
         const photo = pickCover(db.rows.filter((r) => r.match_date === date), db.covers[date]);
         if (photo) out[date] = { id: photo.id, url: hooks.brokenCovers ? `/souvenirs-introuvable/${photo.id}.jpg` : db.files[photo.thumb] || db.files[photo.path] };
       }
+      hooks.stats.coverCalls++;
+      if (hooks.slowCovers) await sleep(hooks.slowCovers);
       return out;
     },
     async setCover(matchDate, id) {

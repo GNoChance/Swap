@@ -4313,6 +4313,32 @@ html.is-museum {
   object-fit: contain;
 }
 
+/* The others as tall as a photo's, in 3:4: « + », an upload on its way, « Souvenirs à venir » */
+.g3d-photos {
+  --cap-h: 1.5rem;
+}
+
+.g3d-photos > .g3d-polaroid {
+  height: calc(var(--shot-h) + var(--cap-h) + 46px); /* the shot, its caption, 10 + 30 of padding, 6 of gap */
+  aspect-ratio: auto;
+}
+
+.g3d-photos > .g3d-polaroid:not([data-id]) {
+  width: calc(var(--shot-h) * 0.75 + 20px);
+}
+
+.g3d-photos .g3d-polaroid figcaption {
+  line-height: var(--cap-h);
+}
+
+/* One cell the size of its box, whatever is in it: a picture's 100 % is then the box. (An auto cell grew to the
+   picture's own height: a tall photo overflowed and was cut, in a polaroid and in full screen.) */
+.g3d-polaroid-shot,
+.g3d-viewer-stage,
+.g3d-viewer-frame {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+
 /* Full screen zoom: the frame slides between souvenirs, the photo inside it zooms (no CSS transition: JS drives it) */
 .g3d-viewer-stage {
   overflow: hidden;
@@ -4328,8 +4354,7 @@ html.is-museum {
 
 .g3d-viewer-frame img {
   touch-action: none; /* the page doesn't zoom or scroll: the photo does */
-  transform-origin: 50% 50%;
-  will-change: transform;
+  transform-origin: 50% 50%; /* no will-change: the browser would keep the 1× pixels and blur the zoom */
   cursor: zoom-in;
 }
 
