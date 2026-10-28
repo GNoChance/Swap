@@ -73,3 +73,31 @@ test("souvenirs: which backend — the fake one on ?souvenirs=fake, Supabase onc
   assert.equal(pickBackend({ search: "?musee", config: empty }), null);
   assert.equal(pickBackend({ search: "", config: { url: "https://x.supabase.co", anonKey: "" } }), null);
 });
+
+test("supabase/setup.sql: private table and bucket, only the shared account, live updates", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync(new URL("../supabase/setup.sql", import.meta.url), "utf8").toLowerCase();
+  assert.match(sql, /create table if not exists public\.souvenirs/);
+  assert.match(sql, /kind in \('photo', 'video', 'note'\)/);
+  assert.match(sql, /char_length\(text\) between 1 and 500/);
+  assert.match(sql, /enable row level security/);
+  assert.match(sql, /'souvenirs', 'souvenirs', false, 52428800/); // the bucket: private, 50 MB a file
+  for (const action of ["select", "insert", "delete"]) {
+    assert.match(sql, new RegExp(`on public\.souvenirs for ${action} to authenticated`), `table ${action}`);
+    assert.match(sql, new RegExp(`on storage\.objects for ${action} to authenticated`), `storage ${action}`);
+  }
+  assert.doesNotMatch(sql, /to anon\b/);
+  assert.match(sql, /revoke all on public\.souvenirs from anon/);
+  assert.match(sql, /alter publication supabase_realtime add table public\.souvenirs/);
+});
+
+test("souvenirs: the config ships empty, no code anywhere in the site's code", async () => {
+  const { readFileSync, readdirSync } = await import("node:fs");
+  const { config } = await import("../js/souvenirs-config.js");
+  assert.equal(config.url, "");
+  assert.equal(config.anonKey, "");
+  const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === "vendor" ? [] : walk(`${dir}/${e.name}`)) : [`${dir}/${e.name}`]));
+  const root = new URL("../js", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
+  for (const file of walk(root).filter((f) => !f.endsWith("souvenirs/supabase.js")))
+    assert.doesNotMatch(readFileSync(file, "utf8"), /password/i, file);
+});

@@ -4,5 +4,5 @@
 export const config = {
   url: "",
   anonKey: "",
-  email: "famille@swap-cyrielle.app", // the shared account; its password is the code
+  email: "famille@swap-cyrielle.app", // the shared account: the code typed on the site opens it
 };
