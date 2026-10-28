@@ -141,9 +141,11 @@ export function buildRoom(THREE, { count, room, canvases, works, Reflector, anis
     groups.push({ group, side: s.side });
   });
 
-  /** The real spot, from the ceiling, onto painting i (or off, -1). */
+  /** The real spot, from the ceiling, onto painting i, or dimmed to nothing (-1). It never leaves the scene: a light
+   *  appearing would recompile every shader, a hitch on the phone. */
+  const SPOT = spot.intensity;
   function aimSpot(i) {
-    spot.visible = i >= 0;
+    spot.intensity = i >= 0 ? SPOT : 0;
     if (i < 0) return;
     const { group, side } = groups[i];
     spot.position.set(group.position.x - side * 1.7, room.height - 0.25, group.position.z);

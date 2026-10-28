@@ -49,6 +49,10 @@ export function museum3dScreen({ onBack, onFail }) {
       class: "mu-back",
       type: "button",
       onclick() {
+        // she is leaving now, not once the screen has faded out: no applause, steps or frames in between
+        left = true;
+        timers.forEach(clearTimeout);
+        clearInterval(stepTimer);
         sfx("tap");
         onBack();
       },
@@ -69,6 +73,7 @@ export function museum3dScreen({ onBack, onFail }) {
   let reactions = 0;
   let stepTimer = null;
   let nap = null;
+  const timers = new Set(); // sounds a moment after arriving: cleared on leaving
   let stopH = innerHeight;
   let size = { w: innerWidth, h: innerHeight };
   let spring = { x: 0, v: 0 };
@@ -145,22 +150,33 @@ export function museum3dScreen({ onBack, onFail }) {
       const reaction = museumReaction(match);
       visitors.set(reaction);
       sfx("ding");
-      if (reaction === "lose") setTimeout(() => lastStop === k && sfx("sadTrombone"), 350);
+      if (reaction === "lose") later(() => lastStop === k && sfx("sadTrombone"), 350);
       else if (reaction === "win" || reaction === "final") {
         visitors.jump(clock());
         if (reaction === "final") {
           sfx("final");
           confetti(GOLD);
-        } else setTimeout(() => lastStop === k && sfx("applause"), 300);
+        } else later(() => lastStop === k && sfx("applause"), 300);
       }
-      nap = setTimeout(() => {
-        if (left || lastStop !== k) return;
-        visitors.set("sleep");
-        showState();
-        request();
-      }, NAP);
+      armNap(k);
     }
     showState();
+  }
+
+  function later(fn, ms) {
+    const id = setTimeout(() => (timers.delete(id), fn()), ms);
+    timers.add(id);
+  }
+
+  /** Standing still in front of painting k: after NAP, they sit down and doze off. */
+  function armNap(k) {
+    clearTimeout(nap);
+    nap = setTimeout(() => {
+      if (left || lastStop !== k || panel) return;
+      visitors.set("sleep");
+      showState();
+      request();
+    }, NAP);
   }
 
   /** An object of the scene, projected on screen: [left, top, right, bottom] in CSS px. */
@@ -197,6 +213,7 @@ export function museum3dScreen({ onBack, onFail }) {
 
   /** One frame, outside the spring's loop (the zoom). */
   function renderNow() {
+    if (left) return;
     visitors.update(clock(), applyPose(), camera);
     renderer.render(room.scene, camera);
   }
@@ -235,12 +252,14 @@ export function museum3dScreen({ onBack, onFail }) {
     await panel.close();
     panel.el.remove();
     panel = null;
+    if (left) return;
     await zoomTo(0, 0.6);
     busy = false;
     if (left) return;
     document.documentElement.classList.remove("is-locked");
     el.dataset.panel = "closed";
     showMore(settledAt);
+    if (settledAt >= 1 && settledAt <= count) armNap(settledAt);
   }
 
   /** Came to rest at stop k: they react, then the framing is refreshed. */
@@ -264,6 +283,7 @@ export function museum3dScreen({ onBack, onFail }) {
     room.aimSpot(k >= 1 && k <= count ? k - 1 : -1);
     renderer.render(room.scene, camera); // with the spot on it
     el.dataset.tris = String(renderer.info.render.triangles);
+    el.dataset.programs = String(renderer.info.programs.length);
     el.dataset.stop = String(k);
     el.dataset.frame = frameRect(k);
     showMore(k);
@@ -392,6 +412,7 @@ export function museum3dScreen({ onBack, onFail }) {
     spring = { x: 0, v: 0 };
     wasMoving = false;
     document.documentElement.classList.remove("is-locked");
+    renderer.compile(room.scene, camera); // every shader now, under the loader, rather than at the first painting
     renderNow();
     arrive(0);
     el.dataset.moving = "0";
@@ -421,6 +442,7 @@ export function museum3dScreen({ onBack, onFail }) {
       clearTimeout(resizeTimer);
       clearTimeout(nap);
       clearInterval(stepTimer);
+      timers.forEach(clearTimeout);
       gsap.killTweensOf([zoom, moreButton]);
       visitors?.dispose();
       decor?.dispose();

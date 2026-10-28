@@ -91,16 +91,22 @@ function home() {
 
 function hasWebGL() {
   try {
-    const c = document.createElement("canvas");
-    return Boolean(c.getContext("webgl2") || c.getContext("webgl"));
+    const gl = document.createElement("canvas").getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext(); // give the probe's context back at once
+    return Boolean(gl);
   } catch {
     return false;
   }
 }
 
+let openingMuseum = false;
+
 /** The gallery in 3D, loaded only now (three.js is heavy); the CSS corridor if there is no WebGL, if loading fails,
  *  or with ?musee&css. */
 async function openMuseum() {
+  if (openingMuseum) return; // a double tap while three.js loads
+  openingMuseum = true;
+  setTimeout(() => (openingMuseum = false), 1500);
   const onBack = () => show(home());
   const css = () => show(museumScreen({ onBack }));
   if (new URLSearchParams(location.search).has("css") || !hasWebGL()) return css();

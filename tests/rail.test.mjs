@@ -101,3 +101,16 @@ test("rail: the spring settles on its target, overshooting by 5 % at most", () =
   assert.ok(max < 3 * 1.05);
   assert.deepEqual(springStep({ x: 1, v: 0 }, 1, 0.5), { x: 1, v: 0 }); // at rest it stays put, dt clamped
 });
+
+test("visitors: swapping places takes 0.35 s, at 60 Hz as at 144 Hz", async () => {
+  const { swapStep } = await import("../js/gallery3d/visitors.js");
+  for (const hz of [60, 144]) {
+    let x = 0;
+    let t = 0;
+    for (; t < 0.3; t += 1 / hz) x = swapStep(x, 1, 1 / hz);
+    assert.ok(x > 0.7 && x < 1, `${hz} Hz at 0.3 s: ${x}`);
+    for (; t < 0.36; t += 1 / hz) x = swapStep(x, 1, 1 / hz);
+    assert.equal(x, 1, `${hz} Hz at 0.36 s`);
+    assert.equal(swapStep(1, 0, 1), 0); // and back, clamped
+  }
+});

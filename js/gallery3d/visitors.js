@@ -4,6 +4,12 @@
 import { ROOM } from "./rail.js";
 import { shadowCanvas, freeTexture } from "./textures.js";
 
+/** One step of swapping places (0 → 1 or back) in `duration` seconds, whatever the frame rate. */
+export function swapStep(x, target, dt, duration = 0.35) {
+  const step = dt / duration;
+  return target > x ? Math.min(target, x + step) : Math.max(target, x - step);
+}
+
 const SPREAD = 0.27; // each side of the pose's centre: shoulder to shoulder, slightly overlapping
 
 function loadTexture(THREE, src) {
@@ -54,6 +60,7 @@ export async function createVisitors(THREE, { faces, room = ROOM }) {
   let swapped = 0; // 0 → 1: they swap places
   let swapTarget = 0;
   let jumpAt = -10;
+  let lastTime = null;
 
   function set(key) {
     current = key;
@@ -74,7 +81,9 @@ export async function createVisitors(THREE, { faces, room = ROOM }) {
 
   /** Place them for this frame. Returns true while something still moves (bobbing, a jump, swapping places). */
   function update(time, pose, camera) {
-    swapped += Math.sign(swapTarget - swapped) * Math.min(Math.abs(swapTarget - swapped), 0.05);
+    const dt = lastTime === null ? 0 : Math.min(0.1, Math.max(0, time - lastTime));
+    lastTime = time;
+    swapped = swapStep(swapped, swapTarget, dt);
     // across the camera's view: perpendicular to where it looks
     const across = { x: Math.cos(pose.yaw), z: -Math.sin(pose.yaw) };
     let moving = walk || swapped !== swapTarget;
