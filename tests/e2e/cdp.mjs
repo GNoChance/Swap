@@ -16,7 +16,7 @@ const CHROMES = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** A headless Chrome page: { goto, reload, eval, waitFor, tap, swipe, resize, beforeLoad, screenshot, errors, close }. */
+/** A headless Chrome page: { goto, reload, eval, waitFor, tap, swipe, mouse, resize, beforeLoad, screenshot, errors, close }. */
 export async function launch({ width = 393, height = 852, mobile = true } = {}) {
   const chrome = CHROMES.find((p) => p && existsSync(p));
   if (!chrome) throw new Error("Chrome introuvable : indiquer son chemin dans la variable CHROME");
@@ -98,6 +98,8 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
   await resize(width, height);
   if (mobile) await cmd("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
 
+  let held = false; // the mouse's left button
+
   const page = {
     errors,
     resize,
@@ -169,6 +171,13 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
         await sleep(16);
       }
       await cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    },
+    /** The mouse (a PC): "down" (left button), "move" or "up" at x, y; a move with the button up is a hover. */
+    async mouse(action, x, y) {
+      if (action !== "move") held = action === "down";
+      const type = { down: "mousePressed", move: "mouseMoved", up: "mouseReleased" }[action];
+      const button = action === "move" && !held ? "none" : "left";
+      await cmd("Input.dispatchMouseEvent", { type, x, y, button, buttons: held ? 1 : 0, clickCount: action === "move" ? 0 : 1 });
     },
     beforeLoad: (source) => cmd("Page.addScriptToEvaluateOnNewDocument", { source }),
     /** Makes requests to matching urls fail ("*aventures/screen.js*"), as on a flaky connection; [] lifts it. */

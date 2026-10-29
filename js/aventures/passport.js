@@ -283,20 +283,37 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
   let target = 0; // where the leaves are heading
   let turning = null; // { tween, done } while a leaf turns by itself
   let busy = false; // goTo's loop is running
+  let asks = 0; // goTo's calls: one made while a finger holds a leaf wins once it lets go
   let waiters = [];
   let arrival = null;
+  let landed = null; // arrive()'s resolve, while the book flies in
+  let pressing = null; // press()'s timeline, while a page gives under the stamp
   let sheen = null;
   let pulses = [];
   let disposed = false;
   const isOpen = () => book.dataset.open === "true";
   const clamp = (page) => Math.max(0, Math.min(last, Math.round(page)));
 
-  // the motions keep to the clock: a slow frame (a texture rasterised for the first time) is skipped, not waited for
+  // the motions keep to the clock: a slow frame (a texture rasterised for the first time) is skipped, not waited for.
+  // Not at their start, though, where the first image is drawn: there (before the first tick, and in the first 0.1 s,
+  // as Chrome rasterises a frame behind) a slow frame counts as one frame, up to an eighth of the motion waited in
+  // all (0.24 s for the arrival, 0.06 s for a leaf); a slower machine skips the rest
   const clocked = new Map(); // animation → its ticker callback
   function onClock(anim) {
-    const start = performance.now();
+    let time = 0; // ms, the motion's own
+    let then = performance.now();
+    let wait = anim.duration() * 125; // ms
     const tick = () => {
-      anim.time((performance.now() - start) / 1000);
+      const now = performance.now();
+      let dt = now - then;
+      if (time < 100 && dt > 50) {
+        const lag = Math.min(wait, dt - 17);
+        dt -= lag;
+        wait -= lag;
+      }
+      time += dt;
+      then = now;
+      anim.time(time / 1000);
       if (anim.progress() >= 1) stopClock(anim);
     };
     anim.pause();
@@ -415,12 +432,18 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     syncNav();
   }
 
+  /** However the arrival ends (landed, cut short, disposed), arrive()'s promise resolves. */
   function stopArrival() {
+    landed?.();
+    landed = null;
     if (!arrival) return;
     stopClock(arrival);
     arrival.kill();
     arrival = null;
   }
+
+  /** A press under way ends at once: the page flat again, press()'s promise resolved. */
+  const stopPress = () => pressing?.progress(1);
 
   /** Open and still: the volume of the closed book goes, the foil stops. */
   function opened() {
@@ -454,13 +477,13 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     // during the flight, not in the middle of the opening
     mount(-1);
     return new Promise((resolve) => {
+      landed = resolve;
       arrival = gsap
         .timeline({
           onComplete() {
-            opened();
+            opened(); // which resolves
             settle();
             run(); // a goTo asked for during the arrival
-            resolve();
           },
         })
         // never its scale: the textures are rasterised once per size
@@ -525,6 +548,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
 
   /** Turns the leaves one by one up to `page` (bounded); a new call changes where they are heading. */
   function goTo(page) {
+    asks++;
     target = clamp(page);
     syncNav();
     const reached = new Promise((resolve) => waiters.push(resolve));
@@ -537,7 +561,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     busy = true;
     while (!disposed && isOpen() && !drag?.leaf && current !== target) await turn(Math.sign(target - current));
     busy = false;
-    if (disposed || current !== target) return; // closed, or under a finger: taken up again after
+    if (!disposed && (current !== target || drag?.leaf)) return; // closed, or under a finger: taken up again after
     const done = waiters;
     waiters = [];
     done.forEach((resolve) => resolve());
@@ -545,7 +569,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
 
   // ── The finger (and the mouse) turns a leaf; a trackpad's sideways swipe turns a page ──
 
-  let drag = null; // { id, x, y, leaf, page, dir, width, track: [[time, x]] }
+  let drag = null; // { id, x, y, leaf, page, dir, width, asks, track: [[time, x]] }
   let dragged = false; // a drag happened: the click that follows is not a tap on a slot
 
   book.addEventListener("pointerdown", (e) => {
@@ -555,20 +579,21 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
   });
   book.addEventListener("pointermove", (e) => {
     if (!drag || e.pointerId !== drag.id) return;
+    if (e.pointerType === "mouse" && !e.buttons) return release(e); // its release was missed (a menu, a lost focus)
     const dx = e.clientX - drag.x;
     drag.track.push([e.timeStamp, e.clientX]);
     if (drag.track.length > 8) drag.track.shift();
     if (!drag.leaf) {
       if (Math.abs(dx) < 8 && Math.abs(e.clientY - drag.y) < 8) return;
       const dir = dx < 0 ? 1 : -1;
-      if (Math.abs(dx) < Math.abs(e.clientY - drag.y) || current + dir < 0 || current + dir > last) {
-        drag = null; // up or down, or past a bound: not a turn
+      if (busy || Math.abs(dx) < Math.abs(e.clientY - drag.y) || current + dir < 0 || current + dir > last) {
+        drag = null; // a goTo is turning meanwhile, up or down, or past a bound: not a turn
         return;
       }
       book.setPointerCapture(e.pointerId);
       dragged = true;
       const page = dir > 0 ? current : current - 1;
-      Object.assign(drag, { page, dir, leaf: leafOf(page), width: leafOf(current).el.offsetWidth });
+      Object.assign(drag, { page, dir, leaf: leafOf(page), width: leafOf(current).el.offsetWidth, asks });
       mount(page, dir);
       drag.leaf.el.classList.add("is-dragged");
     }
@@ -578,7 +603,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
   });
   const release = (e) => {
     if (!drag || e.pointerId !== drag.id) return;
-    const { leaf, dir, track } = drag;
+    const { leaf, dir, track, asks: asked } = drag;
     drag = null;
     if (!leaf) return;
     leaf.el.classList.remove("is-dragged");
@@ -589,7 +614,6 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     const through = turned > 60 || speed * -dir > FLICK; // past 60°, or flicked
     const end = through === dir > 0 ? -180 : 0;
     const state = { a: leaf.angle };
-    const asked = target; // a goTo meanwhile wins
     busy = true;
     const tween = onClock(gsap.to(state, {
       a: end,
@@ -599,7 +623,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
       onComplete() {
         turning = null;
         if (through) current += dir;
-        if (target === asked) target = current;
+        if (asks === asked) target = current; // a goTo since the leaf was taken wins
         settle();
         busy = false;
         run();
@@ -607,8 +631,9 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     }));
     turning = { tween, done: () => (busy = false) };
   };
-  book.addEventListener("pointerup", release);
-  book.addEventListener("pointercancel", release);
+  // anywhere: a mouse has no implicit capture, and the book takes it only past 8 px
+  addEventListener("pointerup", release);
+  addEventListener("pointercancel", release);
 
   let wheel = 0;
   let wheelEnd = 0;
@@ -649,13 +674,15 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     },
     /** The page gives under the stamp for an instant. */
     press() {
+      stopPress();
       const leaf = leafOf(current);
       gsap.set(leaf.front, { willChange: "transform" }); // its raster is kept while it gives (textures)
       gsap.set(leaf.frontShade, { willChange: "opacity" });
       return new Promise((resolve) => {
-        gsap
+        pressing = gsap
           .timeline({
             onComplete() {
+              pressing = null;
               gsap.set([leaf.front, leaf.frontShade], { clearProps: "willChange" });
               resolve();
             },
@@ -666,18 +693,26 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
           .to(leaf.frontShade, { opacity: 0, duration: 0.3 }, "<");
       });
     },
+    /** Everything stops; what was awaited (arrive, goTo, press) resolves. Twice is harmless. */
     dispose() {
+      if (disposed) return;
       disposed = true;
       stopTurn();
       stopPulses();
       stopArrival();
+      stopPress();
       for (const anim of [...clocked.keys()]) {
         stopClock(anim);
         anim.kill();
       }
       sheen?.kill();
       clearTimeout(wheelEnd);
+      removeEventListener("pointerup", release);
+      removeEventListener("pointercancel", release);
       gsap.killTweensOf([stage, foot, volRibbon, ...openOnly, ...leaves.map((leaf) => leaf.front)]);
+      const done = waiters;
+      waiters = [];
+      done.forEach((resolve) => resolve());
     },
   };
 }

@@ -57,6 +57,43 @@ async function suite(page, vp) {
     await shot("stamps");
   });
 
+  if (!vp.mobile)
+    await check("à la souris : un glisser relâché hors du livre ne reste pas collé, un vrai glisser tourne la page", async () => {
+      const r = await page.eval(`(() => {
+        const b = ${book}.getBoundingClientRect();
+        return { left: b.left, right: b.right, y: (b.top + b.bottom) / 2 };
+      })()`);
+      const edge = r.right - 16;
+      const out = r.right + 60;
+      if (await page.eval(`Boolean(document.elementFromPoint(${out}, ${r.y})?.closest(".pp-book"))`)) throw new Error("le point de sortie est encore sur le livre");
+      const still = () =>
+        page.eval(`!document.querySelector(".pp-leaf.is-dragged, .pp-book.is-turning")
+          && [...document.querySelectorAll(".pp-leaf")].every((leaf) => /^rotateY\\((0|-180)deg\\)$/.test(leaf.style.transform))`);
+      // pressed near the edge, moved a few px, then out of the book and released there
+      await page.mouse("down", edge, r.y);
+      await page.mouse("move", edge - 4, r.y);
+      await page.mouse("move", out, r.y);
+      await page.mouse("up", out, r.y);
+      // the mouse goes over the book, no button pressed
+      for (let k = 1; k <= 12; k++) {
+        await page.mouse("move", out - ((out - r.left - 40) * k) / 12, r.y);
+        await sleep(16);
+      }
+      await sleep(300);
+      if (!(await still())) throw new Error("une feuille suit la souris sans bouton enfoncé");
+      if ((await shown()) !== 1) throw new Error(`page ${await shown()} au lieu de 1`);
+      // a real drag turns the page
+      await page.mouse("down", edge, r.y);
+      for (let k = 1; k <= 12; k++) {
+        await page.mouse("move", edge - (300 * k) / 12, r.y);
+        await sleep(16);
+      }
+      await page.mouse("up", edge - 300, r.y);
+      await page.waitFor(onPage(2), 2000);
+      await page.tap(".pp-prev");
+      await page.waitFor(onPage(1), 2000);
+    });
+
   await check("les bornes : rien avant la page 0, rien après la page 9", async () => {
     await page.tap(".pp-prev");
     await page.waitFor(onPage(0), 2000);
@@ -80,6 +117,33 @@ async function suite(page, vp) {
     if (fit.book > fit.h) throw new Error(`bas du livre à ${fit.book} px, écran de ${fit.h} px`);
     if (fit.next > fit.h) throw new Error(`bas des boutons à ${fit.next} px, écran de ${fit.h} px`);
     if (fit.scroll) throw new Error("la page défile");
+  });
+
+  await check("?demo : la bannière du mode démo ne couvre aucun bouton (passeport, accueil du swap, hub)", async () => {
+    const buttons = ".world-back, .home-button, .mute, .pp-prev, .pp-next, .hub-dot";
+    const covered = () =>
+      page.eval(`(() => {
+        const badge = document.querySelector(".demo-badge")?.getBoundingClientRect();
+        if (!badge) return ["pas de bannière"];
+        const shows = (el, r) => !el.hidden && getComputedStyle(el).visibility !== "hidden" && r.width > 0 && r.height > 0;
+        return [...document.querySelectorAll(${JSON.stringify(buttons)})].flatMap((el) => {
+          const r = el.getBoundingClientRect();
+          const meets = r.left < badge.right && badge.left < r.right && r.top < badge.bottom && badge.top < r.bottom;
+          return shows(el, r) && meets ? [el.className] : [];
+        });
+      })()`);
+    const screens = [
+      ["?demo#/aventures", `${opened} && getComputedStyle(document.querySelector(".pp-next")).visibility === "visible"`],
+      ["?demo#/swap", `document.querySelector(".home-button:not([hidden])")`],
+      ["?demo#/", `document.querySelector(".hub-dot")`],
+    ];
+    for (const [url, ready] of screens) {
+      if (url !== "?demo#/aventures") await page.goto(`${BASE}${url}`); // the passport is already open
+      await page.waitFor(ready, 6000);
+      await sleep(700);
+      const under = await covered();
+      if (under.length) throw new Error(`${url} : la bannière couvre ${under.join(", ")}`);
+    }
   });
 
   await check("profil neuf : Premier bivouac à vivre, le canoë verrouillé sans son nom ; ouvert et retenu sur sa page", async () => {

@@ -1028,7 +1028,7 @@ function renderMute() {
 }
 renderMute();
 document.body.append(muteButton);
-if (isDemo) document.body.append(h("p", { class: "demo-badge" }, "Mode démo · rien n'est enregistré"));
+if (isDemo) document.body.append(h("p", { class: "demo-badge" }, "Mode démo\nrien n'est enregistré"));
 
 // Back to the home page from any screen of the swap: a fresh page load, which also leaves ?rejouer and ?demo
 // (her progress is saved at every step, nothing is lost).
