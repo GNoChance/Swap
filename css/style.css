@@ -5937,18 +5937,18 @@ html.is-museum {
   --bw: min(32vw, 136px); /* a buddy's width; the sticker is 1.32 times as tall */
   --top: max(calc(var(--sat) + 76px), calc((100dvh - var(--sign-h) - 1.32 * var(--bw)) / 2 - 10px)); /* the sign's top */
   --drop: calc(var(--top) + 20px); /* the cords hang from a hook 20 px above the screen */
-  position: fixed;
+  /* the sun's halo in the top right corner, and the vignette */
+  --halo: radial-gradient(circle 380px at calc(100% - 26px) 18px, rgba(242, 177, 52, 0.5), rgba(242, 177, 52, 0.22) 24%, rgba(242, 177, 52, 0.06) 55%, rgba(242, 177, 52, 0) 100%);
+  --vignette: radial-gradient(130% 95% at 50% 38%, rgba(10, 3, 5, 0) 52%, rgba(10, 3, 5, 0.34) 100%);
+  /* absolute, not fixed: a fixed section is a stacking context, which would keep « Passer ▸ » under the confetti */
+  position: absolute;
   inset: 0;
   display: block;
   min-height: 0;
   padding: 0;
   overflow: hidden;
   background-color: var(--in-ink);
-  background-image:
-    radial-gradient(circle 380px at calc(100% - 26px) 18px, rgba(242, 177, 52, 0.5), rgba(242, 177, 52, 0.22) 24%, rgba(242, 177, 52, 0.06) 55%, rgba(242, 177, 52, 0) 100%),
-    radial-gradient(130% 95% at 50% 38%, rgba(10, 3, 5, 0) 52%, rgba(10, 3, 5, 0.34) 100%),
-    var(--tex-grain),
-    linear-gradient(168deg, var(--in-light) 0%, var(--in-ink) 50%, var(--in-deep) 100%);
+  background-image: var(--halo), var(--vignette), var(--tex-grain), linear-gradient(168deg, var(--in-light) 0%, var(--in-ink) 50%, var(--in-deep) 100%);
   background-size: auto, auto, 200px 200px, auto;
   background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   -webkit-user-select: none;
@@ -5964,11 +5964,8 @@ html.is-museum {
     --sw: 480px; /* about the passport page's width */
     --bw: 180px;
     --top: max(calc(var(--sat) + 76px), calc((100dvh - var(--sign-h)) / 2 - 24px));
-    background-image:
-      radial-gradient(circle 560px at calc(100% - 40px) 26px, rgba(242, 177, 52, 0.48), rgba(242, 177, 52, 0.2) 22%, rgba(242, 177, 52, 0.05) 54%, rgba(242, 177, 52, 0) 100%),
-      radial-gradient(120% 100% at 50% 42%, rgba(10, 3, 5, 0) 50%, rgba(10, 3, 5, 0.36) 100%),
-      var(--tex-grain),
-      linear-gradient(168deg, var(--in-light) 0%, var(--in-ink) 50%, var(--in-deep) 100%);
+    --halo: radial-gradient(circle 560px at calc(100% - 40px) 26px, rgba(242, 177, 52, 0.48), rgba(242, 177, 52, 0.2) 22%, rgba(242, 177, 52, 0.05) 54%, rgba(242, 177, 52, 0) 100%);
+    --vignette: radial-gradient(120% 100% at 50% 42%, rgba(10, 3, 5, 0) 50%, rgba(10, 3, 5, 0.36) 100%);
   }
 }
 
@@ -6247,7 +6244,7 @@ html.is-museum {
 /* « Passer ▸ », once the outing is stamped (a touch anywhere does the same); not the swap's welcome .intro-skip */
 .screen-intro .intro-skip {
   position: absolute;
-  z-index: 5;
+  z-index: 31; /* over the confetti (30), under the sound button (50) */
   left: auto;
   right: calc(var(--sar) + 16px);
   bottom: calc(var(--sab) + 20px);

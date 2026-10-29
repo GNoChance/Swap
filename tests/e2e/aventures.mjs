@@ -2,6 +2,7 @@
 // Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/aventures.mjs` (ONLY=PC: a single
 // screen; SHOTS=<folder> keeps a screenshot of page 0, of a page of stamps and of an intro per screen).
 // Stops at the first failure (exit code 1). A check also fails if the page logged an error.
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
@@ -18,6 +19,25 @@ const VIEWPORTS = [
 ];
 const KEY = "swap-cyrielle:aventures";
 const ids = AVENTURES.map((a) => a.id);
+const INKS = JSON.parse(readFileSync(new URL("../../assets/aventures/tampons/tampons.json", import.meta.url), "utf8"));
+const FALLBACK_INK = "#7A1F35"; // a stamp tampons.json does not give
+const LENGTH = 4500; // ms, an intro (js/aventures/intro.js)
+// The intros' clock, in the page from its first line: __introAt, when the last intro came on screen (just after its
+// enter()), in performance.now() ms; __introEnd, how long after that it ended (its address left, or its stamp began to
+// wait), null while it runs. Kept by the page itself, so a slow check (a screenshot) does not shift what it reads.
+const INTRO_CLOCK = `new MutationObserver(() => {
+  const el = document.querySelector("#app > .screen-intro");
+  if (!el || el === window.__intro) return;
+  const at = performance.now();
+  Object.assign(window, { __intro: el, __introAt: at, __introEnd: null });
+  const watch = setInterval(() => {
+    if (window.__intro !== el) return clearInterval(watch);
+    const { id } = el.dataset;
+    if (location.hash === "#/aventures/" + id && !JSON.parse(localStorage.getItem("${KEY}"))?.pending?.includes(id)) return;
+    window.__introEnd = performance.now() - at;
+    clearInterval(watch);
+  }, 20);
+}).observe(document, { childList: true, subtree: true });`;
 
 const book = `document.querySelector(".pp-book")`;
 const opened = `${book}?.dataset.open === "true"`;
@@ -28,6 +48,7 @@ const atPassport = `location.hash === "#/aventures" && document.querySelector(".
 
 async function suite(page, vp) {
   const check = checker(page);
+  await page.beforeLoad(INTRO_CLOCK);
   const shown = () => page.eval(`Number(${book}.dataset.page)`);
   const saved = () => page.eval(`JSON.parse(localStorage.getItem("${KEY}"))`);
   /** A tap or a swipe that must not move the book (a bound). */
@@ -39,10 +60,11 @@ async function suite(page, vp) {
   const shot = async (name) => SHOTS && page.screenshot(join(SHOTS, `${name}-${vp.width}x${vp.height}.png`));
   /** An outing's status, from the save. */
   const statusOf = async (id) => statuses(AVENTURES, sanitizeProgress(await saved(), ids))[id];
-  /** A fresh profile, the passport open on the outing to live (page 1). */
+  /** A fresh profile, the passport open on the outing to live (page 1), its screen fully in: on a slow machine the
+   *  book (by the clock) can land before the screen's fade-in (a GSAP tween) is over, and a touch then is ignored. */
   async function fresh() {
     await page.goto(`${BASE}?reset#/aventures`);
-    await page.waitFor(`${opened} && ${onPage(1)}`, 8000);
+    await page.waitFor(`${opened} && ${onPage(1)} && !gsap.isTweening(document.querySelector(".screen-passport"))`, 8000);
   }
   /** Back on the passport, opened at once on `page` (no arrival): checked as soon as its screen is in. */
   async function backOn(n, timeout) {
@@ -50,11 +72,28 @@ async function suite(page, vp) {
     const at = await page.eval(`({ open: ${book}?.dataset.open, page: ${book}?.dataset.page })`);
     if (at.open !== "true" || at.page !== String(n)) throw new Error(`passeport ${at.open === "true" ? "ouvert" : "fermé"} sur la page ${at.page}, pas déjà ouvert sur la ${n}`);
   }
-  /** A touch in the middle of the intro that must change nothing. */
+  /** A touch in the middle of a first-time intro that must change nothing. An intro that ended well before its 4.5 s
+   *  was ended by the touch; one that ended at its time, by its clock (the page's clock says which). */
   async function untouchable(id) {
+    const before = await page.eval(`({ t: performance.now() - window.__introAt, end: window.__introEnd, id: window.__intro?.dataset.id })`);
+    if (before.id !== id || before.end !== null || before.t > LENGTH - 1000) throw new Error(`pas d'intro de ${id} à toucher : ${JSON.stringify(before)}`);
     await page.tap(".screen-intro");
-    await sleep(500);
-    if (!(await page.eval(`location.hash === "#/aventures/${id}" && Boolean(${intro(false)})`))) throw new Error("un toucher a passé l'intro");
+    await page.waitFor(`performance.now() - window.__introAt > ${Math.min(before.t + 600, LENGTH - 300)}`, 5000);
+    const end = await page.eval(`window.__introEnd`);
+    if (end !== null && end < LENGTH - 300) throw new Error(`un toucher a passé l'intro (finie ${Math.round(end)} ms après son début)`);
+  }
+  /** From the hub, a fresh profile: the passport by its card, open on the outing to live. */
+  async function viaHub() {
+    await page.goto(`${BASE}?reset#/`);
+    const hub = `document.querySelector(".screen-hub")`;
+    await page.waitFor(`${hub} && [...document.querySelectorAll(".screen-hub, .hub-card, .hub-buddies")].every((el) => !gsap.isTweening(el))`, 8000);
+    if ((await page.eval(`${hub}.dataset.current`)) !== "aventures") {
+      await page.tap(`.hub-dot:nth-child(3)`); // its card may be two notches away, off the screen
+      await page.waitFor(`${hub}.dataset.current === "aventures"`, 4000);
+      await sleep(600); // the smooth scroll settles
+    }
+    await page.tap(`[data-world="aventures"]`);
+    await page.waitFor(`!document.querySelector(".plate") && ${opened} && ${onPage(1)}`, 12000); // the plate gone: a touch counts
   }
 
   await check("?demo#/aventures : le passeport arrive et s'ouvre en moins de 4 s, avec ses 15 tampons chargés", async () => {
@@ -212,16 +251,48 @@ async function suite(page, vp) {
   });
 
   await check("le retour du navigateur pendant l'intro de la première fois : le passeport, déjà ouvert sur sa page ; l'aventure reste à vivre", async () => {
-    const begun = Date.now() - 1300; // the intro came in before the last check's pause
+    await fresh();
+    await page.tap(slot("bivouac-1"));
+    await page.waitFor(intro(false), 4000);
+    await sleep(1300);
     await page.eval(`history.back()`);
     await backOn(1, 4000);
     await page.waitFor(`document.querySelector('${slot("bivouac-1")}[data-status="open"]')`, 2000);
-    await sleep(Math.max(0, begun + 6000 - Date.now())); // past the end the intro would have had
+    await page.waitFor(`performance.now() - window.__introAt > ${LENGTH + 1500}`, LENGTH + 3000); // past the end the intro would have had
     if ((await statusOf("bivouac-1")) !== "open") throw new Error(`statut enregistré : ${await statusOf("bivouac-1")}`);
     if (!(await page.eval(`${atPassport} && document.querySelector('${slot("bivouac-1")}[data-status="open"]')`))) throw new Error("l'intro a fini quand même");
   });
 
+  await check("venu du hub, le retour du navigateur tout près de la fin de l'intro de la première fois (4,3 s, 4,45 s) : le passeport, pas le hub ; l'aventure reste à vivre", async () => {
+    for (const at of [4300, 4450]) {
+      for (let attempt = 1; ; attempt++) {
+        await viaHub();
+        await page.tap(slot("bivouac-1"));
+        await page.waitFor(intro(false), 6000);
+        // the back, `at` ms into the intro by the page's clock; when it arrives, has the intro already ended by itself?
+        const late = await page.eval(`new Promise((resolve) => {
+          addEventListener("popstate", () => resolve(Boolean(JSON.parse(localStorage.getItem("${KEY}"))?.pending?.length)), { once: true, capture: true });
+          setTimeout(() => history.back(), window.__introAt + ${at} - performance.now());
+        })`);
+        if (late) {
+          // a busy machine: the back arrived after the intro's own end, nothing to judge
+          if (attempt === 3) throw new Error(`à ${at} ms, le retour est arrivé trois fois après la fin de l'intro`);
+          console.log(`    (à ${at} ms : le retour est arrivé après la fin de l'intro, essai suivant)`);
+          continue;
+        }
+        await page.waitFor(`performance.now() - window.__introAt > ${LENGTH + 2000}`, 6000); // past its end, and a step back more
+        const now = await page.eval(`({ hash: location.hash, hub: Boolean(document.querySelector(".screen-hub")), screens: document.querySelectorAll("#app > .screen").length,
+          passport: Boolean(document.querySelector(".screen-passport")), slot: document.querySelector('${slot("bivouac-1")}')?.dataset.status })`);
+        if (now.hash !== "#/aventures" || now.hub || !now.passport || now.screens !== 1) throw new Error(`à ${at} ms : ${JSON.stringify(now)}`);
+        if (now.slot !== "open" || (await statusOf("bivouac-1")) !== "open") throw new Error(`à ${at} ms : emplacement ${now.slot}, statut enregistré ${await statusOf("bivouac-1")}`);
+        if ((await saved()).pending.length) throw new Error(`à ${at} ms : pending ${JSON.stringify((await saved()).pending)}`);
+        break;
+      }
+    }
+  });
+
   await check("recharger pendant l'intro de la première fois : elle repart en entier, impossible à passer ; l'aventure reste à vivre, puis son tampon attend, même après un rechargement", async () => {
+    await fresh();
     await page.tap(slot("bivouac-1"));
     await page.waitFor(intro(false), 4000);
     await sleep(1500);
@@ -297,6 +368,40 @@ async function suite(page, vp) {
       await backOn(pageOf(AVENTURES, "roadtrip"), 1500);
       console.log(`    (${target} : retour en ${((Date.now() - begun) / 1000).toFixed(2)} s)`);
     }
+  });
+
+  await check(
+    "tampons.json introuvable : l'intro de roadtrip prend l'encre par défaut, le passeport ses tampons droits, sans autre erreur ; il est relu à l'intro suivante",
+    async () => {
+      const before = page.errors.length;
+      const ink = () => page.eval(`document.querySelector(".screen-intro")?.style.getPropertyValue("--in-ink").toUpperCase()`);
+      await page.block(["*tampons.json*"]);
+      await page.goto(`${BASE}?demo#/aventures/roadtrip`);
+      await page.waitFor(`${intro(true)} && document.querySelector(".intro-skip")`, 6000);
+      if ((await ink()) !== FALLBACK_INK) throw new Error(`encre : ${await ink()}`);
+      await page.tap(".intro-skip");
+      await backOn(pageOf(AVENTURES, "roadtrip"), 3000);
+      const tilts = await page.eval(`[...document.querySelectorAll(".pp-stamp")].map((s) => s.style.getPropertyValue("--tilt"))`);
+      if (tilts.length !== 15 || tilts.some((t) => t !== "0deg")) throw new Error(`tampons : ${tilts.join(" ")}`);
+      // the file is back: the next intro reads it (a failed read is not kept)
+      await page.block([]);
+      await page.waitFor(`getComputedStyle(document.querySelector(".screen-passport")).opacity === "1"`, 3000); // in: a touch counts
+      await page.tap(slot("roadtrip"));
+      await page.waitFor(intro(true), 4000);
+      const real = INKS.find((s) => s.id === "roadtrip").ink.toUpperCase();
+      if ((await ink()) !== real) throw new Error(`encre après coup : ${await ink()} au lieu de ${real}`);
+      const others = page.errors.slice(before).filter((e) => !e.includes("tampons.json"));
+      if (others.length) throw new Error(`erreur dans la page : ${others.join(" | ")}`);
+    },
+    { allowErrors: true }, // the blocked file's own failure; any other error still fails the check
+  );
+
+  await check("?demo&tampon=roadtrip#/aventures/roadtrip (son tampon attend) : refusée, le passeport, sur #/aventures", async () => {
+    await page.goto(`${BASE}?demo&tampon=roadtrip#/aventures/roadtrip`);
+    await page.waitFor(atPassport, 4000);
+    await page.waitFor(opened, 8000);
+    if (await page.eval(`Boolean(document.querySelector(".screen-intro"))`)) throw new Error("une intro s'est ouverte");
+    if (!(await page.eval(`Boolean(document.querySelector('${slot("roadtrip")}[data-status="pending"]'))`))) throw new Error("roadtrip n'attend pas son tampon");
   });
 
   if (SHOTS) {

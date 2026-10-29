@@ -6,21 +6,15 @@ import { h, shake } from "../dom.js";
 import { parseRoute } from "../router.js";
 import { loadAventures, saveAventures } from "../state.js";
 import { AVENTURES } from "./data.js";
-import { live, nextToLive, openable, pageOf, passportPages, statuses } from "./logic.js";
+import { live, nextToLive, pageOf, passportPages, statuses } from "./logic.js";
 import { createPassport } from "./passport.js";
 import { introScreen } from "./intro.js";
+import { refused } from "./route.js";
 
 const FALLBACK = { ink: "#7A1F35", tilt: 0 }; // a stamp missing from tampons.json
 
-/** { [id]: { ink, tilt } }, read from tampons.json (unreadable: the fallback for all). */
-async function loadStamps() {
-  let list = [];
-  try {
-    const response = await fetch("assets/aventures/tampons/tampons.json");
-    if (response.ok) list = await response.json();
-  } catch {
-    /* offline: plain stamps */
-  }
+/** { [id]: { ink, tilt } } from tampons.json's list (not a list: the fallback for all). */
+function byId(list) {
   const known = new Map((Array.isArray(list) ? list : []).map((s) => [s?.id, s]));
   return Object.fromEntries(
     AVENTURES.map(({ id }) => {
@@ -30,10 +24,22 @@ async function loadStamps() {
   );
 }
 
+let reading = null; // tampons.json, read once for every intro and every return to the passport
+/** The stamps; unreadable (offline): the fallback this time, and another try the next time. */
+function loadStamps() {
+  reading ??= fetch("assets/aventures/tampons/tampons.json")
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`tampons.json: ${response.status}`))))
+    .then(byId, () => {
+      reading = null;
+      return byId([]);
+    });
+  return reading;
+}
+
 /** An address the passport stays on: #/aventures, or an outing whose intro cannot play (main.js puts it back). */
 function keepsPassport(hash) {
   const route = parseRoute(hash);
-  return route.world === "aventures" && !(route.id && openable(AVENTURES, loadAventures(AVENTURES), route.id));
+  return route.world === "aventures" && (!route.id || refused(route));
 }
 
 /** The passport's screen, or (id) that outing's intro; main.js only sends an outing whose intro can play.

@@ -2,13 +2,13 @@
 import { content } from "./content.js";
 import * as P from "./logic.js";
 import { fill, pick } from "./logic.js";
-import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold, takeFold, loadHubCard, loadAventures } from "./state.js";
+import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold, takeFold, loadHubCard } from "./state.js";
 import { createRouter, legacyRedirect, routeHash } from "./router.js";
 import { hubScreen } from "./hub.js";
 import { hubWorlds, WORLDS } from "./hub-logic.js";
 import { coverFrom, coverNow, fadeCover, reveal, collapseInto } from "./plate.js";
 import { AVENTURES } from "./aventures/data.js";
-import { openable } from "./aventures/logic.js";
+import { refused } from "./aventures/route.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { mountEffects, playEffect, fireworks, hearts, goldDust } from "./effects.js";
 import { h, svg, icons, seal, shake, bump, centerOf, flash } from "./dom.js";
@@ -122,7 +122,7 @@ async function display(route, from) {
   if (from?.world === "swap" && route.world !== "swap") return leaveSwap(route);
   if (route.world === "hub") return showHub(from);
   // an outing whose intro cannot play (locked, its stamp waiting, unknown): the passport, in place of that address
-  if (route.world === "aventures" && route.id && !openable(AVENTURES, loadAventures(AVENTURES), route.id)) {
+  if (refused(route)) {
     shown = from;
     return router.replace({ world: "aventures", id: null });
   }

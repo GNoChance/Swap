@@ -87,9 +87,9 @@ async function suite(page, vp) {
     await page.waitFor(`location.search === "?css" && location.hash === "#/ubb" && document.querySelector(".screen-museum")`, 8000);
   });
 
-  await check("#/aventures/roadtrip ouvre la coquille des aventures ; son retour mène au hub", async () => {
+  await check("#/aventures/roadtrip (verrouillée) ouvre le passeport, sur #/aventures ; son retour mène au hub", async () => {
     await page.goto(`${BASE}#/aventures/roadtrip`);
-    await page.waitFor(`document.querySelector(".screen-aventures")`);
+    await page.waitFor(`location.hash === "#/aventures" && document.querySelector(".screen-aventures.screen-passport")`);
     await page.tap(".world-back");
     await page.waitFor(hubShown, 4000);
   });
