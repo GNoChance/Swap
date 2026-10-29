@@ -620,7 +620,22 @@ export const content = {
     },
   },
 
-  // Page d'accueil : le swap à revoir, et la galerie des matchs
+  // Le hub, page d'entrée du site : un carrousel des trois mondes. {n} = le nombre, tiré des données.
+  hub: {
+    title: "Cycy et Kevin",
+    hint: "Glisse pour choisir, touche pour entrer",
+    worlds: {
+      swap: { title: "Le Swap", note: "{n} cadeaux" },
+      ubb: { title: "La Galerie UBB", note: "{n} matchs" },
+      aventures: { title: "Nos aventures", note: "{n} aventures" },
+    },
+    dot: "Monde {n} sur 3",
+  },
+
+  // Nos aventures (le passeport arrive avec le sous-projet 2)
+  aventures: { title: "Nos aventures", soon: "Le passeport arrive bientôt ✈️", back: "‹ Accueil" },
+
+  // L'accueil du swap (#/swap) : le parcours à revoir
   home: {
     face: "maillot-joy",
     kicker: "Le Swap de Cyrielle",
