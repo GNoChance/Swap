@@ -53,10 +53,11 @@ async function suite(page, vp) {
 
   // ── The hub and the worlds ────────────────────────────────
 
-  await check("/ affiche le hub, avec ses trois mondes", async () => {
+  await check("/ affiche le hub « Cycy et Kevin », avec ses trois mondes", async () => {
     await page.goto(BASE);
     await page.waitFor(hubShown);
     if ((await page.eval(`document.querySelectorAll(".screen-hub [data-world]").length`)) !== 3) throw new Error("pas trois mondes");
+    if ((await page.eval(`document.title`)) !== "Cycy et Kevin") throw new Error(`titre : ${await page.eval("document.title")}`);
   });
 
   await check("toucher le Swap ouvre l'accueil du swap (#/swap), avec le bouton ⌂", async () => {

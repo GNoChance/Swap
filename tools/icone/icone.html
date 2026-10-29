@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- The app's icon: Mini Cycy and Kevin side by side on a wine tile. ?size=N (px), &tile=round for the favicons
+     (rounded corners, see-through around). Rendered into assets/logo/ by node tools/icone/render.mjs -->
+<html lang="fr">
+<meta charset="utf-8" />
+<title>Icône · Cycy et Kevin</title>
+<style>
+  html,
+  body {
+    margin: 0;
+    background: transparent;
+  }
+  .tile {
+    position: relative;
+    overflow: hidden;
+    width: var(--n);
+    height: var(--n);
+    background: radial-gradient(circle at 50% 28%, #9b2d48, #7a1f35 58%, #5c1528);
+  }
+  .tile.round {
+    border-radius: 22%;
+  }
+  .tile img {
+    position: absolute;
+    top: 16%;
+    width: 59%;
+  }
+  .cycy {
+    left: -1%;
+  }
+  .kevin {
+    left: 41%;
+  }
+</style>
+<div class="tile">
+  <img class="cycy" src="../../assets/cyrielle/wink.webp" alt="" />
+  <img class="kevin" src="../../assets/cyrielle/kevin-joy.webp" alt="" />
+</div>
+<script>
+  const query = new URLSearchParams(location.search);
+  const tile = document.querySelector(".tile");
+  tile.style.setProperty("--n", `${query.get("size") || 512}px`);
+  if (query.get("tile") === "round") tile.classList.add("round");
+</script>
+</html>

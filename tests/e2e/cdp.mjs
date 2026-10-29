@@ -171,8 +171,10 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
       await cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     },
     beforeLoad: (source) => cmd("Page.addScriptToEvaluateOnNewDocument", { source }),
-    async screenshot(file) {
-      const { data } = await cmd("Page.captureScreenshot", { format: "png" });
+    /** A PNG of the page, or of `clip` ({ x, y, width, height }); `transparent` keeps the page's empty areas see-through. */
+    async screenshot(file, { clip, transparent = false } = {}) {
+      if (transparent) await cmd("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });
+      const { data } = await cmd("Page.captureScreenshot", { format: "png", ...(clip && { clip: { ...clip, scale: 1 } }) });
       writeFileSync(file, Buffer.from(data, "base64"));
     },
     async close() {

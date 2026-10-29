@@ -58,3 +58,25 @@ test("aventures: the 15 outings, in date order, matching the stamps", () => {
 test("hub: the swap's home page no longer has its gallery button", () => {
   assert.equal(content.home.museum, undefined);
 });
+
+test("name: the app is called « Cycy et Kevin », page and home-screen app alike", () => {
+  const manifest = JSON.parse(file("../manifest.webmanifest"));
+  assert.equal(manifest.name, "Cycy et Kevin");
+  assert.equal(manifest.short_name, "Cycy et Kevin");
+  const html = file("../index.html").toString();
+  assert.match(html, /<title>Cycy et Kevin<\/title>/);
+  assert.match(html, /apple-mobile-web-app-title" content="Cycy et Kevin"/);
+});
+
+test("icon: every size is there, square", () => {
+  const size = (png) => [png.readUInt32BE(16), png.readUInt32BE(20)]; // the PNG header (IHDR)
+  for (const [name, n] of [
+    ["apple-touch-icon.png", 180],
+    ["icon-192.png", 192],
+    ["icon-512.png", 512],
+    ["favicon-32.png", 32],
+    ["favicon-64.png", 64],
+  ]) {
+    assert.deepEqual(size(file(`../assets/logo/${name}`)), [n, n], name);
+  }
+});
