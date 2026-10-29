@@ -4549,7 +4549,9 @@ html.is-museum {
   --say-max: 330px;
   --tail: 18px; /* the bubble's tail, from its bottom */
   --r: calc(var(--u) * 2.4);
-  position: fixed;
+  /* absolute on the initial containing block (#app is not positioned, the page never scrolls), not fixed: not a
+     stacking context, so its buttons and Mini Cycy stand over the confetti canvas (30), the book under it */
+  position: absolute;
   inset: 0;
   display: block;
   min-height: 0;
@@ -4633,7 +4635,6 @@ html.is-museum {
 /* ── Layout: the row of Mini Cycy, the book, the buttons ── */
 .pp-layout {
   position: absolute;
-  z-index: 1;
   inset: 0;
   display: flex;
   flex-direction: column;
@@ -4644,7 +4645,7 @@ html.is-museum {
 /* Mini Cycy stands on the book's top right corner, 22 px into it */
 .pp-head {
   position: relative;
-  z-index: 8;
+  z-index: 31; /* over the book, and over the confetti (30) of the passport complete */
   flex: none;
   width: calc(var(--bx) + var(--pw) + var(--rim) + var(--cy-over));
   height: calc(var(--head) + 22px);
@@ -4763,7 +4764,7 @@ html.is-museum {
 
 .pp-foot {
   position: relative;
-  z-index: 4;
+  z-index: 31; /* over the confetti (30), like « ‹ Accueil » (50) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5727,7 +5728,8 @@ html.is-museum {
   left: 50%;
   width: calc(var(--u) * 55);
   height: auto;
-  transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) rotate(var(--tilt));
+  /* --in: the fresh print settling (GSAP, 1.06 → 1) */
+  transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) rotate(var(--tilt)) scale(var(--in, 1));
   mix-blend-mode: multiply;
   opacity: 0.94;
   pointer-events: none;
@@ -5978,6 +5980,107 @@ html.is-museum {
   height: auto;
   transform: rotate(8deg);
   color: rgba(107, 79, 44, 0.82);
+}
+
+/* ── The rubber stamp (js/aventures/stamper.js): its parts in the air over the right page (outside the leaves, which
+   clip), in a box the size of its slot (--sx --sy --sw --sh, in u); its ink on the page itself. GSAP moves every part ── */
+.pp-air,
+.pp-ink {
+  position: absolute;
+  left: calc(var(--u) * var(--sx));
+  top: calc(var(--u) * var(--sy));
+  width: calc(var(--u) * var(--sw));
+  height: calc(var(--u) * var(--sh));
+  pointer-events: none;
+}
+
+.pp-air {
+  z-index: 45; /* over the leaves (40 at most), their cast shadow and the seam */
+  left: calc(var(--rim) + var(--pw) + var(--u) * var(--sx));
+  top: calc(var(--rim) + var(--u) * var(--sy));
+}
+
+/* it hovers over a page at rest: hidden while a leaf turns (it comes back if the page does) */
+.pp-book.is-turning .pp-air {
+  visibility: hidden;
+}
+
+/* 10u above the slot (the maquette: 2u), so that it strikes inside the print, 10u under its centre (its rubber meets
+   its shadow, 36u into the slot; the print is centred at 26u); higher, it would meet the bubble on a short screen */
+.pp-tool {
+  position: absolute;
+  left: calc(50% - var(--u) * 17);
+  top: calc(var(--u) * -10);
+  width: calc(var(--u) * 34);
+  height: calc(var(--u) * 42.5);
+  filter: drop-shadow(0 calc(var(--u) * 1.2) calc(var(--u) * 1.2) rgba(43, 20, 26, 0.28));
+  will-change: transform; /* it moves all its life: drawn once, then only moved (no repaint at every frame) */
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.tool-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* on the paper under it, a little to the left (the sun is top right): from -2 % to 18 % in from its right edge */
+.pp-tool-shadow {
+  position: absolute;
+  left: calc(50% - var(--u) * 17.68);
+  top: calc(var(--u) * 32.93); /* 101 % of its height (42.5u) under its top */
+  width: calc(var(--u) * 28.56);
+  height: calc(var(--u) * 6.4);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(40, 18, 8, 0.5), rgba(40, 18, 8, 0.22) 52%, rgba(40, 18, 8, 0));
+  will-change: transform, opacity;
+}
+
+/* « Touche pour tamponner », on the slot's bottom edge (GSAP centres it on that point) */
+.pp-tool-hint {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px 6px 9px;
+  border: 1px solid rgba(184, 147, 90, 0.75);
+  border-radius: 999px;
+  font: 600 max(12px, calc(var(--u) * 3.3)) / 1 var(--sans);
+  white-space: nowrap;
+  color: var(--wine);
+  background: var(--ivory);
+  box-shadow: 0 8px 16px -10px rgba(43, 20, 26, 0.55);
+  visibility: hidden; /* until it pops in */
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.hint-tap {
+  width: 1.35em;
+  height: 1.35em;
+  overflow: visible;
+  color: var(--gold);
+}
+
+/* the drops of ink thrown out at the contact, on the paper: over the slots and the route */
+.pp-ink {
+  z-index: 3;
+}
+
+.pp-ink i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--u) * var(--w, 1));
+  height: calc(var(--u) * var(--h, 1));
+  border-radius: 50%;
+  opacity: 0;
+  background: var(--drop);
+  mix-blend-mode: multiply;
 }
 
 /* ── The ‹ › buttons: leather discs with gold stitching; dimmed with filter, never opacity ── */

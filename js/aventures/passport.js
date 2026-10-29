@@ -39,8 +39,8 @@ function split(text) {
 }
 
 /** createPassport({ aventures, stamps: { [id]: { ink, tilt } }, statuses, onSlot(id, slotEl), onPage(page) }):
- *  { el, arrive, arriveAt, arriving, land, openAt, goTo, page, slotOf, refresh, press, dispose }. It starts closed and
- *  hidden; .pp has .is-arriving while it arrives. */
+ *  { el, arrive, arriveAt, arriving, land, openAt, goTo, page, slotOf, prepare, refresh, press, dispose }. It starts
+ *  closed and hidden; .pp has .is-arriving while it arrives. */
 export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) {
   const t = content.aventures;
   const p = `pp${++instances}`;
@@ -693,6 +693,11 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     goTo,
     page: () => current,
     slotOf: (id) => slots.get(id),
+    /** The next page, about to be turned to: its leaf shown at once under the current one, so its first raster is
+     *  done before the turn rather than in it (the next mount puts the leaves back as they should be). */
+    prepare(page) {
+      if (isOpen() && !busy && page === current + 1 && page <= last) leafOf(page).el.classList.add("is-shown");
+    },
     /** Redraws the slots (and what depends on them) from new statuses. */
     refresh(now) {
       status = now;

@@ -220,6 +220,12 @@ const sounds = {
   applause() {
     for (let i = 0; i < 34; i++) noise({ at: Math.random() * 1.5, dur: 0.03, gain: 0.05 + Math.random() * 0.04, filter: 1400 + Math.random() * 1800, q: 1.4 });
   },
+  /** « TCHAC »: a rubber stamp hits the passport (a short filtered crack, then a low thump falling away). */
+  stamp() {
+    noise({ dur: 0.05, gain: 0.42, filter: 3200, q: 0.9 });
+    noise({ at: 0.012, dur: 0.11, gain: 0.3, filter: 1100, q: 0.6 });
+    tone({ freq: 180, glideTo: 48, dur: 0.24, gain: 0.34 });
+  },
   /** Cartoon boing: someone gets sent flying. */
   boing() {
     tone({ freq: 180, glideTo: 720, type: "triangle", dur: 0.4, gain: 0.14 });
@@ -235,7 +241,7 @@ const sounds = {
   },
 };
 
-const haptics = { tap: 8, letter: 6, wrong: [30, 40, 30], good: 15, unlock: [12, 30, 20], reveal: [20, 40, 60], final: [30, 50, 30, 50, 80], rip: [20, 20, 40], rattle: [10, 20, 10], notify: [30, 60, 30], siren: [200, 100, 200, 100, 200] };
+const haptics = { tap: 8, letter: 6, wrong: [30, 40, 30], good: 15, unlock: [12, 30, 20], reveal: [20, 40, 60], final: [30, 50, 30, 50, 80], rip: [20, 20, 40], stamp: [25], rattle: [10, 20, 10], notify: [30, 60, 30], siren: [200, 100, 200, 100, 200] };
 
 // ── Music box (debrief ambiance): C · G · Am · F, arpeggiated, scheduled a little ahead ──
 

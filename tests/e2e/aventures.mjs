@@ -1,7 +1,7 @@
 // End-to-end checks of the passport (#/aventures) and the outings' intros, in headless Chrome, on two phones and a PC.
 // Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/aventures.mjs` (ONLY=PC: a single
-// screen; SHOTS=<folder> keeps a screenshot of page 0, of a page of stamps, of the welcome's end and of an intro per
-// screen).
+// screen; SHOTS=<folder> keeps a screenshot of page 0, of a page of stamps, of the welcome's end, of the rubber stamp
+// waiting, of the passport complete (its fireworks) and of an intro per screen).
 // Stops at the first failure (exit code 1). A check also fails if the page logged an error.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -88,7 +88,26 @@ const A = content.aventures;
 const nameOf = (id) => AVENTURES.find((a) => a.id === id).name;
 const WELCOME = A.welcome.map((line) => fill(line, { since: monthYear(AVENTURES.map((a) => a.from).sort()[0]), n: AVENTURES.length }));
 const LOCKED = A.locked.map((line) => fill(line, { next: nameOf("bivouac-1") }));
+const STAMPED = (next) => A.stamped.map((line) => fill(line, { next: nameOf(next) })); // after a stamp, `next` to live
 const WELCOMED = { welcomed: true, known: ids }; // a save whose welcome is seen, nothing lived
+
+// The rubber stamp, in the page: __toolAt, when a .pp-tool last came on screen; __nudgeAt, when Mini Cycy began a nudge
+// since (her bubble's data-say), in performance.now() ms; __said, every line she began (data-say); __vibes, the
+// vibrations asked for (a « TCHAC » is [25]), its own navigator.vibrate standing in for the phone's.
+const TOOL_CLOCK = `{
+  navigator.vibrate = (pattern) => ((window.__vibes ??= []).push(JSON.stringify(pattern)), true);
+  const nudges = ${JSON.stringify(A.nudge)};
+  new MutationObserver((records) => {
+    const tool = document.querySelector(".pp-tool");
+    if (tool && tool !== window.__tool) Object.assign(window, { __tool: tool, __toolAt: performance.now(), __nudgeAt: null });
+    for (const r of records) {
+      if (r.attributeName !== "data-say") continue;
+      const say = r.target.dataset.say.replace(/\\u00a0/g, " ");
+      (window.__said ??= []).push(say);
+      if (window.__tool && window.__nudgeAt === null && nudges.includes(say)) window.__nudgeAt = performance.now();
+    }
+  }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-say"] });
+}`;
 
 const book = `document.querySelector(".pp-book")`;
 const opened = `document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]')`; // open, and landed
@@ -101,6 +120,10 @@ const onPage = (n) => `${book}?.dataset.page === "${n}"`;
 const slot = (id) => `.pp-slot[data-id="${id}"]`;
 const intro = (skippable) => `document.querySelector('.screen-intro[data-skippable="${skippable}"]')`;
 const atPassport = `location.hash === "#/aventures" && document.querySelector(".screen-passport")`;
+const waiting = `document.querySelector('.pp-tool[data-state="waiting"]')`; // the rubber stamp down, floating, untouched
+const stampOn = (id) => `document.querySelector('.pp-stamp[data-id="${id}"]')`;
+const saysNow = `(document.querySelector(".pp-head .bubble")?.dataset.say || "").replace(/\\u00a0/g, " ")`; // the line begun
+const tchacs = `(window.__vibes || []).filter((v) => v === "[25]").length`;
 
 async function suite(page, vp) {
   const check = checker(page);
@@ -109,6 +132,7 @@ async function suite(page, vp) {
   await page.beforeLoad(SEED);
   await page.beforeLoad(SAVE_CLOCK);
   await page.beforeLoad(NO_STORAGE);
+  await page.beforeLoad(TOOL_CLOCK);
   const shown = () => page.eval(`Number(${book}.dataset.page)`);
   const saved = () => page.eval(`JSON.parse(localStorage.getItem("${KEY}"))`);
   /** A tap or a swipe that must not move the book (a bound). */
@@ -159,6 +183,61 @@ async function suite(page, vp) {
     }
     await page.tap(`[data-world="aventures"]`);
     await page.waitFor(`!document.querySelector(".plate") && ${opened} && ${onPage(1)}`, 12000); // the plate gone: a touch counts
+  }
+  /** The page's clock for the next touch: __tapAt (performance.now() ms); __said and __vibes start empty. */
+  const armTap = () => page.eval(`window.__said = []; window.__vibes = []; addEventListener("pointerdown", () => (window.__tapAt = performance.now()), { capture: true, once: true })`);
+  /** How long after that touch `condition` first held, by the page's clock; null if not within `ms` + 2 s. */
+  const since = (condition, ms) =>
+    page.eval(`new Promise((resolve) => {
+      const tick = () => {
+        const t = performance.now() - window.__tapAt;
+        if (${condition}) return resolve(Math.round(t));
+        if (t > ${ms + 2000}) return resolve(null);
+        setTimeout(tick, 15);
+      };
+      tick();
+    })`);
+  /** The passport with its rubber stamp down over `id` (floating, untouched), its screen fully in: a touch counts. */
+  async function toolOn(id) {
+    await page.waitFor(`${waiting} && ${opened} && !gsap.isTweening(document.querySelector(".screen-passport"))`, 8000);
+    const where = await page.eval(`(() => {
+      const box = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, x: (r.left + r.right) / 2 }; };
+      const slot = document.querySelector('${slot(id)}');
+      return { slot: box(slot), tool: box(document.querySelector(".pp-tool")), status: slot.dataset.status };
+    })()`);
+    const { slot: s, tool: t } = where;
+    const u = (s.right - s.left) / 80; // the slot is 80u wide
+    // over the slot, centred: its top 10u above the slot's (6 px more as it floats), its rubber well inside it
+    if (where.status !== "pending" || Math.abs(t.x - s.x) > 2 || t.top < s.top - 11 * u - 6 || t.bottom > s.bottom)
+      throw new Error(`le tampon encreur n'est pas sur ${id} : ${JSON.stringify(where)}`);
+  }
+  /** The rectangles of the rubber stamp, its hint, Mini Cycy's bubble and « ‹ Accueil »: whole on screen, apart. */
+  async function apart() {
+    const fit = await page.eval(`(() => {
+      const box = (selector) => { const el = document.querySelector(selector); const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, shown: !el.hidden && r.width > 0 }; };
+      const doc = document.documentElement;
+      return { tool: box(".pp-tool"), hint: box(".pp-tool-hint"), bubble: box(".pp-head .bubble"), back: box(".world-back"), next: box(".pp-next"),
+        w: innerWidth, h: innerHeight, scroll: doc.scrollHeight > innerHeight || doc.scrollWidth > innerWidth };
+    })()`);
+    const inside = (r) => r.shown && r.top >= 0 && r.left >= 0 && r.bottom <= fit.h && r.right <= fit.w;
+    const meet = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const wrong = [
+      ...["tool", "hint", "bubble", "next"].filter((k) => !inside(fit[k])).map((k) => `${k} hors de l'écran`),
+      meet(fit.bubble, fit.tool) && "la bulle touche le tampon encreur",
+      meet(fit.bubble, fit.hint) && "la bulle touche « Touche pour tamponner »",
+      meet(fit.bubble, fit.back) && "la bulle touche « ‹ Accueil »",
+      fit.scroll && "la page défile",
+    ].filter(Boolean);
+    if (wrong.length) throw new Error(`${wrong.join(" ; ")} : ${JSON.stringify(fit)}`);
+  }
+  /** Mini Cycy's bubble whole on screen, clear of « ‹ Accueil ». */
+  async function bubbleFits(what) {
+    const fit = await page.eval(`(() => {
+      const [bubble, back] = [".pp-head .bubble", ".world-back"].map((s) => document.querySelector(s).getBoundingClientRect());
+      return { inside: bubble.width > 0 && bubble.top >= 0 && bubble.left >= 0 && bubble.bottom <= innerHeight && bubble.right <= innerWidth,
+        meets: bubble.top < back.bottom && back.top < bubble.bottom && bubble.left < back.right && back.left < bubble.right };
+    })()`);
+    if (!fit.inside || fit.meets) throw new Error(`${what} : la bulle ${fit.inside ? "touche « ‹ Accueil »" : "sort de l'écran"}`);
   }
 
   await check("?demo#/aventures (une visite suivante) : le passeport monte déjà ouvert sur la page 0, sans couverture qui tourne, avec ses 15 tampons chargés", async () => {
@@ -581,12 +660,45 @@ async function suite(page, vp) {
     await page.waitFor(`document.querySelector('${slot("bivouac-1")}[data-status="pending"]')`, 1000);
   });
 
-  await check("le tampon attend : toucher un emplacement verrouillé ou celui à tamponner ne change pas l'adresse ; #/aventures/bivouac-1 (par l'avant du navigateur, ou en lien) ramène au passeport", async () => {
-    for (const id of ["canoe", "bivouac-1"]) {
-      await page.tap(slot(id));
-      await sleep(900);
-      if ((await page.eval(`location.hash`)) !== "#/aventures") throw new Error(`${id} : adresse ${await page.eval("location.hash")}`);
-    }
+  // ── Stamping: the rubber stamp, the « TCHAC », the passport complete ──
+
+  await check("après l'intro de Premier bivouac : le tampon encreur descend au-dessus de son emplacement, « Touche pour tamponner » en dessous, pas encore de tampon posé", async () => {
+    await toolOn("bivouac-1");
+    const hint = await page.eval(`(() => {
+      const el = document.querySelector(".pp-tool-hint");
+      const r = el.getBoundingClientRect();
+      const tool = document.querySelector(".pp-tool").getBoundingClientRect();
+      const slot = document.querySelector('${slot("bivouac-1")}').getBoundingClientRect();
+      return { text: el.textContent, below: r.top >= tool.bottom - 1, onEdge: Math.abs((r.top + r.bottom) / 2 - slot.bottom) < 3, shown: getComputedStyle(el).visibility === "visible" && Number(getComputedStyle(el).opacity) > 0.9 };
+    })()`);
+    if (hint.text !== A.stampHint) throw new Error(`pastille : « ${hint.text} »`);
+    if (!hint.below || !hint.onEdge || !hint.shown) throw new Error(`pastille mal placée : ${JSON.stringify(hint)}`);
+    if (await page.eval(`Boolean(${stampOn("bivouac-1")})`)) throw new Error("le tampon est déjà posé");
+    await sleep(500);
+    await shot("tool");
+  });
+
+  await check("sans toucher : au bout de 6,5 s (pas avant 6 s), Mini Cycy relance d'une des deux répliques nudge ; le tampon encreur, sa pastille et la bulle tiennent dans l'écran sans se toucher", async () => {
+    await page.waitFor(`window.__nudgeAt`, 9000);
+    const after = await page.eval(`window.__nudgeAt - window.__toolAt`);
+    console.log(`    (relance ${(after / 1000).toFixed(2)} s après l'arrivée du tampon encreur)`);
+    if (after < 5950 || after > 6500) throw new Error(`relance ${Math.round(after)} ms après le tampon encreur, pas 6 s`);
+    await page.waitFor(`${said}.length === 1 && ${JSON.stringify(A.nudge)}.includes(${said}[0])`, 2000).catch(async () => {
+      throw new Error(`bulle : ${JSON.stringify(await page.eval(said))}`);
+    });
+    await apart();
+  });
+
+  await check("rechargement, le tampon encreur en attente : il revient sur Premier bivouac, qui attend toujours (point 1)", async () => {
+    await page.reload();
+    await toolOn("bivouac-1");
+    if ((await statusOf("bivouac-1")) !== "pending") throw new Error(`statut enregistré : ${await statusOf("bivouac-1")}`);
+  });
+
+  await check("le tampon attend : toucher un emplacement verrouillé ne change pas l'adresse ; #/aventures/bivouac-1 (par l'avant du navigateur, ou en lien) ramène au passeport", async () => {
+    await page.tap(slot("canoe"));
+    await sleep(900);
+    if ((await page.eval(`location.hash`)) !== "#/aventures") throw new Error(`adresse ${await page.eval("location.hash")}`);
     // the browser's forward to it (the intro's entry) while the passport flies in: it stays, and lands
     await page.reload();
     await page.waitFor(`document.querySelector(".screen-passport")`, 6000);
@@ -598,6 +710,29 @@ async function suite(page, vp) {
     await page.waitFor(atPassport, 4000);
     await page.waitFor(opened, 8000);
     if (await page.eval(`Boolean(document.querySelector(".screen-intro"))`)) throw new Error("une intro s'est ouverte");
+  });
+
+  await check("toucher le tampon encreur : en moins de 1,5 s, le tampon de Premier bivouac est posé, l'outil parti, la sauvegarde a stamped [bivouac-1], le canoë est à vivre, Mini Cycy dit une réplique stamped ; un seul « TCHAC »", async () => {
+    await toolOn("bivouac-1");
+    await armTap();
+    await page.tap(".pp-tool");
+    const parts = {
+      stamp: `Boolean(${stampOn("bivouac-1")})`,
+      gone: `!document.querySelector(".pp-tool")`,
+      saved: `JSON.parse(localStorage.getItem("${KEY}"))?.stamped?.join() === "bivouac-1"`,
+      canoe: `document.querySelector('${slot("canoe")}')?.dataset.status === "open"`,
+      line: `${JSON.stringify(STAMPED("canoe"))}.includes(${saysNow})`,
+    };
+    const took = await since(Object.values(parts).join(" && "), 1500);
+    console.log(`    (tout est là ${took === null ? "jamais" : `${(took / 1000).toFixed(2)} s`} après le toucher)`);
+    if (took === null || took > 1500) {
+      const now = await page.eval(`({ ${Object.entries(parts).map(([k, v]) => `${k}: ${v}`).join(", ")} })`);
+      throw new Error(`${took === null ? "jamais" : `${took} ms`} : ${JSON.stringify(now)}`);
+    }
+    if ((await statusOf("canoe")) !== "open") throw new Error(`canoe enregistré ${await statusOf("canoe")}`);
+    await page.waitFor(`${said}.length === 1 && ${JSON.stringify(STAMPED("canoe"))}.includes(${said}[0])`, 3000);
+    await bubbleFits("stamped");
+    if ((await page.eval(tchacs)) !== 1) throw new Error(`vibrations : ${JSON.stringify(await page.eval("window.__vibes"))}`);
   });
 
   await check("profil neuf (accueil vu) : /#/aventures/espelette (verrouillée) et /#/aventures/inconnue mènent au passeport, sur #/aventures", async () => {
@@ -658,6 +793,116 @@ async function suite(page, vp) {
     if (await page.eval(`Boolean(document.querySelector(".screen-intro"))`)) throw new Error("une intro s'est ouverte");
     if (!(await page.eval(`Boolean(document.querySelector('${slot("roadtrip")}[data-status="pending"]'))`))) throw new Error("roadtrip n'attend pas son tampon");
   });
+
+  await check("?demo&tampon=canoe#/aventures : le tampon encreur est sur le canoë, Premier bivouac est tamponné ; après le toucher, la page 2 en moins de 2,5 s", async () => {
+    await page.goto(`${BASE}?demo&tampon=canoe#/aventures`);
+    await toolOn("canoe");
+    if (!(await page.eval(`Boolean(${stampOn("bivouac-1")})`))) throw new Error("bivouac-1 n'est pas tamponné");
+    await armTap();
+    await page.tap(".pp-tool");
+    const took = await since(onPage(2), 2500);
+    console.log(`    (page 2 ${took === null ? "jamais" : `${(took / 1000).toFixed(2)} s`} après le toucher)`);
+    if (took === null || took > 2500) throw new Error(`page ${await shown()} ${took === null ? "" : `(2 au bout de ${took} ms)`}`);
+    if (!(await page.eval(`Boolean(${stampOn("canoe")}) && document.querySelector('${slot("ile-de-re")}').dataset.status === "open"`))) throw new Error("canoe non tamponné, ou Île de Ré pas à vivre");
+  });
+
+  await check("?demo&tampon=canoe : deux touchers à 50 ms sur le tampon encreur, un sur son emplacement pendant l'élan, un autre pendant que la page tourne : un seul « TCHAC », une seule réplique, le canoë seul tamponné, aucune intro", async () => {
+    await page.goto(`${BASE}?demo&tampon=canoe#/aventures`);
+    await toolOn("canoe");
+    await armTap();
+    await page.tap(".pp-tool");
+    await sleep(50);
+    await page.tap(".pp-tool").catch(() => {});
+    await sleep(60);
+    await page.tap(slot("canoe"));
+    await page.waitFor(`${book}.classList.contains("is-turning")`, 3000);
+    await page.tap(slot("canoe")).catch(() => {}); // on the leaf turning away
+    await page.waitFor(`${opened} && ${onPage(2)}`, 3000);
+    await sleep(900);
+    const after = await page.eval(`({ tchacs: ${tchacs}, said: window.__said, hash: location.hash, intro: Boolean(document.querySelector(".screen-intro")),
+      status: Object.fromEntries([...document.querySelectorAll(".pp-slot")].map((s) => [s.dataset.id, s.dataset.status])) })`);
+    const lines = after.said.filter((line) => A.stamped.some((s) => line === fill(s, { next: nameOf("ile-de-re") })));
+    const wrong = [
+      after.tchacs !== 1 && `${after.tchacs} « TCHAC »`,
+      lines.length !== 1 && `répliques : ${JSON.stringify(after.said)}`,
+      (after.hash !== "#/aventures" || after.intro) && `une intro (${after.hash})`,
+      Object.entries(after.status).some(([id, s]) => (s === "stamped") !== ids.slice(0, ids.indexOf("ile-de-re")).includes(id)) && `statuts : ${JSON.stringify(after.status)}`,
+      after.status["ile-de-re"] !== "open" && "Île de Ré n'est pas à vivre",
+    ].filter(Boolean);
+    if (wrong.length) throw new Error(wrong.join(" ; "));
+  });
+
+  await check("?demo&tampon=canoe : un toucher pendant l'arrivée la termine et écrit la bulle « Re ! … », sans tamponner : le tampon encreur descend ensuite, le canoë attend, aucun « TCHAC »", async () => {
+    const greeting = fill(A.again.progress, { next: nameOf("canoe") });
+    for (let attempt = 1; ; attempt++) {
+      await page.goto(`${BASE}?demo&tampon=canoe#/aventures`);
+      // rising, its slot already on screen (it starts half a screen low)
+      await page.waitFor(`document.querySelector(".pp.is-arriving") && document.querySelector('${slot("canoe")}').getBoundingClientRect().top < innerHeight - 20`, 6000);
+      await page.eval(`addEventListener("pointerdown", () => (window.__landedByTap = Boolean(document.querySelector(".pp.is-arriving"))), { capture: true, once: true })`);
+      await armTap();
+      await page.tap(slot("canoe"));
+      if (await page.eval(`window.__landedByTap`)) break;
+      if (attempt === 3) throw new Error("trois fois, le passeport était déjà posé au toucher");
+      console.log("    (le passeport était déjà posé au toucher, essai suivant)");
+    }
+    await page.waitFor(`${opened} && ${saying(greeting)}`, 600).catch(async () => {
+      throw new Error(`après le toucher : ${JSON.stringify(await page.eval(`({ open: Boolean(${opened}), said: ${said} })`))}`);
+    });
+    await page.waitFor(`${waiting} || document.querySelector('${slot("canoe")}').dataset.status !== "pending"`, 4000);
+    await sleep(1500);
+    const now = await page.eval(`({ canoe: document.querySelector('${slot("canoe")}').dataset.status, tchacs: ${tchacs}, said: ${said}, tool: Boolean(${waiting}) })`);
+    if (now.canoe !== "pending" || now.tchacs || !now.tool || JSON.stringify(now.said) !== JSON.stringify([greeting])) throw new Error(JSON.stringify(now));
+  });
+
+  await check("partir (« ‹ Accueil ») juste après le contact : le tampon est enregistré, sans erreur ; au retour, le canoë à vivre, plus de tampon encreur", async () => {
+    await seeded(`#/aventures`, { ...WELCOMED, pending: ["bivouac-1"] });
+    await toolOn("bivouac-1");
+    await page.tap(".pp-tool");
+    await page.waitFor(stampOn("bivouac-1"), 2000);
+    await page.tap(".world-back");
+    await page.waitFor(`document.querySelector(".screen-hub") && !document.querySelector(".screen-passport")`, 4000);
+    await sleep(1500); // past the stamp's flight, Mini Cycy's line, the next slot lit
+    const save = await saved();
+    if (save?.stamped?.join() !== "bivouac-1" || save.pending.length) throw new Error(`sauvegarde : ${JSON.stringify(save)}`);
+    await page.goto(`${BASE}#/aventures`);
+    await page.waitFor(`${opened} && document.querySelector('${slot("canoe")}[data-status="open"]')`, 8000);
+    await sleep(1500);
+    if (await page.eval(`Boolean(document.querySelector(".pp-tool"))`)) throw new Error("un tampon encreur");
+  });
+
+  await check(
+    "?demo&tampon=espelette#/aventures, le toucher : les 15 aventures tamponnées, pluie dorée et feu d'artifice sous « ‹ Accueil », ‹ ›, Mini Cycy et sa bulle (sur le livre), puis complete[0] et complete[1], et la page « Prochaine destination ? »",
+    async () => {
+      await page.goto(`${BASE}?demo&tampon=espelette#/aventures`);
+      await toolOn("espelette");
+      await armTap();
+      await page.tap(".pp-tool");
+      await page.waitFor(`document.querySelectorAll('.pp-slot[data-status="stamped"]').length === 15`, 2000);
+      await page.waitFor(`${said}[0] === ${JSON.stringify(A.complete[0])}`, 4000);
+      // what lies over the confetti: the canvas made touchable for a moment, the topmost element at each one's middle
+      const layers = await page.eval(`(() => {
+        const canvas = document.querySelector(".fx-canvas");
+        canvas.style.pointerEvents = "auto";
+        const over = (selector) => {
+          const r = document.querySelector(selector).getBoundingClientRect();
+          return document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2) === canvas ? "sous" : "dessus";
+        };
+        const out = Object.fromEntries([".world-back", ".pp-prev", ".pp-next", ".aventures-buddy", ".pp-head .bubble", ".pp-book"].map((s) => [s, over(s)]));
+        canvas.style.pointerEvents = "";
+        return out;
+      })()`);
+      const wrong = Object.entries(layers).filter(([s, at]) => at !== (s === ".pp-book" ? "sous" : "dessus"));
+      if (wrong.length) throw new Error(`confettis : ${JSON.stringify(layers)}`);
+      await shot("complete");
+      await page.waitFor(saying(A.complete[0]), 3000);
+      await bubbleFits("complete[0]");
+      await page.waitFor(saying(A.complete[1]), 9000);
+      await bubbleFits("complete[1]");
+      const order = (await page.eval("window.__said")).filter((line) => A.complete.includes(line));
+      if (order.join("|") !== A.complete.join("|")) throw new Error(`répliques : ${JSON.stringify(order)}`);
+      await page.waitFor(`${opened} && ${onPage(9)}`, 4000);
+    },
+  );
 
   if (SHOTS) {
     // an intro once its sign hangs (not in a timed check: a screenshot can take seconds here)
