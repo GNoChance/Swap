@@ -1,7 +1,7 @@
 // The portal's addresses: which world a #… address opens, and the old ?musee link.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseRoute, routeHash, legacyRedirect } from "../js/router.js";
+import { parseRoute, routeHash, legacyRedirect, createRouter } from "../js/router.js";
 
 const hub = { world: "hub", id: null };
 
@@ -37,4 +37,38 @@ test("router: ?musee becomes #/ubb and keeps the other parameters", () => {
 
 test("router: the other special addresses are left alone", () => {
   for (const s of ["", "?demo", "?ubb", "?rejouer"]) assert.equal(legacyRedirect(s), null, s);
+});
+
+test("router: replace rewrites the address in place, keeps whether it is one of the portal's, then shows it", () => {
+  const saved = { location: globalThis.location, history: globalThis.history };
+  const entries = []; // the browser's history: [state, url]
+  globalThis.location = { hash: "#/aventures/roadtrip" };
+  globalThis.history = {
+    get state() {
+      return entries.at(-1)?.[0] ?? null;
+    },
+    pushState(state, _, url) {
+      entries.push([state, url]);
+      location.hash = url;
+    },
+    replaceState(state, _, url) {
+      entries.splice(-1, 1, [state, url]);
+      location.hash = url;
+    },
+  };
+  try {
+    entries.push([null, "#/aventures/roadtrip"]); // opened straight on an outing
+    const seen = [];
+    const router = createRouter((route, previous) => seen.push([route, previous]));
+    router.replace({ world: "aventures", id: null });
+    assert.deepEqual(entries, [[{ portail: false }, "#/aventures"]]);
+    assert.deepEqual(router.current(), { world: "aventures", id: null });
+    assert.deepEqual(seen, [[{ world: "aventures", id: null }, { world: "aventures", id: "roadtrip" }]]);
+    router.go({ world: "aventures", id: "canoe" }); // an entry of the portal's stays one
+    router.replace({ world: "aventures", id: null });
+    assert.deepEqual(entries.at(-1), [{ portail: true }, "#/aventures"]);
+    assert.equal(entries.length, 2);
+  } finally {
+    Object.assign(globalThis, saved);
+  }
 });

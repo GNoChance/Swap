@@ -2,12 +2,13 @@
 import { content } from "./content.js";
 import * as P from "./logic.js";
 import { fill, pick } from "./logic.js";
-import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold, takeFold, loadHubCard } from "./state.js";
+import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold, takeFold, loadHubCard, loadAventures } from "./state.js";
 import { createRouter, legacyRedirect, routeHash } from "./router.js";
 import { hubScreen } from "./hub.js";
 import { hubWorlds, WORLDS } from "./hub-logic.js";
 import { coverFrom, coverNow, fadeCover, reveal, collapseInto } from "./plate.js";
 import { AVENTURES } from "./aventures/data.js";
+import { openable } from "./aventures/logic.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { mountEffects, playEffect, fireworks, hearts, goldDust } from "./effects.js";
 import { h, svg, icons, seal, shake, bump, centerOf, flash } from "./dom.js";
@@ -92,7 +93,7 @@ function show(screen, { instant = false } = {}) {
 
 const router = createRouter(sync);
 let shown = null; // the route on screen
-let busy = false; // a world is opening: taps on the cards wait, a change of address is handled right after
+let busy = false; // a screen is changing: taps on the cards and the passport's outings wait, a change of address is handled right after
 
 const sameRoute = (a, b) => a.world === b.world && a.id === b.id;
 
@@ -120,6 +121,11 @@ async function display(route, from) {
   // the swap was not written to be left without reloading (timers, a pub, a debrief…): leave it by reloading
   if (from?.world === "swap" && route.world !== "swap") return leaveSwap(route);
   if (route.world === "hub") return showHub(from);
+  // an outing whose intro cannot play (locked, its stamp waiting, unknown): the passport, in place of that address
+  if (route.world === "aventures" && route.id && !openable(AVENTURES, loadAventures(AVENTURES), route.id)) {
+    shown = from;
+    return router.replace({ world: "aventures", id: null });
+  }
   // from the hub, the card grows into a plate of its colour, the world opens underneath, the plate fades
   const card = current?.cardOf?.(route.world);
   let plate = null;
@@ -147,7 +153,18 @@ async function worldScreen(route, from) {
   if (route.world === "swap") return home();
   if (route.world === "ubb") return museumWorld(() => router.back());
   const { aventuresWorld } = await import("./aventures/screen.js");
-  return aventuresWorld({ id: route.id, from, back: () => router.back(), open: () => {}, done: () => {} });
+  return aventuresWorld({ id: route.id, from, back: () => router.back(), open: openOuting, done: outingDone });
+}
+
+/** A touch on an outing of the passport: its intro (ignored while a screen is changing). */
+function openOuting(id) {
+  if (!busy) router.go({ world: "aventures", id });
+}
+
+/** The intro is over: back to the passport, stepping back if we came from it. */
+function outingDone() {
+  if (history.state?.portail) router.back();
+  else router.replace({ world: "aventures", id: null });
 }
 
 /** The hub, on the card of the world we come from. Back from a world (or reloaded out of the swap), a plate of its

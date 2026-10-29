@@ -27,9 +27,10 @@ export function legacyRedirect(search) {
   return { search: kept.length ? `?${kept.join("&")}` : "", hash: "#/ubb" };
 }
 
-/** onRoute(route, previous) runs at start (previous = null), on go(), and on the browser's back and forward.
+/** onRoute(route, previous) runs at start (previous = null), on go(), replace(), and on the browser's back and forward.
  *  back() steps back in history when we came from inside the portal, or else goes to the hub without leaving the
- *  site (a link opened straight on a world). */
+ *  site (a link opened straight on a world). replace() rewrites the address in place (no new entry), and the entry
+ *  stays one of the portal's or not. */
 export function createRouter(onRoute) {
   let route = parseRoute(location.hash);
   const arrive = (next) => {
@@ -41,6 +42,10 @@ export function createRouter(onRoute) {
     current: () => route,
     go(next) {
       history.pushState({ portail: true }, "", routeHash(next));
+      arrive(next);
+    },
+    replace(next) {
+      history.replaceState({ portail: history.state?.portail ?? false }, "", routeHash(next));
       arrive(next);
     },
     back() {
