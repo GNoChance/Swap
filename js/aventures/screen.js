@@ -1,14 +1,13 @@
 // Nos aventures (#/aventures): the passport, opened on the outing to live (spec § 4), and each outing's intro
-// (#/aventures/<id>). Mini Cycy stands on the book's corner: her welcome the first time, a word on later visits, a pout
-// at a locked outing. The rubber stamp (Task 5) plugs in here.
+// (#/aventures/<id>). Mini Cycy (buddy.js) stands on the book's corner: her welcome the first time, a word on later
+// visits, a pout at a locked outing. The rubber stamp (Task 5) plugs in here.
 import { content } from "../content.js";
 import { sfx } from "../audio.js";
-import { createAvatar } from "../avatar.js";
 import { h, shake } from "../dom.js";
 import { fill, pick } from "../logic.js";
 import { parseRoute } from "../router.js";
-import { createBubble } from "../scenes.js";
 import { loadAventures, saveAventures } from "../state.js";
+import { createBuddy } from "./buddy.js";
 import { AVENTURES } from "./data.js";
 import { addedSince, live, monthYear, nextToLive, pageOf, passportPages, statuses } from "./logic.js";
 import { createPassport } from "./passport.js";
@@ -81,24 +80,16 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   const start = next ? pageOf(AVENTURES, next) : Math.min(progress.page, passportPages(AVENTURES).length - 1);
   // back from an intro: the book is already open on that outing's page, and Mini Cycy says nothing
   const returning = from?.world === "aventures" && from.id ? from.id : null;
-  let welcoming = !returning && !progress.welcomed; // the first visit, until the welcome is seen through
+  let welcoming = !returning && !progress.welcomed; // the first visit, until the welcome is over (its page turned)
   const added = addedSince(AVENTURES, progress)[0];
   const kind = added ? "added" : next ? "progress" : "complete"; // her word on a later visit
+  let frame = 0; // the passport flies in once the world has shown (its first frame)
+  let arrived = false; // it has landed, or opened at once (back from an intro)
 
-  const bubble = createBubble();
-  const buddy = createAvatar({
+  const buddy = createBuddy({
     face: returning ? "wink" : welcoming ? t.welcomeFaces[0] : AGAIN_FACES[kind],
-    size: 80,
-    className: "aventures-buddy",
-    tappable: true,
-    tapFaces: () => (welcoming ? [buddy.base] : TAP_FACES), // in the welcome, her face goes with her words
-    onTap: () => sfx("tap"),
+    tapFaces: () => (welcoming ? [buddy.avatar.base] : TAP_FACES), // in the welcome, her face goes with her words
   });
-  /** A line in her bubble, typed; the whole line sizes the bubble from the start (.pp-head .bubble::before). */
-  function say(line) {
-    bubble.el.dataset.say = line;
-    return bubble.say(line);
-  }
   let locked = null; // her last line at a locked outing
 
   const passport = createPassport({
@@ -113,8 +104,8 @@ export async function aventuresWorld({ id, from, open, done, back }) {
       } else if (status === "locked") {
         shake(slot, 8);
         locked = pick(t.locked, locked);
-        buddy.react("pout", 2600);
-        say(typeset(fill(locked, { next: nameOf(nextToLive(AVENTURES, progress)) })));
+        buddy.avatar.react("pout", 2600);
+        buddy.say(typeset(fill(locked, { next: nameOf(nextToLive(AVENTURES, progress)) })));
       }
     },
     onPage(page) {
@@ -124,74 +115,35 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     },
   });
 
-  // the welcome's pauses: a touch ends the one under way (as in the swap's scenes), and so does leaving
-  let release = null;
-  let stopped = false;
-  const pause = (ms) =>
-    new Promise((resolve) => {
-      const done = () => {
-        clearTimeout(timer);
-        release = null;
-        resolve();
-      };
-      const timer = setTimeout(done, ms);
-      release = done;
-    });
-  /** Leaving: the welcome stops where it is, unsaved (it comes back the next time). */
-  function stop() {
-    stopped = true;
-    release?.();
-    bubble.skipTyping();
-  }
-
-  /** She hops in from the right, onto her corner. */
-  async function hopIn() {
-    gsap.set(buddy.el, { autoAlpha: 1 });
-    gsap.fromTo(buddy.el, { x: innerWidth - buddy.el.getBoundingClientRect().left + 24 }, { x: 0, duration: 0.7, ease: "power2.out" });
-    gsap.to(buddy.el, { keyframes: { y: [0, -64, 0] }, duration: 0.7, ease: "none" });
-    await sleep(700);
-    if (stopped) return;
-    sfx("step"); // no haptics: on a link opened straight here, nothing has been touched yet (Chrome blocks vibrate)
-    buddy.jump(10);
-  }
-
-  // Before the passport, she and her bubble stand in the middle of the screen (larger on a wide one), anchored at her
-  // feet; they rise to the book's corner as it flies in.
-  function centre() {
-    const r = head.getBoundingClientRect();
-    const scale = innerWidth >= 760 ? 1.3 : 1;
-    const pair = 80 + Math.min(parseFloat(getComputedStyle(head).getPropertyValue("--say-max")), r.width - 92); // at its widest
-    gsap.set(head, { transformOrigin: "100% 100%", scale, x: (innerWidth + pair * scale) / 2 - r.right, y: innerHeight * 0.56 - r.bottom });
-  }
-
   /** The first visit, the passport hidden: she hops in and says her 4 lines; under the last one the passport flies in
-   *  and opens on page 0, then 1.5 s later turns to the outing to live. Saved only then. */
+   *  and opens on page 0, then 1.5 s later turns to the outing to live. Saved once it has landed: all of it seen. */
   async function welcome() {
     const since = monthYear(AVENTURES.map((a) => a.from).sort()[0]);
     const lines = t.welcome.map((line) => typeset(fill(line, { since, n: AVENTURES.length })));
     const last = lines.length - 1;
-    centre();
-    await hopIn();
-    for (let k = 0; k < last && !stopped; k++) {
-      buddy.setBase(t.welcomeFaces[k]);
-      await say(lines[k]);
-      if (!stopped) await pause(900 + lines[k].length * 18);
+    buddy.centre();
+    await buddy.hopIn();
+    for (let k = 0; k < last && !buddy.stopped; k++) {
+      buddy.avatar.setBase(t.welcomeFaces[k]);
+      await buddy.say(lines[k]);
+      if (!buddy.stopped) await buddy.pause(900 + lines[k].length * 18);
     }
-    if (stopped) return;
-    buddy.setBase(t.welcomeFaces[last]);
-    buddy.jump();
+    if (buddy.stopped) return;
+    buddy.avatar.setBase(t.welcomeFaces[last]);
+    buddy.avatar.jump();
     sfx("drumroll");
-    // « Tiens, le voilà ! Première destination… 🥁 »: she rises with the book, on its clock
-    const flight = passport.arrive((arrival) => arrival.to(head, { x: 0, y: 0, scale: 1, duration: 1, ease: "power3.out", clearProps: "transform" }, 0));
-    say(lines[last]);
+    // « Tiens, le voilà ! Première destination… 🥁 »: she rises with it, to its corner
+    const flight = passport.arrive(buddy.rise);
+    buddy.say(lines[last]);
     await flight;
-    if (stopped) return;
+    if (buddy.stopped) return;
     arrived = true;
-    await sleep(LANDED);
-    if (stopped) return;
-    welcoming = false;
+    // the whole welcome seen: saved at once (leaving now does not bring it back)
     progress = { ...progress, welcomed: true, known: ids };
     saveAventures(progress);
+    await sleep(LANDED);
+    if (buddy.stopped) return;
+    welcoming = false;
     passport.goTo(start);
   }
 
@@ -200,18 +152,16 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   function greet() {
     progress = { ...progress, known: ids };
     saveAventures(progress);
-    buddy.jump();
-    say(typeset(fill(t.again[kind], { name: nameOf(added), next: nameOf(next) })));
+    buddy.avatar.jump();
+    buddy.say(typeset(fill(t.again[kind], { name: nameOf(added), next: nameOf(next) })));
     passport.arriveAt(start).then(() => (arrived = true));
   }
 
-  // the passport flies in once the world has shown (its first frame); leaving before it is open, it goes at once:
-  // its first raster would only slow the way out. An address that keeps it on screen is not leaving.
-  let frame = 0;
-  let arrived = false;
+  // leaving before the passport has landed, it goes at once: its first raster would only slow the way out. An address
+  // that keeps it on screen is not leaving.
   const away = () => {
     if (keepsPassport(location.hash)) return;
-    stop();
+    buddy.stop();
     cancelAnimationFrame(frame);
     if (arrived) return;
     passport.dispose();
@@ -230,15 +180,14 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     },
     t.back,
   );
-  const head = h("div", { class: "pp-head" }, bubble.el, buddy.el); // Mini Cycy and her bubble
   const el = h(
     "section",
     { class: "screen screen-aventures screen-passport" },
     h("i", { class: "pp-rays", "aria-hidden": "true" }),
-    h("div", { class: "pp-layout" }, head, passport.el),
+    h("div", { class: "pp-layout" }, buddy.el, passport.el),
     backButton,
   );
-  if (welcoming) gsap.set(buddy.el, { autoAlpha: 0 }); // until she hops in
+  if (welcoming) gsap.set(buddy.avatar.el, { autoAlpha: 0 }); // until she hops in
 
   // A touch anywhere during an arrival ends it, and writes out the line being typed; that touch does nothing else (no
   // next line). Otherwise a touch writes out the line, or else ends a pause of the welcome; not on the slots and the
@@ -246,17 +195,17 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   let spent = false;
   el.addEventListener(
     "pointerdown",
-    () => {
-      spent = passport.arriving();
+    (e) => {
+      spent = passport.arriving() && !e.target.closest(".world-back"); // leaving: the book goes as it is
       if (!spent) return;
       passport.land();
-      bubble.skipTyping();
+      buddy.skip();
     },
     true,
   );
   el.addEventListener("click", (e) => {
     if (spent || e.target.closest("button, .pp-slot")) return;
-    if (!bubble.skipTyping()) release?.();
+    buddy.touch();
   });
 
   return {
@@ -273,11 +222,11 @@ export async function aventuresWorld({ id, from, open, done, back }) {
       frame = requestAnimationFrame(() => (frame = requestAnimationFrame(begin)));
     },
     leave() {
-      stop();
+      buddy.stop();
       cancelAnimationFrame(frame);
       removeEventListener("popstate", away);
       passport.dispose();
-      gsap.killTweensOf([head, buddy.el, ...buddy.el.querySelectorAll("*"), bubble.el]); // her idle bob runs forever
+      buddy.dispose();
     },
   };
 }

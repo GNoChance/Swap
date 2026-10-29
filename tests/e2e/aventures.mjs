@@ -42,13 +42,22 @@ const INTRO_CLOCK = `new MutationObserver(() => {
   }, 20);
 }).observe(document, { childList: true, subtree: true });`;
 
-// The book, in the page from its first line: __bookOpen = { at, page }, the first time it is open and landed; __turnAt,
-// when a leaf first starts turning after that (at: in performance.now() ms, from the start of the page's load).
+// The book, in the page from its first line (at: in performance.now() ms, from the start of the page's load):
+// __open = { at, page }, the first time it is open, landed or still rising; __bookOpen = { at, page }, the first time it
+// is open and landed; __turnAt, when a leaf first starts turning after that; __turned, when the book first has a leaf
+// turning at all (the cover of an arrival counts); __pages, the pages it has shown (out of its hiding), in order.
 const BOOK_CLOCK = `new MutationObserver(() => {
+  const pp = document.querySelector(".pp");
+  const any = pp?.querySelector(".pp-book");
+  if (!any) return;
+  const at = performance.now();
+  if (!pp.classList.contains("is-away") && (window.__pages ??= []).at(-1) !== any.dataset.page) window.__pages.push(any.dataset.page);
+  if (any.classList.contains("is-turning")) window.__turned ??= at;
+  if (any.dataset.open === "true") window.__open ??= { at, page: any.dataset.page };
   const book = document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]');
-  if (book && !window.__bookOpen) window.__bookOpen = { at: performance.now(), page: book.dataset.page };
-  else if (book?.classList.contains("is-turning") && !window.__turnAt) window.__turnAt = performance.now();
-}).observe(document, { subtree: true, attributes: true, attributeFilter: ["class", "data-open"] });`;
+  if (book && !window.__bookOpen) window.__bookOpen = { at, page: book.dataset.page };
+  else if (book?.classList.contains("is-turning") && !window.__turnAt) window.__turnAt = at;
+}).observe(document, { subtree: true, attributes: true, attributeFilter: ["class", "data-open", "data-page"] });`;
 // ?graine=<a passport save, or nothing>: a new profile (storage cleared) holding that save, set before the site's first
 // line; the address then drops it, so a reload keeps what the page has saved since
 const SEED = `{
@@ -59,6 +68,15 @@ const SEED = `{
     if (seed) localStorage.setItem("${KEY}", seed);
     history.replaceState(null, "", location.pathname + location.hash);
   }
+}`;
+// The passport's saves, in the page (after SEED): __welcomedAt, when the page first saved a welcome seen (performance.now()
+// ms). By the page's clock: a slow first raster of the open book can hold the page, and a check's next look, for 1 to 2 s.
+const SAVE_CLOCK = `{
+  const set = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (key, value) {
+    if (key === "${KEY}" && !window.__welcomedAt && String(value).includes('"welcomed":true')) window.__welcomedAt = performance.now();
+    return set.call(this, key, value);
+  };
 }`;
 // ?stockage-bloque: localStorage and sessionStorage throw as soon as they are touched (blocked cookies, some private modes)
 const NO_STORAGE = `if (location.search.includes("stockage-bloque"))
@@ -89,6 +107,7 @@ async function suite(page, vp) {
   await page.beforeLoad(INTRO_CLOCK);
   await page.beforeLoad(BOOK_CLOCK);
   await page.beforeLoad(SEED);
+  await page.beforeLoad(SAVE_CLOCK);
   await page.beforeLoad(NO_STORAGE);
   const shown = () => page.eval(`Number(${book}.dataset.page)`);
   const saved = () => page.eval(`JSON.parse(localStorage.getItem("${KEY}"))`);
@@ -142,10 +161,12 @@ async function suite(page, vp) {
     await page.waitFor(`!document.querySelector(".plate") && ${opened} && ${onPage(1)}`, 12000); // the plate gone: a touch counts
   }
 
-  await check("?demo#/aventures : le passeport arrive et s'ouvre en moins de 4 s, avec ses 15 tampons chargés", async () => {
+  await check("?demo#/aventures (une visite suivante) : le passeport monte déjà ouvert sur la page 0, sans couverture qui tourne, avec ses 15 tampons chargés", async () => {
     await page.goto(`${BASE}?demo#/aventures`);
     await page.waitFor(`document.querySelector(".screen-aventures.screen-passport") && document.querySelector(".world-back")`, 4000);
     await page.waitFor(opened, 4000);
+    const path = await page.eval(`({ open: window.__open?.page, pages: window.__pages, turned: window.__turned ?? null })`);
+    if (path.open !== "0" || path.pages.join() !== "0" || path.turned !== null) throw new Error(`pas déjà ouvert sur la page 0 : ${JSON.stringify(path)}`);
     const count = await page.eval(`document.querySelectorAll(".pp-stamp").length`);
     if (count !== 15) throw new Error(`${count} tampons`);
     await page.waitFor(`[...document.querySelectorAll(".pp-stamp")].every((img) => img.complete && img.naturalWidth > 0)`, 5000);
@@ -285,12 +306,13 @@ async function suite(page, vp) {
 
   /** The touches of the welcome, two a bubble up to the 4th: the first writes the rest of a bubble, the second goes on
    *  (a bubble already written: on, then the next one written at once). After each pair, the next bubble is out in full
-   *  at once (typing it takes 1 to 3 s), the book still hidden; `last` (the 3rd pair): only the first touch. */
+   *  at once (typing it takes 1 to 3 s), the book still hidden; `last` (the 3rd pair): only the first touch, or none.
+   *  In the page: __fourth, just before the touch that brings the 4th bubble; __savedThen, the save at that moment. */
   async function welcomePairs(targets, last = 2) {
     await page.waitFor(`${buddy} && ${saying(WELCOME[0])}`, 6000);
     if (!(await page.eval(hiddenBook))) throw new Error("le passeport se montre dès la 1re bulle");
     for (let i = 1; i <= 3; i++) {
-      if (i === 3) await page.eval(`window.__fourth = performance.now()`);
+      if (i === 3) await page.eval(`window.__fourth = performance.now(); try { window.__savedThen = localStorage.getItem("${KEY}"); } catch {}`);
       for (let k = 0; k < (i === 3 ? last : 2); k++) await page.tap(targets[i - 1]);
       if (i === 3) break;
       await page.waitFor(saying(WELCOME[i]), 700);
@@ -299,15 +321,18 @@ async function suite(page, vp) {
   }
 
   await check(
-    "profil neuf : Mini Cycy arrive, le passeport caché ; « welcome[0] », trois fois deux touchers → « welcome[3] » ; pendant la 4e le passeport arrive (un toucher termine son arrivée : la page 0), 1,5 s après la page 1 ; welcomed et known enregistrés",
+    "profil neuf : Mini Cycy arrive, le passeport caché ; « welcome[0] », trois fois deux touchers → « welcome[3] » ; pendant la 4e le passeport arrive (un toucher termine son arrivée : la page 0, welcomed et known enregistrés dès lors), 1,5 s après la page 1",
     async () => {
       await seeded(`#/aventures`);
       await welcomePairs([".bubble", ".aventures-buddy", ".pp"]); // the bubble, Mini Cycy, anywhere
-      if ((await saved())?.welcomed) throw new Error("welcomed enregistré avant la fin de l'accueil");
+      if (await page.eval(`JSON.parse(window.__savedThen)?.welcomed`)) throw new Error("welcomed enregistré avant la 4e bulle");
       // the 3rd pair's second touch fell in the arrival: open on page 0 well before the 1.9 s of an arrival
       await page.waitFor(`${opened} && ${onPage(0)}`, 1500);
       const landed = await page.eval(`window.__bookOpen.at - window.__fourth`);
       if (landed > 1400) throw new Error(`ouvert ${Math.round(landed)} ms après la 4e bulle : le toucher n'a pas terminé l'arrivée`);
+      // the whole welcome seen: saved as it lands, by the page's clock (not 1.5 s later, with the turn)
+      const kept = await page.eval(`window.__welcomedAt ? window.__welcomedAt - window.__bookOpen.at : null`);
+      if (kept === null || Math.abs(kept) > 100) throw new Error(kept === null ? "rien d'enregistré à l'arrivée posée" : `enregistré ${Math.round(kept)} ms après l'arrivée posée`);
       await page.waitFor(saying(WELCOME[3]), 1500);
       // page 0 for 1.5 s, by the page's clock (a leaf's first turn here can wait a slow first raster: page 1 comes later)
       await page.waitFor(`${opened} && ${onPage(1)}`, 5000);
@@ -320,18 +345,30 @@ async function suite(page, vp) {
     },
   );
 
-  await check("rechargement : une seule bulle, « Re ! On en était à Premier bivouac 👀 », et le passeport ouvert sur la page 1 en moins de 1,5 s", async () => {
-    await page.reload();
-    await page.waitFor(`window.__bookOpen`, 5000);
-    const open = await page.eval(`window.__bookOpen`);
-    console.log(`    (ouvert et posé sur la page ${open.page} ${(open.at / 1000).toFixed(2)} s après le début du rechargement)`);
-    if (open.page !== "1") throw new Error(`ouvert sur la page ${open.page}`);
-    if (open.at > 1500) throw new Error(`ouvert ${Math.round(open.at)} ms après le début du rechargement`);
-    await page.waitFor(saying("Re ! On en était à Premier bivouac 👀"), 3000);
-    await sleep(1200);
-    if (!(await page.eval(saying("Re ! On en était à Premier bivouac 👀")))) throw new Error(`puis : ${JSON.stringify(await page.eval(said))}`);
-    if ((await page.eval(`document.querySelectorAll(".bubble").length`)) !== 1) throw new Error("plusieurs bulles");
-  });
+  await check(
+    "rechargement : une seule bulle, « Re ! On en était à Premier bivouac 👀 », et le passeport ouvert directement sur la page 1 (jamais la page 0, aucune page qui tourne) en moins de 1,5 s, posé en moins de 3 s",
+    async () => {
+      await page.reload();
+      // by the page's clock, from the start of the reload: open (it may still be rising), then landed; its first raster,
+      // which can block a frame or two for 1 to 2 s on a machine without a GPU, delays only the landing
+      await page.waitFor(`window.__open && window.__bookOpen`, 6000);
+      const { open, landed } = await page.eval(`({ open: window.__open, landed: window.__bookOpen.at })`);
+      console.log(`    (ouvert sur la page ${open.page} ${(open.at / 1000).toFixed(2)} s après le début du rechargement, posé à ${(landed / 1000).toFixed(2)} s)`);
+      await page.waitFor(saying("Re ! On en était à Premier bivouac 👀"), 3000);
+      await sleep(1200);
+      const path = await page.eval(`({ pages: window.__pages, turned: window.__turned ?? null })`);
+      const wrong = [
+        open.page !== "1" && `ouvert d'abord sur la page ${open.page}`,
+        open.at > 1500 && `ouvert ${Math.round(open.at)} ms après le début du rechargement`,
+        landed > 3000 && `posé ${Math.round(landed)} ms après le début du rechargement`,
+        path.pages.join() !== "1" && `pages montrées : ${path.pages.join(", ")}`,
+        path.turned !== null && `une page a tourné à ${Math.round(path.turned)} ms`,
+      ].filter(Boolean);
+      if (wrong.length) throw new Error(wrong.join(" ; "));
+      if (!(await page.eval(saying("Re ! On en était à Premier bivouac 👀")))) throw new Error(`puis : ${JSON.stringify(await page.eval(said))}`);
+      if ((await page.eval(`document.querySelectorAll(".bubble").length`)) !== 1) throw new Error("plusieurs bulles");
+    },
+  );
 
   await check('une sauvegarde { welcomed: true, known: tous sauf "royan-1" } : « Oh, un nouveau tampon à gagner : Royan ✨ », et known est mis à jour', async () => {
     await seeded(`#/aventures`, { welcomed: true, known: ids.filter((id) => id !== "royan-1") });
@@ -355,17 +392,84 @@ async function suite(page, vp) {
     }
   });
 
-  await check("partir pendant l'accueil (« ‹ Accueil » sur la page 0, juste avant la fin) : rien n'est enregistré, l'accueil revient la fois d'après", async () => {
+  await check("profil neuf, la 1re bulle : l'écran tourne (h × w) puis revient (w × h) ; après chaque changement, Mini Cycy et sa bulle sont entières dans l'écran", async () => {
     await seeded(`#/aventures`);
-    await welcomePairs([".bubble", ".bubble", ".bubble"], 1);
-    await page.waitFor(`${opened} && ${onPage(0)}`, 4000);
+    await page.waitFor(`${buddy} && ${saying(WELCOME[0])}`, 6000);
+    const where = `(() => {
+      const box = (selector) => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return { left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(r.bottom), in: r.width > 0 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight };
+      };
+      return { cycy: box(".aventures-buddy"), bubble: box(".pp-head .bubble"), welcome: ${hiddenBook} && !document.querySelector(".pp.is-arriving") };
+    })()`;
+    try {
+      for (const [w, h] of [[vp.height, vp.width], [vp.width, vp.height]]) {
+        await page.resize(w, h);
+        await page.waitFor(`innerWidth === ${w} && innerHeight === ${h}`, 2000);
+        await page.waitFor(`(${where}).cycy.in && (${where}).bubble.in`, 2000).catch(async () => {
+          throw new Error(`en ${w} × ${h}, hors de l'écran : ${JSON.stringify(await page.eval(where))}`);
+        });
+        if (!(await page.eval(`(${where}).welcome`))) throw new Error(`en ${w} × ${h} : l'accueil a déjà passé la 3e bulle, rien à juger`);
+      }
+    } finally {
+      await page.resize(vp.width, vp.height);
+    }
+  });
+
+  await check("partir pendant l'accueil, le passeport encore caché (la 3e bulle) : rien n'est enregistré, l'accueil revient la fois d'après", async () => {
+    await seeded(`#/aventures`);
+    await welcomePairs([".bubble", ".bubble", ".bubble"], 0);
     await page.tap(".world-back");
     await page.waitFor(`document.querySelector(".screen-hub")`, 4000);
-    await sleep(2500); // past the end the welcome would have had
+    await sleep(5000); // past the 3rd bubble's pause and the landing the welcome would have had
     if ((await saved())?.welcomed) throw new Error(`sauvegarde : ${JSON.stringify(await saved())}`);
     await page.goto(`${BASE}#/aventures`);
     await page.waitFor(`${saying(WELCOME[0])} && ${hiddenBook}`, 6000);
   });
+
+  await check("partir (« ‹ Accueil ») pendant le vol de la 4e bulle : rien n'est enregistré, sans erreur, le hub s'affiche ; l'accueil revient la fois d'après", async () => {
+    for (let attempt = 1; ; attempt++) {
+      await seeded(`#/aventures`);
+      await welcomePairs([".bubble", ".bubble", ".bubble"], 1); // the arrival under way, untouched
+      await page.waitFor(`document.querySelector(".pp.is-arriving")`, 2000);
+      // when the touch arrives, is the book still flying? (a frame held by a slow raster can let it land first)
+      await page.eval(`addEventListener("pointerdown", () => (window.__leftFlying = Boolean(document.querySelector(".pp.is-arriving"))), { capture: true, once: true })`);
+      await page.tap(".world-back");
+      await page.waitFor(`document.querySelector(".screen-hub") && !document.querySelector(".screen-passport")`, 4000);
+      if (await page.eval(`window.__leftFlying`)) break;
+      if (attempt === 3) throw new Error("trois fois, le passeport était déjà posé quand « ‹ Accueil » a été touché");
+      console.log("    (le passeport était déjà posé quand « ‹ Accueil » a été touché, essai suivant)");
+    }
+    await sleep(3000); // past the landing the flight would have had
+    if ((await saved())?.welcomed) throw new Error(`sauvegarde : ${JSON.stringify(await saved())}`);
+    if (!(await page.eval(`location.hash === "#/" && Boolean(document.querySelector(".screen-hub"))`))) throw new Error(`plus sur le hub : ${await page.eval("location.hash")}`);
+    await page.goto(`${BASE}#/aventures`);
+    await page.waitFor(`${saying(WELCOME[0])} && ${hiddenBook}`, 6000);
+  });
+
+  await check(
+    "l'accueil vu jusqu'à l'arrivée de la 4e bulle (l'arrivée 3D posée en moins de 4 s, sans toucher), partir sur la page 0 : welcomed et known enregistrés ; la fois d'après, pas d'accueil mais « Re ! On en était à Premier bivouac 👀 »",
+    async () => {
+      for (let attempt = 1; ; attempt++) {
+        await seeded(`#/aventures`);
+        await welcomePairs([".bubble", ".bubble", ".bubble"], 1); // the arrival this time in full, untouched
+        await page.waitFor(`${opened} && ${onPage(0)}`, 5000);
+        await page.tap(".world-back"); // within the 1.5 s on page 0
+        await page.waitFor(`document.querySelector(".screen-hub")`, 4000);
+        const at = await page.eval(`({ landed: window.__bookOpen.at - window.__fourth, turned: window.__turnAt ?? null })`);
+        console.log(`    (arrivée posée ${(at.landed / 1000).toFixed(2)} s après la 4e bulle)`);
+        if (at.landed > 4000) throw new Error(`l'arrivée s'est posée ${Math.round(at.landed)} ms après la 4e bulle`);
+        if (at.turned === null) break;
+        // a frame held by a slow raster: the touch came after the 1.5 s, nothing to judge
+        if (attempt === 3) throw new Error("trois fois, la page avait déjà tourné quand « ‹ Accueil » a été touché");
+        console.log("    (la page avait déjà tourné quand « ‹ Accueil » a été touché, essai suivant)");
+      }
+      const save = await saved();
+      if (save?.welcomed !== true || [...(save.known || [])].sort().join() !== [...ids].sort().join()) throw new Error(`sauvegarde : ${JSON.stringify(save)}`);
+      await page.goto(`${BASE}#/aventures`);
+      await page.waitFor(saying("Re ! On en était à Premier bivouac 👀"), 6000);
+    },
+  );
 
   await check("stockage bloqué : l'accueil se déroule, le passeport arrive (page 0) puis s'ouvre sur la page 1, sans erreur", async () => {
     await page.goto(`${BASE}?stockage-bloque#/aventures`);
