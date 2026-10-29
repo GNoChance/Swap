@@ -2,10 +2,11 @@
 import { content } from "./content.js";
 import * as P from "./logic.js";
 import { fill, pick } from "./logic.js";
-import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold } from "./state.js";
+import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold, takeFold, loadHubCard } from "./state.js";
 import { createRouter, legacyRedirect, routeHash } from "./router.js";
 import { hubScreen } from "./hub.js";
-import { hubWorlds } from "./hub-logic.js";
+import { hubWorlds, WORLDS } from "./hub-logic.js";
+import { coverFrom, coverNow, fadeCover, reveal, collapseInto } from "./plate.js";
 import { AVENTURES } from "./aventures/data.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { mountEffects, playEffect, fireworks, hearts, goldDust } from "./effects.js";
@@ -111,14 +112,41 @@ async function sync() {
   sync(); // the address may have changed meanwhile (the browser's back button)
 }
 
+const colorOf = (world) => WORLDS.find((w) => w.id === world).color;
+
 async function display(route, from) {
   // the swap was not written to be left without reloading (timers, a pub, a debrief…): leave it by reloading
   if (from?.world === "swap" && route.world !== "swap") return leaveSwap(route);
-  if (route.world === "hub") return show(hubScreen({ worlds: hubWorlds(content, AVENTURES.length), start: from?.world ?? "swap", onEnter: enterWorld }));
-  if (route.world === "swap") return show(home());
-  if (route.world === "ubb") return show(await museumWorld(() => router.back()));
+  if (route.world === "hub") return showHub(from);
+  // from the hub, the card grows into a plate of its colour, the world opens underneath, the plate fades
+  const card = current?.cardOf?.(route.world);
+  let plate = null;
+  if (card) {
+    sfx("whoosh");
+    current.dive(route.world);
+    plate = await coverFrom(card.getBoundingClientRect(), colorOf(route.world));
+  }
+  await show(await worldScreen(route), { instant: Boolean(plate) });
+  if (plate) await reveal(plate);
+}
+
+async function worldScreen(route) {
+  if (route.world === "swap") return home();
+  if (route.world === "ubb") return museumWorld(() => router.back());
   const { aventuresScreen } = await import("./aventures/screen.js");
-  return show(aventuresScreen({ onBack: () => router.back() }));
+  return aventuresScreen({ onBack: () => router.back() });
+}
+
+/** The hub, on the card of the world we come from. Back from a world (or reloaded out of the swap), a plate of its
+ *  colour covers the screen and folds back into its card. */
+async function showHub(from) {
+  const fold = from ? null : takeFold();
+  const back = fold || (from && from.world !== "hub" ? from.world : null);
+  const hub = hubScreen({ worlds: hubWorlds(content, AVENTURES.length), start: back || loadHubCard(), onEnter: enterWorld });
+  if (!back) return show(hub);
+  const plate = fold ? coverNow(colorOf(fold)) : await fadeCover(colorOf(back));
+  await show(hub, { instant: true });
+  await collapseInto(plate, hub.cardOf(back).getBoundingClientRect());
 }
 
 function enterWorld(world) {
@@ -126,8 +154,9 @@ function enterWorld(world) {
 }
 
 /** Leaves the swap by reloading the page on `route`; back on the hub, the plate folds into the Swap card. */
-function leaveSwap(route) {
+async function leaveSwap(route) {
   if (route.world === "hub") setFold("swap");
+  await fadeCover(colorOf("swap"));
   history.replaceState(null, "", location.pathname + routeHash(route));
   location.reload();
   return new Promise(() => {}); // the page is going away
@@ -135,6 +164,8 @@ function leaveSwap(route) {
 
 /** ⌂ on the swap's screens: back to the hub, reloading (also from ?rejouer, ?pub, ?demo…). */
 function reloadToHub() {
+  if (busy) return;
+  busy = true;
   leaveSwap({ world: "hub", id: null });
 }
 

@@ -132,14 +132,19 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
         await sleep(50);
       }
     },
+    /** The middle of the element's visible part (a card half off the screen is touched where it shows). */
     async center(selector) {
       const c = await page.eval(`(() => {
         const el = document.querySelector(${JSON.stringify(selector)});
         if (!el) return null;
         const r = el.getBoundingClientRect();
-        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        const [left, right] = [Math.max(r.left, 0), Math.min(r.right, innerWidth)];
+        const [top, bottom] = [Math.max(r.top, 0), Math.min(r.bottom, innerHeight)];
+        if (right <= left || bottom <= top) return "hors-écran";
+        return { x: (left + right) / 2, y: (top + bottom) / 2 };
       })()`);
       if (!c) throw new Error(`introuvable : ${selector}`);
+      if (c === "hors-écran") throw new Error(`hors de l'écran : ${selector}`);
       return c;
     },
     /** A tap (a touch on a phone, a click on a PC) in the middle of the element. */
@@ -152,10 +157,18 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
         for (const type of ["mousePressed", "mouseReleased"]) await cmd("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 });
       }
     },
-    /** A finger sliding dx px sideways on the element (negative: towards the left, to see what is on the right). */
+    /** A finger sliding dx px sideways on the element (negative: towards the left, to see what is on the right); on a
+     *  PC, a horizontal wheel turn of the same amount. */
     async swipe(selector, dx) {
       const { x, y } = await page.center(selector);
-      await cmd("Input.synthesizeScrollGesture", { x, y, xDistance: dx, yDistance: 0, gestureSourceType: mobile ? "touch" : "mouse", speed: 900 });
+      if (!mobile) return cmd("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: -dx, deltaY: 0 });
+      const steps = 12;
+      await cmd("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (let i = 1; i <= steps; i++) {
+        await cmd("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + (dx * i) / steps, y }] });
+        await sleep(16);
+      }
+      await cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     },
     beforeLoad: (source) => cmd("Page.addScriptToEvaluateOnNewDocument", { source }),
     async screenshot(file) {

@@ -4361,45 +4361,148 @@ html.is-museum {
 /* ── The portal: the hub (#/) and its worlds ─────────────── */
 
 .screen-hub {
+  --card: min(70vw, 340px); /* the side cards show on both edges */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 10px;
   min-height: 100dvh;
-  padding: calc(var(--sat) + 24px) 0 calc(var(--sab) + 24px);
+  padding: calc(var(--sat) + 18px) 0 calc(var(--sab) + 18px);
+  overflow: hidden;
 }
 
 .hub-title {
   margin: 0;
   font-family: var(--serif);
-  font-size: 2.4rem;
+  font-size: clamp(2rem, 9vw, 2.8rem);
   font-weight: 600;
+  line-height: 1.1;
   color: var(--wine);
 }
 
-.hub-track {
+.hub-buddies {
   display: flex;
-  gap: 16px;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: -40px; /* they stand on the top edge of the card in the middle */
+  position: relative;
+  z-index: 2;
+}
+
+/* Native horizontal scrolling, one card per notch; the padding lets the first and last cards reach the middle */
+.hub-track {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  padding: 30px calc(50% - var(--card) / 2) 48px; /* room for the cards' shadow, which the scroller would cut */
+  margin-bottom: -30px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hub-track::-webkit-scrollbar {
+  display: none;
 }
 
 .hub-card {
-  display: grid;
-  place-content: center;
-  gap: 4px;
-  width: 100px;
-  aspect-ratio: 3 / 4;
+  flex: 0 0 var(--card);
+  padding: 0;
   border: 0;
+  background: none;
+  scroll-snap-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The visible card: scaled and faded by script with its distance from the middle (no CSS transition here) */
+.hub-card-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 4 / 5;
+  padding: 24px 18px;
   border-radius: 28px;
-  font-family: var(--sans);
   color: var(--world-ink);
   background: var(--world-bg);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 18px 40px -18px rgba(43, 26, 30, 0.45);
+}
+
+.hub-card[data-world="ubb"] .hub-card-face {
+  box-shadow:
+    0 0 0 1px rgba(122, 23, 51, 0.12) inset,
+    0 18px 40px -18px rgba(43, 26, 30, 0.35);
+}
+
+.hub-card-face svg {
+  width: 58%;
+  height: auto;
+  margin-bottom: 6px;
 }
 
 .hub-card-title {
   font-family: var(--serif);
-  font-size: 1.2rem;
+  font-size: clamp(1.6rem, 7vw, 2rem);
   font-weight: 600;
+  line-height: 1.1;
+}
+
+.hub-card-note {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  filter: opacity(0.8);
+}
+
+.hub-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.hub-dot {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.hub-dot::before {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin: auto;
+  border-radius: 50%;
+  background: var(--wine);
+  filter: opacity(0.25);
+}
+
+.hub-dot[aria-current="true"]::before {
+  filter: none;
+}
+
+.hub-hint {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* The plate between the hub and a world (js/plate.js) */
+.plate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
 }
 
 /* The way back to the hub from a world (the gallery has its own, .mu-back) */

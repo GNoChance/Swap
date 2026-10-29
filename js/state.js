@@ -51,6 +51,17 @@ export function saveProgress(progress) {
   if (!transient) write(KEY, JSON.stringify(progress));
 }
 
+const HUB_KEY = "swap-cyrielle:hub";
+
+/** The hub's last card (a world id); the Swap the first time. */
+export function loadHubCard() {
+  return read(HUB_KEY) || "swap";
+}
+
+export function saveHubCard(world) {
+  write(HUB_KEY, world);
+}
+
 const FOLD_KEY = "swap-cyrielle:fold";
 
 /** Leaving a world by reloading the page (the swap): which card the hub's plate folds back into once reloaded. */
