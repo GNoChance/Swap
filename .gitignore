@@ -1,4 +1,5 @@
 # Planches sources des stickers : pas utilisées par le site (les stickers découpés sont dans assets/cyrielle/)
-Planche de stickers*.png
-Autocollants*.png
+planches/
+# Une planche posée à la racine en attendant d'être rangée
+/*.png
 node_modules/
