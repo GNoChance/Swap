@@ -632,8 +632,31 @@ export const content = {
     dot: "Monde {n} sur 3",
   },
 
-  // Nos aventures (le passeport arrive avec le sous-projet 2)
-  aventures: { title: "Nos aventures", soon: "Le passeport arrive bientôt ✈️", back: "‹ Accueil" },
+  // Nos aventures (#/aventures) : le passeport et Mini Cycy. {since} = le mois et l'année de la première sortie
+  // (« mai 2025 ») ; {next} = le nom de l'aventure à vivre ; {name} = celui d'une sortie ajoutée.
+  aventures: {
+    title: "Nos aventures",
+    back: "‹ Accueil",
+    cover: { title: "Passeport des aventures", holders: "Cycy & Kevin" },
+    identity: { title: "Passeport", holders: "Titulaires : Cycy & Kevin", since: "Depuis le {date}", count: "Aventures : {n} / {total}", mrz: "P<CYCY<<KEVIN<<<<<<<<<<<<<<<<<<" },
+    slot: { open: "À vivre ✦", next: "Prochaine destination ?" },
+    welcome: [
+      "Coucou ! Bienvenue dans nos aventures ✨",
+      "Ici, il y a tout ce que Kevin et moi, on a vécu depuis {since}. {n} sorties, du premier bivouac à la fête du piment !",
+      "Mais pas de triche : on les revit dans l'ordre. Chaque aventure terminée = un tampon sur ton passeport.",
+      "Tiens, le voilà ! Première destination… 🥁",
+    ],
+    welcomeFaces: ["joy", "wink", "smirk", "surprised"],
+    locked: ["Eh, pas si vite ! Une aventure à la fois 😤", "Celle-là, elle se mérite. Termine d'abord {next} !", "Pas de triche, j'ai dit ! 🙈"],
+    nudge: ["Allez, tamponne ! 👀", "Qu'est-ce que t'attends ?"],
+    stamped: ["Et un tampon de plus ! 💥", "Validé ! Prochaine destination : {next}", "Ça, c'était quelque chose… On continue ?"],
+    complete: ["Passeport complet ! 🎉 Maintenant, tu peux repartir où tu veux.", "Et la prochaine aventure, on la vit quand ? 😏"],
+    again: { progress: "Re ! On en était à {next} 👀", complete: "On repart où aujourd'hui ?", added: "Oh, un nouveau tampon à gagner : {name} ✨" },
+    stampHint: "Touche pour tamponner",
+    skip: "Passer ▸",
+    prev: "Page précédente",
+    nextPage: "Page suivante",
+  },
 
   // L'accueil du swap (#/swap) : le parcours à revoir
   home: {

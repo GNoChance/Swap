@@ -4,6 +4,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
+import { check as checker } from "./check.mjs";
 
 const BASE = process.env.BASE || "http://localhost:5173/";
 const SHOTS = process.env.SHOTS || tmpdir();
@@ -20,19 +21,7 @@ const centred = (world) => `document.querySelector(".screen-hub")?.dataset.curre
 const atHub = `["", "#/"].includes(location.hash)`;
 
 async function suite(page, vp) {
-  /** allowErrors: for a check that breaks something on purpose (a blocked file logs its failure). */
-  async function check(name, fn, { allowErrors = false } = {}) {
-    const before = page.errors.length;
-    try {
-      await fn();
-      if (!allowErrors && page.errors.length > before) throw new Error(`erreur dans la page : ${page.errors.slice(before).join(" | ")}`);
-      console.log(`  ✔ ${name}`);
-    } catch (error) {
-      console.log(`  ✘ ${name} : ${error.message}`);
-      await page.close();
-      process.exit(1);
-    }
-  }
+  const check = checker(page);
   const screens = () => page.eval(`document.querySelectorAll("#app > .screen").length`);
   const current = () => page.eval(`document.querySelector(".screen-hub")?.dataset.current`);
   /** Marks the page, so a check can tell it reloaded (the mark is gone). */

@@ -130,7 +130,7 @@ async function display(route, from) {
   }
   let screen;
   try {
-    screen = await worldScreen(route);
+    screen = await worldScreen(route, from);
   } catch (error) {
     // the world did not load (a flaky connection): no plate left behind, back where we were
     console.error(error);
@@ -143,11 +143,11 @@ async function display(route, from) {
   if (plate) await reveal(plate);
 }
 
-async function worldScreen(route) {
+async function worldScreen(route, from) {
   if (route.world === "swap") return home();
   if (route.world === "ubb") return museumWorld(() => router.back());
-  const { aventuresScreen } = await import("./aventures/screen.js");
-  return aventuresScreen({ onBack: () => router.back() });
+  const { aventuresWorld } = await import("./aventures/screen.js");
+  return aventuresWorld({ id: route.id, from, back: () => router.back(), open: () => {}, done: () => {} });
 }
 
 /** The hub, on the card of the world we come from. Back from a world (or reloaded out of the swap), a plate of its

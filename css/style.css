@@ -4524,22 +4524,1423 @@ html.is-museum {
   backdrop-filter: blur(6px);
 }
 
-.screen-aventures {
-  display: grid;
-  place-items: center;
-  min-height: 100dvh;
-  padding: calc(var(--sat) + 72px) 24px calc(var(--sab) + 24px);
-  color: #fff8e7;
-  background: #0f8c8a;
+/* ── Nos aventures: the passport (#/aventures) ──────────────
+   « Le vrai passeport », docs/design/passeport/ (BRIEF.md, maquette.html): a leather book lit by the sun of the top
+   right corner. Every inner size is in --u (a hundredth of the page's width). GSAP drives every motion: no CSS
+   transition here, and no @keyframes on a GSAP target (the foil, the slot frames). */
+.screen-passport {
+  --page: #fbf5ea;
+  --leather: #5e1628;
+  --sun: #f2b134;
+  --sepia: rgba(107, 79, 44, 0.74);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --band: calc(var(--sat) + 60px); /* « ‹ Accueil » and the sound button */
+  --head: clamp(96px, 13dvh, 118px); /* the row of Mini Cycy and her bubble */
+  --foot: 76px; /* the ‹ › buttons */
+  --rim: 5px; /* leather showing around the pages */
+  --avail: calc(100dvh - var(--band) - var(--head) - var(--foot) - var(--sab) - 6px);
+  --pw: min(calc(100vw - 24px), calc((var(--avail) - 2 * var(--rim)) / 1.42), 480px);
+  --ph: calc(var(--pw) * 1.42);
+  --u: calc(var(--pw) / 100);
+  --bx: max(7px, calc((100vw - var(--pw)) / 2 - 16px)); /* the binding: off the left edge when the page is width-bound */
+  --cy-over: clamp(2px, calc(100vw - var(--bx) - var(--pw) - var(--rim) - 8px), 26px); /* Mini Cycy past the book */
+  --r: calc(var(--u) * 2.4);
+  position: fixed;
+  inset: 0;
+  display: block;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ink);
+  background-color: #d9f0ec;
+  background-image:
+    radial-gradient(circle 380px at calc(100% - 26px) 18px, rgba(242, 177, 52, 0.58), rgba(242, 177, 52, 0.3) 20%, rgba(242, 177, 52, 0.1) 52%, rgba(242, 177, 52, 0) 100%),
+    var(--tex-map),
+    var(--tex-grain),
+    linear-gradient(180deg, #e3f4f2 0%, #cdebe7 100%);
+  background-size: auto, cover, 200px 200px, auto;
+  background-position: 0 0, center, 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
 }
 
-.aventures-soon {
+@media (min-width: 760px) {
+  .screen-passport {
+    --head: 84px;
+    --rim: 8px;
+    --pw: min(calc((100vw - 160px) / 2), calc((var(--avail) - 2 * var(--rim)) / 1.42), 480px);
+    --bx: 50vw;
+    background-image:
+      radial-gradient(circle 560px at calc(100% - 40px) 26px, rgba(242, 177, 52, 0.55), rgba(242, 177, 52, 0.28) 20%, rgba(242, 177, 52, 0.09) 52%, rgba(242, 177, 52, 0) 100%),
+      var(--tex-map),
+      var(--tex-grain),
+      linear-gradient(180deg, #e3f4f2 0%, #cdebe7 100%);
+  }
+}
+
+/* the sun's rays, turning very slowly (a CSS loop: not a GSAP target) */
+.pp-rays {
+  position: absolute;
+  z-index: 0;
+  top: -212px;
+  right: -204px;
+  width: 460px;
+  height: 460px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 244, 214, 0) 0deg 7deg, rgba(255, 244, 214, 0.17) 9deg 11deg, rgba(255, 244, 214, 0) 13deg 22.5deg);
+  -webkit-mask: radial-gradient(closest-side, #000 6%, rgba(0, 0, 0, 0.5) 42%, rgba(0, 0, 0, 0) 100%);
+  mask: radial-gradient(closest-side, #000 6%, rgba(0, 0, 0, 0.5) 42%, rgba(0, 0, 0, 0) 100%);
+  animation: pp-rays 180s linear infinite;
+}
+
+@media (min-width: 760px) {
+  .pp-rays {
+    top: -334px;
+    right: -320px;
+    width: 720px;
+    height: 720px;
+  }
+}
+
+@keyframes pp-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.screen-passport .world-back {
+  border-color: rgba(184, 147, 90, 0.55);
+  color: var(--wine);
+  background: rgba(255, 253, 249, 0.88);
+  box-shadow: 0 8px 16px -12px rgba(18, 64, 62, 0.7);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── Layout: the row of Mini Cycy, the book, the buttons ── */
+.pp-layout {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--band) 0 var(--sab);
+}
+
+/* Mini Cycy stands on the book's top right corner, 22 px into it */
+.pp-head {
+  position: relative;
+  z-index: 8;
+  flex: none;
+  width: calc(var(--bx) + var(--pw) + var(--rim) + var(--cy-over));
+  height: calc(var(--head) + 22px);
+  margin-bottom: -22px;
+  pointer-events: none;
+}
+
+@media (min-width: 760px) {
+  .pp-head {
+    width: calc(2 * var(--pw) + 2 * var(--rim) + 2px);
+    margin-left: calc(var(--bx) - var(--pw) - var(--rim));
+  }
+}
+
+.pp {
+  position: relative;
+  flex: none;
+}
+
+.pp-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.pp-row {
+  position: relative;
+  height: calc(var(--ph) + 2 * var(--rim));
+}
+
+.pp-foot {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: var(--pw);
+  height: var(--foot);
+  margin-left: var(--bx);
+}
+
+@media (min-width: 760px) {
+  .pp-foot {
+    width: calc(2 * var(--pw));
+    margin-left: calc(var(--bx) - var(--pw));
+    gap: 76px; /* room for the ribbon */
+  }
+}
+
+/* ── The closed book: a volume at its pose. The stage is the closed book's box, centred; opening, the book slides
+   its binding to --bx (passport.js tweens the transforms in between) ── */
+.pp-stage {
+  position: absolute;
+  top: 0;
+  left: calc((100vw - var(--pw) - var(--rim)) / 2);
+  width: calc(var(--pw) + var(--rim));
+  height: 100%;
+  perspective: 1800px;
+  perspective-origin: 40% 40%;
+}
+
+.pp-pose {
+  --open-dx: calc(var(--bx) - (100vw - var(--pw) - var(--rim)) / 2);
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateX(-2.5%) scale(0.9) rotateX(8deg) rotateY(-10deg) rotateZ(-1.6deg);
+}
+
+.pp.is-open .pp-pose {
+  transform: translateX(var(--open-dx));
+  transform-style: flat;
+}
+
+.pp-vol {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+/* not painted before it shows up */
+.pp.is-away .pp-row,
+.pp.is-closed .pp-open-only {
+  visibility: hidden;
+}
+
+.pp.is-open .pp-vol {
+  display: none;
+}
+
+.vol-back {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(-7px);
+  border-radius: calc(var(--u) * 3.6);
+  background: var(--wine-deep);
+  box-shadow:
+    0 30px 44px -18px rgba(14, 58, 56, 0.62),
+    0 8px 16px -6px rgba(14, 58, 56, 0.35);
+}
+
+.vol-edge-r {
+  position: absolute;
+  top: calc(var(--u) * 1.2);
+  bottom: calc(var(--u) * 1.2);
+  right: -7px;
+  width: 14px;
+  transform: rotateY(90deg);
+  background:
+    linear-gradient(90deg, #5e1628 0 2px, rgba(0, 0, 0, 0) 2px calc(100% - 2px), #5e1628 calc(100% - 2px)),
+    repeating-linear-gradient(90deg, #f4ecdd 0 0.9px, #d7c8ae 0.9px 1.25px);
+  box-shadow: inset 0 0 6px rgba(80, 50, 30, 0.35);
+}
+
+.vol-edge-b {
+  position: absolute;
+  left: calc(var(--u) * 1.2);
+  right: calc(var(--u) * 1.2);
+  bottom: -7px;
+  height: 14px;
+  transform: rotateX(-90deg);
+  background:
+    linear-gradient(180deg, #5e1628 0 2px, rgba(0, 0, 0, 0) 2px calc(100% - 2px), #4a0e1f calc(100% - 2px)),
+    repeating-linear-gradient(180deg, #efe6d5 0 0.9px, #cdbd9f 0.9px 1.25px);
+  filter: brightness(0.82);
+}
+
+.vol-ribbon {
+  position: absolute;
+  left: calc(var(--u) * 9);
+  top: calc(100% - 4px);
+  width: max(9px, calc(var(--u) * 2.5));
+  height: calc(var(--u) * 9);
+  transform: translateZ(0) rotate(5deg);
+  transform-origin: 50% 0;
+  background: linear-gradient(90deg, #8f6a35, #e7d2a2 35%, #c8a668 60%, #9c7840);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+}
+
+/* ── The book open: its binding at the stage's left edge; the leaves turn under perspective ── */
+.pp-book {
+  --tl: 0;
+  --tr: 1;
+  position: absolute;
+  top: 0;
+  left: calc(-1 * (var(--pw) + var(--rim)));
+  width: calc(2 * var(--pw) + 2 * var(--rim));
+  height: 100%;
+  transform: translateZ(7px); /* the face of the closed volume */
+  perspective: 3200px;
+  perspective-origin: calc(var(--rim) + 1.5 * var(--pw)) 50%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.pp.is-open .pp-book {
+  transform: none;
+}
+
+@media (min-width: 760px) {
+  .pp-book {
+    perspective-origin: 50% 50%;
+  }
+}
+
+.pp-leather {
+  background-color: var(--leather);
+  background-image:
+    radial-gradient(130% 90% at 88% -6%, rgba(255, 206, 186, 0.17), rgba(255, 206, 186, 0) 56%),
+    linear-gradient(162deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.26)),
+    var(--tex-leather);
+  background-size: auto, auto, 300px 300px;
+}
+
+.pp-paper {
+  background-color: var(--page);
+  background-image: var(--tex-fibers), var(--tex-noise), var(--tex-rosette);
+  background-size: 280px 280px, 220px 220px, 94% auto;
+  background-position: 0 0, 0 0, 50% 54%;
+  background-repeat: repeat, repeat, no-repeat;
+}
+
+.pp-plain {
+  background-color: var(--page);
+  background-image: var(--tex-fibers), var(--tex-noise);
+  background-size: 280px 280px, 220px 220px;
+  background-repeat: repeat;
+}
+
+/* the boards: the leather showing --rim around the pages */
+.pp-board {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  width: calc(var(--pw) + var(--rim));
+  height: 100%;
+  box-shadow:
+    0 26px 40px -22px rgba(14, 58, 56, 0.62),
+    0 5px 12px -4px rgba(14, 58, 56, 0.3),
+    inset 0 0 0 1px rgba(20, 0, 6, 0.5),
+    inset 0 0 calc(var(--u) * 2.6) rgba(20, 0, 6, 0.55);
+}
+
+.pp-board--l {
+  left: 0;
+  border-radius: calc(var(--u) * 3.4) 0 0 calc(var(--u) * 3.4);
+}
+
+.pp-board--r {
+  left: calc(var(--rim) + var(--pw));
+  border-radius: 0 calc(var(--u) * 3.4) calc(var(--u) * 3.4) 0;
+}
+
+.pp-spine {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--rim) + var(--pw) - 7px);
+  width: 14px;
+  background: linear-gradient(90deg, rgba(20, 0, 6, 0), rgba(20, 0, 6, 0.45) 44%, rgba(255, 214, 200, 0.1) 50%, rgba(20, 0, 6, 0.45) 56%, rgba(20, 0, 6, 0));
+}
+
+/* the page block under the leaves (la tranche): its thickness follows the page shown, --tl / --tr = page / 9 */
+.pp-block {
+  position: absolute;
+  z-index: 2;
+  top: var(--rim);
+  width: var(--pw);
+  height: var(--ph);
+  background: var(--page);
+}
+
+.pp-block--l {
+  left: var(--rim);
+  border-radius: var(--r) 0 0 var(--r);
+  box-shadow:
+    calc(-0.5px - var(--tl) * 1px) calc(0.4px + var(--tl) * 0.8px) 0 -0.2px #f1e8d8,
+    calc(-0.8px - var(--tl) * 1.3px) calc(0.7px + var(--tl) * 1.1px) 0 -0.2px rgba(80, 50, 30, 0.34),
+    calc(-1.2px - var(--tl) * 2.2px) calc(1px + var(--tl) * 1.8px) 0 -0.4px #ece2cf,
+    calc(-1.5px - var(--tl) * 2.7px) calc(1.3px + var(--tl) * 2.2px) 0 -0.4px rgba(80, 50, 30, 0.3),
+    0 1px 4px rgba(20, 0, 6, 0.5);
+}
+
+.pp-block--r {
+  left: calc(var(--rim) + var(--pw));
+  border-radius: 0 var(--r) var(--r) 0;
+  box-shadow:
+    calc(0.5px + var(--tr) * 1px) calc(0.4px + var(--tr) * 0.8px) 0 -0.2px #f1e8d8,
+    calc(0.8px + var(--tr) * 1.3px) calc(0.7px + var(--tr) * 1.1px) 0 -0.2px rgba(80, 50, 30, 0.34),
+    calc(1.2px + var(--tr) * 2.2px) calc(1px + var(--tr) * 1.8px) 0 -0.4px #ece2cf,
+    calc(1.5px + var(--tr) * 2.7px) calc(1.3px + var(--tr) * 2.2px) 0 -0.4px rgba(80, 50, 30, 0.3),
+    0 1px 4px rgba(20, 0, 6, 0.5);
+}
+
+/* the shadow a turning leaf casts on the page under it (right of -90°, then left); the turn sets its opacity */
+.pp-cast {
+  position: absolute;
+  z-index: 35;
+  top: var(--rim);
+  width: var(--pw);
+  height: var(--ph);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pp-cast--r {
+  left: calc(var(--rim) + var(--pw));
+  border-radius: 0 var(--r) var(--r) 0;
+  background: linear-gradient(90deg, rgba(40, 18, 8, 0.55) 0%, rgba(40, 18, 8, 0.5) 30%, rgba(40, 18, 8, 0.34) 36%, rgba(40, 18, 8, 0.14) 44%, rgba(40, 18, 8, 0.04) 52%, rgba(40, 18, 8, 0) 58%);
+}
+
+.pp-cast--l {
+  left: var(--rim);
+  border-radius: var(--r) 0 0 var(--r);
+  background: linear-gradient(270deg, rgba(40, 18, 8, 0.5) 0%, rgba(40, 18, 8, 0.45) 62%, rgba(40, 18, 8, 0.3) 70%, rgba(40, 18, 8, 0.12) 78%, rgba(40, 18, 8, 0) 88%);
+}
+
+/* the sewing thread in the gutter: beige stitches with their holes */
+.pp-seam {
+  position: absolute;
+  z-index: 36;
+  top: calc(var(--rim) + var(--ph) * 0.06);
+  left: calc(var(--rim) + var(--pw) - 1px);
+  width: 2px;
+  height: calc(var(--ph) * 0.88);
+  border-radius: 1px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(60, 30, 16, 0.45) 0 1px,
+    #d9c59b 1px calc(var(--u) * 2.6 - 1px),
+    rgba(60, 30, 16, 0.45) calc(var(--u) * 2.6 - 1px) calc(var(--u) * 2.6),
+    rgba(0, 0, 0, 0) calc(var(--u) * 2.6) calc(var(--u) * 4.2)
+  );
+}
+
+/* the single gold ribbon, out of the bottom of the binding */
+.pp-ribbon {
+  position: absolute;
+  z-index: 36;
+  top: calc(var(--rim) + var(--ph) - 5px);
+  left: calc(var(--rim) + var(--pw) + var(--u) * 2.6);
+  width: max(9px, calc(var(--u) * 2.5));
+  height: calc(var(--rim) + var(--u) * 8 + 5px);
+  transform: rotate(-6deg);
+  transform-origin: 50% 0;
+  background: linear-gradient(90deg, #8f6a35, #e7d2a2 35%, #c8a668 60%, #9c7840);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%);
+  filter: drop-shadow(1px 2px 1px rgba(20, 50, 48, 0.3));
+}
+
+/* ── The leaves: on the right half, turning around the binding; only those on show are displayed ── */
+.pp-leaf {
+  position: absolute;
+  z-index: 20;
+  top: var(--rim);
+  left: calc(var(--rim) + var(--pw));
+  display: none;
+  width: var(--pw);
+  height: var(--ph);
+  transform-origin: 0 50%;
+  transform-style: preserve-3d;
+}
+
+.pp-leaf.is-shown {
+  display: block;
+}
+
+/* at rest, the face turned away is not painted at all (memory, and nothing to leak through in WebKit) */
+.pp-leaf[data-side="r"]:not(.is-turning) > .leaf-back,
+.pp-leaf[data-side="l"]:not(.is-turning) > .leaf-front {
+  visibility: hidden;
+}
+
+.pp-leaf.is-dragged {
+  will-change: transform;
+}
+
+/* what changes at every frame of a turn gets a layer of its own for the time of it: repainting the page under it
+   (its textures) would cost a whole frame each time */
+.pp-leaf.is-turning .leaf-shade,
+.pp-leaf.is-turning .leaf-through,
+.pp-book.is-turning .pp-cast {
+  will-change: opacity;
+}
+
+/* the same while the closed book flies in (its raster is kept), while its foil glints, and while it opens */
+.pp:not(.is-open) .pp-stage,
+.pp:not(.is-open) .pp-foil {
+  will-change: transform;
+}
+
+/* the cover turned past 90°: its foil, a layer of its own, must not show through its back (WebKit) */
+.pp-leaf--cover.is-flipped .pp-foil {
+  visibility: hidden;
+}
+
+.pp:not(.is-open):not(.is-closed) .pp-open-only,
+.pp:not(.is-open) .vol-ribbon,
+.pp:not(.is-open) .pp-foot {
+  will-change: opacity;
+}
+
+/* the slot to live glows on the page on show (GSAP pulses the filter) */
+.pp-leaf.is-current .pp-slot[data-status="open"] .slot-frame,
+.pp-leaf.is-current .pp-slot[data-status="pending"] .slot-frame {
+  will-change: filter;
+}
+
+.pp-leaf--cover {
+  top: 0;
+  width: calc(var(--pw) + var(--rim));
+  height: 100%;
+}
+
+.pp-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.leaf-front {
+  border-radius: 0 var(--r) var(--r) 0;
+}
+
+.leaf-back {
+  transform: rotateY(180deg);
+  border-radius: var(--r) 0 0 var(--r);
+}
+
+.leaf-shade {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.leaf-front .leaf-shade {
+  background: linear-gradient(90deg, rgba(58, 30, 14, 0.6) 0%, rgba(58, 30, 14, 0.42) 12%, rgba(58, 30, 14, 0.3) 45%, rgba(58, 30, 14, 0.2) 80%, rgba(255, 248, 232, 0.18) 96%, rgba(255, 252, 244, 0.75) 99.4%, rgba(120, 80, 50, 0.4) 100%);
+}
+
+.leaf-back .leaf-shade {
+  background: linear-gradient(270deg, rgba(58, 30, 14, 0.36) 0%, rgba(58, 30, 14, 0.16) 30%, rgba(58, 30, 14, 0.04) 70%, rgba(255, 250, 240, 0.14) 96%, rgba(255, 252, 244, 0.6) 100%);
+}
+
+/* lifted towards the sun, the leaf lets its watermark through: only its opacity moves, with the angle; no blend mode */
+.leaf-through {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(85% 60% at 90% 14%, rgba(255, 232, 178, 0.4), rgba(255, 232, 178, 0) 70%);
+}
+
+.leaf-through::before {
+  content: "";
+  position: absolute;
+  top: 31%;
+  left: 14%;
+  right: 14%;
+  aspect-ratio: 1;
+  transform: scaleX(-1);
+  background: var(--tex-wm-through) center / contain no-repeat;
+}
+
+.pp-pg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* the curve of the paper into the binding: shade, then the small highlight where it rises */
+.leaf-front .pp-pg::after,
+.leaf-back .pp-pg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(64, 32, 18, 0.34) 0, rgba(64, 32, 18, 0.15) 1.8%, rgba(64, 32, 18, 0.05) 4.6%, rgba(255, 255, 255, 0.34) 7.6%, rgba(255, 255, 255, 0) 12.5%, rgba(0, 0, 0, 0) 95%, rgba(64, 32, 18, 0.07) 100%);
+}
+
+.leaf-back .pp-pg::after {
+  background: linear-gradient(270deg, rgba(64, 32, 18, 0.34) 0, rgba(64, 32, 18, 0.15) 1.8%, rgba(64, 32, 18, 0.05) 4.6%, rgba(255, 255, 255, 0.34) 7.6%, rgba(255, 255, 255, 0) 12.5%, rgba(0, 0, 0, 0) 95%, rgba(64, 32, 18, 0.07) 100%);
+}
+
+/* security print: rope bands, hairlines and microtext around every page */
+.pp-sec {
+  position: absolute;
+  inset: calc(var(--u) * 3.6) calc(var(--u) * 4.6);
+  pointer-events: none;
+  background:
+    var(--tex-rope) 0 0 / auto calc(var(--u) * 3.2) repeat-x,
+    var(--tex-rope) 0 100% / auto calc(var(--u) * 3.2) repeat-x,
+    var(--tex-micro-h) 0 calc(var(--u) * 3.75) / auto calc(var(--u) * 1) repeat-x,
+    var(--tex-micro-h) 0 calc(100% - var(--u) * 3.75) / auto calc(var(--u) * 1) repeat-x;
+  background-origin: border-box;
+}
+
+.pp-sec::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--u) * 5.6);
+  bottom: calc(var(--u) * 5.6);
+  left: 0;
+  right: 0;
+  background:
+    linear-gradient(rgba(122, 31, 53, 0.24), rgba(122, 31, 53, 0.24)) 0 0 / 1px 100% no-repeat,
+    linear-gradient(rgba(122, 31, 53, 0.24), rgba(122, 31, 53, 0.24)) 100% 0 / 1px 100% no-repeat,
+    var(--tex-micro-v) calc(var(--u) * 0.75) 0 / calc(var(--u) * 1) auto repeat-y,
+    var(--tex-micro-v) calc(100% - var(--u) * 0.75) 0 / calc(var(--u) * 1) auto repeat-y;
+}
+
+.pg-back .pp-sec {
+  opacity: 0.8;
+}
+
+.pg-running {
+  position: absolute;
+  top: calc(var(--u) * 10.6);
+  left: 0;
+  right: 0;
+  margin: 0;
+  font: 600 max(11px, calc(var(--u) * 2.3)) / 1 var(--sans);
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-align: center;
+  text-transform: uppercase;
+  color: rgba(122, 31, 53, 0.6);
+}
+
+.pg-folio {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 5.2);
+  min-width: calc(var(--u) * 7.4);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.6);
+  transform: translate(-50%, 50%);
+  border-radius: 99px;
+  font: 600 max(11px, calc(var(--u) * 2.5)) / 1.15 var(--sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: rgba(122, 31, 53, 0.75);
+  background: var(--page);
+  box-shadow: 0 0 0 1px rgba(184, 147, 90, 0.5);
+}
+
+.pg-wm {
+  position: absolute;
+  top: 31%;
+  left: 14%;
+  right: 14%;
+  aspect-ratio: 1;
+  background: var(--tex-wm) center / contain no-repeat;
+}
+
+/* the ink of the front's stamps, showing through the back */
+.pg-ghost {
+  position: absolute;
+  left: 50%;
+  width: calc(var(--u) * 55);
+  height: auto;
+  transform: translate(-50%, -50%) scaleX(-1) rotate(var(--tilt));
+  mix-blend-mode: multiply;
+  opacity: 0.075;
+  filter: blur(0.4px);
+}
+
+/* ── The cover: leather, gold stitching, the dry seal and the hot-foiled emblem ── */
+.cv-face {
+  border-radius: calc(var(--u) * 1.4) calc(var(--u) * 3.6) calc(var(--u) * 3.6) calc(var(--u) * 1.4);
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 0, 6, 0.55),
+    inset 0 1.5px 0 rgba(255, 214, 200, 0.12),
+    inset 0 0 calc(var(--u) * 2.4) rgba(20, 0, 6, 0.55);
+}
+
+/* the hinge's crease */
+.cv-face::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--u) * 9);
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(20, 0, 6, 0.55) 0, rgba(20, 0, 6, 0.18) 26%, rgba(255, 214, 200, 0.12) 50%, rgba(20, 0, 6, 0.26) 66%, rgba(20, 0, 6, 0) 100%);
+}
+
+.cv-stitch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cv-emblem {
+  position: absolute;
+  top: calc(var(--u) * 22);
+  left: calc(50% - var(--u) * 31);
+  width: calc(var(--u) * 62);
+  height: auto;
+  overflow: visible;
+}
+
+/* gold foil: a gradient clipped to the text; the glint (background-position) is a GSAP tween. Never a text-shadow. */
+.pp-foil {
+  color: transparent;
+  background-image: linear-gradient(104deg, #8e6e3c 0%, #c9a96e 16%, #e9d39f 30%, #fff6d8 37%, #e4c891 44%, #b8935a 56%, #8e6e3c 70%, #cfaf74 84%, #9c7a43 100%);
+  background-size: 300% 100%;
+  background-position: 28% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 -0.7px 0 rgba(20, 0, 6, 0.85)) drop-shadow(0 0.8px 0 rgba(255, 214, 170, 0.2));
+}
+
+.cv-holders,
+.cv-title,
+.cv-sub {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0;
   text-align: center;
 }
 
-.aventures-title {
-  margin: 0 0 12px;
-  font-family: var(--serif);
-  font-size: 2.6rem;
-  font-weight: 600;
+.cv-holders {
+  top: calc(var(--u) * 11.8);
+  font: 600 calc(var(--u) * 4.6) / 1 var(--serif);
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  text-transform: uppercase;
+}
+
+.cv-title {
+  top: calc(var(--u) * 89);
+  font: 600 calc(var(--u) * 11.2) / 1 var(--serif);
+  letter-spacing: 0.17em;
+  text-indent: 0.17em;
+  text-transform: uppercase;
+}
+
+.cv-sub {
+  top: calc(var(--u) * 102.5);
+  font: italic 500 calc(var(--u) * 7.6) / 1 var(--serif);
+  letter-spacing: 0.02em;
+}
+
+.cv-chip {
+  position: absolute;
+  top: calc(var(--u) * 121);
+  left: calc(50% - var(--u) * 5.2);
+  width: calc(var(--u) * 10.4);
+  height: auto;
+}
+
+/* inside the cover (left of page 0): leather turn-ins and the portolan endpaper */
+.cv-inside {
+  border-radius: calc(var(--u) * 3.4) 0 0 calc(var(--u) * 3.4);
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 0, 6, 0.5),
+    inset 0 0 calc(var(--u) * 2.6) rgba(20, 0, 6, 0.55);
+}
+
+.endpaper {
+  position: absolute;
+  top: calc(var(--rim) + var(--u) * 1.8);
+  bottom: calc(var(--rim) + var(--u) * 1.8);
+  left: calc(var(--rim) + var(--u) * 1.8);
+  right: calc(var(--u) * 0.5);
+  overflow: hidden;
+  border-radius: calc(var(--u) * 1.4) 2px 2px calc(var(--u) * 1.4);
+  background:
+    linear-gradient(270deg, rgba(70, 38, 18, 0.36), rgba(70, 38, 18, 0.08) calc(var(--u) * 4), rgba(70, 38, 18, 0) calc(var(--u) * 9)),
+    var(--tex-portolan) center / cover no-repeat,
+    var(--tex-noise) 0 0 / 220px 220px,
+    #f3e8d4;
+  box-shadow:
+    0 0 0 1px rgba(60, 20, 10, 0.42),
+    0 1px 2px rgba(20, 0, 6, 0.45),
+    0 0 calc(var(--u) * 1.4) rgba(20, 0, 6, 0.4);
+}
+
+.endpaper::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * 3.4);
+  border: 1px solid rgba(122, 31, 53, 0.3);
+  outline: 1px solid rgba(184, 147, 90, 0.45);
+  outline-offset: calc(var(--u) * 0.7);
+}
+
+/* ── Page 0: identity ── */
+.id-head {
+  position: absolute;
+  top: calc(var(--u) * 8.4);
+  left: calc(var(--u) * 10);
+  right: calc(var(--u) * 10);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: calc(var(--u) * 1.8);
+  border-bottom: 1px solid rgba(122, 31, 53, 0.18);
+  box-shadow: 0 1.5px 0 rgba(184, 147, 90, 0.32);
+}
+
+.id-title {
+  margin: 0;
+  font: 600 calc(var(--u) * 6.9) / 1 var(--serif);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--wine);
+}
+
+.id-emblem {
+  width: calc(var(--u) * 8.4);
+  height: auto;
+  filter: drop-shadow(0 0.5px 0 rgba(90, 58, 36, 0.35));
+}
+
+.id-photos {
+  position: absolute;
+  top: calc(var(--u) * 22.5);
+  left: calc(var(--u) * 15);
+  display: flex;
+  gap: calc(var(--u) * 3);
+  width: calc(var(--u) * 70);
+  height: calc(var(--u) * 43);
+}
+
+.id-photo {
+  position: relative;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  border-radius: calc(var(--u) * 1.1);
+  background: radial-gradient(120% 90% at 50% 20%, #f4f7f6, #dce6e4);
+  box-shadow:
+    0 0 0 1px rgba(43, 26, 30, 0.16),
+    0 1px 2px rgba(43, 26, 30, 0.12);
+}
+
+.id-photo img {
+  position: absolute;
+  top: 6%;
+  left: -9%;
+  width: 118%;
+  height: auto;
+  filter: saturate(0.92) contrast(1.02);
+}
+
+.id-laminate {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, rgba(255, 80, 160, 0) 18%, rgba(255, 120, 190, 0.16) 30%, rgba(120, 220, 255, 0.16) 44%, rgba(255, 236, 140, 0.15) 58%, rgba(140, 255, 200, 0.12) 70%, rgba(255, 255, 255, 0) 82%),
+    var(--tex-rosette) 30% 40% / 230% auto no-repeat;
+  mix-blend-mode: soft-light;
+  opacity: 0.95;
+}
+
+/* a reflection sweeping the film: a plain layer (no blend mode), on the page on show only (a CSS loop) */
+.id-sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.id-sheen::after {
+  content: "";
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: -70%;
+  width: 70%;
+  background: linear-gradient(104deg, rgba(255, 255, 255, 0) 20%, rgba(255, 252, 240, 0.58) 46%, rgba(214, 240, 255, 0.36) 54%, rgba(255, 255, 255, 0) 80%);
+}
+
+.pp-leaf.is-current .id-sheen::after {
+  animation: pp-holo 6.5s ease-in-out -0.2s infinite;
+}
+
+.pp-leaf.is-current .id-sheen--late::after {
+  animation-delay: 0.5s;
+}
+
+@keyframes pp-holo {
+  0% {
+    transform: translateX(0);
+  }
+  55%,
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.id-seal {
+  position: absolute;
+  right: calc(var(--u) * -9);
+  bottom: calc(var(--u) * -8.5);
+  width: calc(var(--u) * 22);
+  height: auto;
+  opacity: 0.95;
+}
+
+.id-fields {
+  position: absolute;
+  top: calc(var(--u) * 70);
+  left: calc(var(--u) * 10);
+  right: calc(var(--u) * 10);
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  column-gap: calc(var(--u) * 7);
+  row-gap: calc(var(--u) * 3.4);
+  margin: 0;
+}
+
+.id-field {
+  margin: 0;
+}
+
+.id-field--holders {
+  grid-column: 1 / -1;
+}
+
+.id-field dt {
+  font: 600 max(11px, calc(var(--u) * 2.35)) / 1 var(--sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(122, 31, 53, 0.66);
+}
+
+/* values « written by hand »: Cormorant italic, old-style figures, on a dotted baseline */
+.id-field dd {
+  margin: calc(var(--u) * 1.1) 0 0;
+  padding-bottom: calc(var(--u) * 0.9);
+  font: italic 500 calc(var(--u) * 7) / 1 var(--serif);
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  color: var(--ink);
+  background: radial-gradient(circle, rgba(122, 31, 53, 0.42) 0 0.7px, rgba(122, 31, 53, 0) 1px) 0 100% / 4px 2px repeat-x;
+}
+
+.id-field--holders dd {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 1.6);
+  padding-bottom: 0;
+  font: 600 calc(var(--u) * 9.2) / 1 var(--serif);
+  letter-spacing: 0.005em;
+  background: none;
+}
+
+.id-field--holders em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--wine);
+}
+
+.id-heart {
+  align-self: center;
+  width: calc(var(--u) * 5.4);
+  height: auto;
+  transform: rotate(-8deg) translateY(calc(var(--u) * -0.6));
+}
+
+.id-ghost {
+  position: absolute;
+  top: calc(var(--u) * 5.6);
+  right: 0;
+  display: flex;
+  gap: 2px;
+  opacity: 0.26;
+  filter: grayscale(1) sepia(0.4);
+}
+
+.id-ghost img {
+  width: calc(var(--u) * 7.4);
+  height: calc(var(--u) * 9.6);
+  object-fit: cover;
+  object-position: 50% 12%;
+  mix-blend-mode: multiply;
+}
+
+.id-mrz {
+  position: absolute;
+  top: calc(var(--u) * 112.5);
+  left: calc(var(--u) * 6.4);
+  right: calc(var(--u) * 6.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--u) * 14.5);
+  border-top: 1px solid rgba(122, 31, 53, 0.16);
+  background: rgba(255, 253, 248, 0.86);
+}
+
+.id-mrz span {
+  font: 500 calc(var(--u) * 4.25) / 1 var(--mono);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: rgba(43, 26, 30, 0.86);
+}
+
+/* ── Slots (pages 1 to 8): official numbered boxes; their look depends on [data-status] alone ── */
+.pp-slot {
+  position: absolute;
+  left: calc(var(--u) * 10);
+  width: calc(var(--u) * 80);
+  height: calc(var(--u) * 52);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pp-leaf:not(.is-current) .pp-slot {
+  pointer-events: none; /* only the page on show is touched (a turned face may still be hit-tested) */
+}
+
+.slot-a {
+  top: calc(var(--u) * 17.5);
+}
+
+.slot-b {
+  top: calc(var(--u) * 76.5);
+}
+
+.slot-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.slot-frame rect {
+  fill: none;
+  stroke: rgba(122, 31, 53, 0.38);
+  stroke-width: 1.5;
+  stroke-dasharray: 0 5.6;
+  stroke-linecap: round;
+}
+
+.slot-corners {
+  --c: rgba(122, 31, 53, 0.5);
+  position: absolute;
+  inset: calc(var(--u) * -1.6);
+  pointer-events: none;
+  background:
+    linear-gradient(var(--c), var(--c)) 0 0 / calc(var(--u) * 3.6) 1.4px,
+    linear-gradient(var(--c), var(--c)) 0 0 / 1.4px calc(var(--u) * 3.6),
+    linear-gradient(var(--c), var(--c)) 100% 0 / calc(var(--u) * 3.6) 1.4px,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 1.4px calc(var(--u) * 3.6),
+    linear-gradient(var(--c), var(--c)) 0 100% / calc(var(--u) * 3.6) 1.4px,
+    linear-gradient(var(--c), var(--c)) 0 100% / 1.4px calc(var(--u) * 3.6),
+    linear-gradient(var(--c), var(--c)) 100% 100% / calc(var(--u) * 3.6) 1.4px,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 1.4px calc(var(--u) * 3.6);
+  background-repeat: no-repeat;
+}
+
+.slot-no {
+  position: absolute;
+  top: 0;
+  left: calc(var(--u) * 4);
+  padding: 0 calc(var(--u) * 1.4);
+  transform: translateY(-52%);
+  font: 600 max(11px, calc(var(--u) * 2.3)) / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.16em;
+  color: rgba(122, 31, 53, 0.62);
+  background: var(--page);
+}
+
+.slot-body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.slot-date {
+  font: 600 max(12px, calc(var(--u) * 3.5)) / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.14em;
+}
+
+/* locked: wine dots, cancelled hatching, a muted padlock, the short date only */
+.slot-body--locked {
+  z-index: 1;
+  gap: calc(var(--u) * 2.6);
+  color: rgba(122, 31, 53, 0.62);
+}
+
+.slot-body--locked .slot-date {
+  font-size: max(13px, calc(var(--u) * 3.9));
+}
+
+.slot-lock {
+  width: calc(var(--u) * 7.2);
+  height: auto;
+  color: rgba(122, 31, 53, 0.48);
+}
+
+.pp-slot[data-status="locked"]::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * 1.4);
+  border-radius: 8px;
+  background: repeating-linear-gradient(135deg, rgba(122, 31, 53, 0.05) 0 1px, rgba(122, 31, 53, 0) 1px calc(var(--u) * 2.2));
+  -webkit-mask: radial-gradient(closest-side, #000 55%, transparent);
+  mask: radial-gradient(closest-side, #000 55%, transparent);
+}
+
+/* stamped: the stamp only, faint corners */
+.pp-slot[data-status="stamped"] .slot-corners {
+  --c: rgba(122, 31, 53, 0.22);
+}
+
+.pp-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--u) * 55);
+  height: auto;
+  transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, 0px)) rotate(var(--tilt));
+  mix-blend-mode: multiply;
+  opacity: 0.94;
+  pointer-events: none;
+}
+
+/* to live and to stamp: golden dots that glow (GSAP pulses the drop-shadow, on the page on show) */
+.pp-slot[data-status="open"],
+.pp-slot[data-status="pending"] {
+  background: radial-gradient(closest-side, rgba(242, 177, 52, 0.13), rgba(242, 177, 52, 0));
+}
+
+.pp-slot[data-status="pending"] {
+  background: radial-gradient(closest-side, rgba(242, 177, 52, 0.2), rgba(242, 177, 52, 0));
+}
+
+.pp-slot[data-status="open"] .slot-corners,
+.pp-slot[data-status="pending"] .slot-corners {
+  --c: rgba(184, 147, 90, 0.95);
+}
+
+.pp-slot[data-status="open"] .slot-frame,
+.pp-slot[data-status="pending"] .slot-frame {
+  filter: drop-shadow(0 0 2.5px rgba(242, 190, 92, 1)) drop-shadow(0 0 10px rgba(242, 177, 52, 0.7));
+}
+
+.pp-slot[data-status="open"] .slot-frame rect,
+.pp-slot[data-status="pending"] .slot-frame rect {
+  stroke: var(--gold);
+  stroke-width: 2.6;
+  stroke-dasharray: 0 6.2;
+}
+
+.pp-slot[data-status="open"] .slot-no,
+.pp-slot[data-status="pending"] .slot-no {
+  color: var(--gold-text);
+}
+
+.slot-body--open {
+  gap: calc(var(--u) * 1.5);
+}
+
+.slot-open {
+  font: italic 600 calc(var(--u) * 8) / 1 var(--serif);
+  letter-spacing: 0.01em;
+  color: var(--wine);
+}
+
+.slot-open i {
+  margin-left: 0.08em;
+  font-size: 0.62em;
+  font-style: normal;
+  vertical-align: 0.32em;
+  color: var(--gold);
+}
+
+.pp-slot-name {
+  font: 500 calc(var(--u) * 4.9) / 1.1 var(--serif);
+  color: rgba(43, 26, 30, 0.86);
+}
+
+.slot-body--open .slot-date {
+  margin-top: calc(var(--u) * 0.8);
+  color: var(--gold-text);
+}
+
+/* gold dust rising in the slot to live: a CSS loop (not a GSAP target), on the page on show only */
+.slot-dust {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.slot-dust i {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, #fff9e6 0 20%, #e9be5e 46%, rgba(217, 170, 80, 0) 72%);
+}
+
+.pp-leaf.is-current .slot-dust i {
+  animation:
+    pp-rise var(--d) linear var(--dl) infinite,
+    pp-twinkle 2.6s ease-in-out var(--dl) infinite alternate;
+}
+
+@keyframes pp-rise {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(var(--dx), calc(var(--u) * -17), 0);
+  }
+}
+
+@keyframes pp-twinkle {
+  from {
+    opacity: 0.12;
+  }
+  to {
+    opacity: 0.95;
+  }
+}
+
+/* the route: sepia dashes (not the wine dots of a locked slot), a departure dot, a small plane */
+.pp-route {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.route-trail {
+  fill: none;
+  stroke: var(--sepia);
+  stroke-width: 0.52;
+  stroke-dasharray: 1.5 1.3;
+  stroke-linecap: round;
+}
+
+.route-dep {
+  fill: var(--sepia);
+}
+
+.route-plane path {
+  fill: rgba(107, 79, 44, 0.86);
+}
+
+.route-plane .fold {
+  fill: none;
+  stroke: rgba(251, 245, 234, 0.8);
+  stroke-width: 0.3;
+}
+
+/* ── Page 9: the next destination ── */
+.nx-slot {
+  position: absolute;
+  top: calc(var(--u) * 21);
+  left: calc(var(--u) * 20);
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 60);
+  aspect-ratio: 1;
+}
+
+.nx-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.nx-ring circle {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.nx-r1 {
+  stroke: rgba(122, 31, 53, 0.42);
+  stroke-width: 1.7;
+  stroke-dasharray: 0 5.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.nx-r2 {
+  stroke: rgba(184, 147, 90, 0.75);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.nx-micro {
+  font: 700 9px var(--sans);
+  letter-spacing: 3.2px;
+  fill: rgba(122, 31, 53, 0.4);
+}
+
+.nx-star {
+  font: 9px var(--sans);
+  fill: rgba(184, 147, 90, 0.85);
+}
+
+.nx-q {
+  grid-area: 1 / 1;
+  margin-top: calc(var(--u) * -6);
+  font: italic 500 calc(var(--u) * 30) / 1 var(--serif);
+  color: rgba(122, 31, 53, 0.84);
+}
+
+.nx-date {
+  grid-area: 1 / 1;
+  align-self: end;
+  margin-bottom: calc(var(--u) * 12);
+  font: 600 max(12px, calc(var(--u) * 3.4)) / 1 var(--sans);
+  letter-spacing: 0.2em;
+  color: rgba(122, 31, 53, 0.42);
+}
+
+.nx-text {
+  position: absolute;
+  top: calc(var(--u) * 88);
+  left: 0;
+  right: 0;
+  margin: 0;
+  font: italic 600 calc(var(--u) * 7.4) / 1.1 var(--serif);
+  text-align: center;
+  color: var(--wine);
+}
+
+.nx-trail {
+  position: absolute;
+  top: calc(var(--u) * 100);
+  left: calc(var(--u) * 18);
+  width: calc(var(--u) * 66);
+  height: calc(var(--u) * 24);
+  overflow: visible;
+}
+
+.nx-trail path {
+  fill: none;
+  stroke: var(--sepia);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.nx-rose {
+  position: absolute;
+  top: calc(var(--u) * 115.5);
+  left: calc(var(--u) * 9);
+  width: calc(var(--u) * 12);
+  height: auto;
+}
+
+.nx-plane {
+  position: absolute;
+  top: calc(var(--u) * 98);
+  left: calc(var(--u) * 80);
+  width: calc(var(--u) * 7);
+  height: auto;
+  transform: rotate(8deg);
+  color: rgba(107, 79, 44, 0.82);
+}
+
+/* ── The ‹ › buttons: leather discs with gold stitching; dimmed with filter, never opacity ── */
+.pp-nav {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #ebd3a0;
+  background:
+    radial-gradient(circle at 62% 26%, rgba(255, 206, 186, 0.24), rgba(255, 206, 186, 0) 58%),
+    var(--tex-leather) center / 300px 300px,
+    var(--leather);
+  box-shadow:
+    0 9px 14px -8px rgba(14, 58, 56, 0.85),
+    inset 0 0 0 1px rgba(20, 0, 6, 0.6),
+    inset 0 1.5px 0 rgba(255, 214, 200, 0.2),
+    inset 0 -4px 7px rgba(20, 0, 6, 0.45);
+}
+
+.pp-nav::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1.3px dashed rgba(217, 191, 140, 0.8);
+  border-radius: 50%;
+}
+
+.pp-nav svg {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 -0.7px 0 rgba(20, 0, 6, 0.85));
+}
+
+.pp-nav:disabled {
+  filter: grayscale(0.75) brightness(1.5) opacity(0.42);
+  box-shadow: none;
+}
+
+/* textures: each data URI written once (docs/design/passeport/maquette.html) */
+.screen-passport {
+  --tex-noise: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'220'%20height%3D'220'%3E%20%3Cfilter%20id%3D'a'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'.9'%20numOctaves%3D'3'%20seed%3D'4'%20stitchTiles%3D'stitch'%2F%3E%20%3CfeColorMatrix%20values%3D'0%200%200%200%20.42%200%200%200%200%20.30%200%200%200%200%20.20%200%200%200%20.12%200'%2F%3E%3C%2Ffilter%3E%20%3Cfilter%20id%3D'b'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'.018'%20numOctaves%3D'2'%20seed%3D'8'%20stitchTiles%3D'stitch'%2F%3E%20%3CfeColorMatrix%20values%3D'0%200%200%200%20.55%200%200%200%200%20.42%200%200%200%200%20.30%200%200%200%20.10%200'%2F%3E%3C%2Ffilter%3E%20%3Crect%20width%3D'220'%20height%3D'220'%20filter%3D'url(%23b)'%2F%3E%3Crect%20width%3D'220'%20height%3D'220'%20filter%3D'url(%23a)'%2F%3E%3C%2Fsvg%3E");
+  --tex-fibers: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'280'%20height%3D'280'%20fill%3D'none'%20stroke-width%3D'.6'%20stroke-linecap%3D'round'%3E%3Cpath%20d%3D'M143.2%20148.4Q141.1%20145.2%20134.8%20141.5'%20stroke%3D'rgba(122%2C31%2C53%2C.34)'%2F%3E%3Cpath%20d%3D'M22.4%20148.5Q18.6%20147.6%2015%20142.6'%20stroke%3D'rgba(30%2C110%2C158%2C.30)'%2F%3E%3Cpath%20d%3D'M117.6%20187.7Q114.3%20183.3%20114.8%20181.7'%20stroke%3D'rgba(184%2C147%2C90%2C.48)'%2F%3E%3Cpath%20d%3D'M110.9%20105.5Q108.7%20104.5%20105.4%20102.4'%20stroke%3D'rgba(15%2C140%2C138%2C.26)'%2F%3E%3Cpath%20d%3D'M117.2%20236.4Q118.2%20231.2%20121.5%20224.5'%20stroke%3D'rgba(122%2C31%2C53%2C.34)'%2F%3E%3Cpath%20d%3D'M70.5%2015.7Q68.8%206.2%2069.6%201'%20stroke%3D'rgba(30%2C110%2C158%2C.30)'%2F%3E%3Cpath%20d%3D'M208.2%2097.2Q205.2%2093.3%20198%2093.7'%20stroke%3D'rgba(184%2C147%2C90%2C.48)'%2F%3E%3Cpath%20d%3D'M237.9%20229.7Q233.4%20233.5%20234%20233.2'%20stroke%3D'rgba(15%2C140%2C138%2C.26)'%2F%3E%3Cpath%20d%3D'M139.2%20147.3Q140%20149.8%20137.9%20157.2'%20stroke%3D'rgba(122%2C31%2C53%2C.34)'%2F%3E%3Cpath%20d%3D'M180.3%2012.6Q177.9%2014.1%20169.7%2016.5'%20stroke%3D'rgba(30%2C110%2C158%2C.30)'%2F%3E%3Cpath%20d%3D'M130.5%2098.8Q135.9%20102.2%20142.3%20102.5'%20stroke%3D'rgba(184%2C147%2C90%2C.48)'%2F%3E%3Cpath%20d%3D'M84.1%20155.3Q78.2%20158.5%2076.4%20166.3'%20stroke%3D'rgba(15%2C140%2C138%2C.26)'%2F%3E%3Cpath%20d%3D'M176.5%20174.6Q178.8%20180.3%20182.6%20180.8'%20stroke%3D'rgba(122%2C31%2C53%2C.34)'%2F%3E%3Cpath%20d%3D'M238.8%20176.4Q233.3%20179.7%20226.8%20183.9'%20stroke%3D'rgba(30%2C110%2C158%2C.30)'%2F%3E%3Cpath%20d%3D'M86.2%20144.1Q91.9%20143.9%20100%20144.8'%20stroke%3D'rgba(184%2C147%2C90%2C.48)'%2F%3E%3Cpath%20d%3D'M34.6%2022.3Q34.5%2014.7%2034.3%2011.9'%20stroke%3D'rgba(15%2C140%2C138%2C.26)'%2F%3E%3Cpath%20d%3D'M156.7%20174.2Q162.8%20169.9%20167.6%20164.5'%20stroke%3D'rgba(122%2C31%2C53%2C.34)'%2F%3E%3Cpath%20d%3D'M160.5%20136.4Q166.2%20142.6%20170%20142.8'%20stroke%3D'rgba(30%2C110%2C158%2C.30)'%2F%3E%3C%2Fsvg%3E");
+  --tex-rosette: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20viewBox%3D'-100%20-100%20200%20200'%3E%20%3Cdefs%3E%3ClinearGradient%20id%3D'g'%20gradientUnits%3D'userSpaceOnUse'%20x1%3D'-80'%20y1%3D'-95'%20x2%3D'80'%20y2%3D'95'%3E%3Cstop%20offset%3D'0'%20stop-color%3D'%239A1D45'%2F%3E%3Cstop%20offset%3D'0.42'%20stop-color%3D'%23C8942F'%2F%3E%3Cstop%20offset%3D'0.62'%20stop-color%3D'%23B39A4A'%2F%3E%3Cstop%20offset%3D'1'%20stop-color%3D'%2304A3A0'%2F%3E%3C%2FlinearGradient%3E%20%3Cpath%20id%3D'o'%20d%3D'M92%200L94.11%201.34L95.38%202.72L95.34%204.09L93.96%205.37L91.77%206.56L89.55%207.69L88.13%208.84L88%2010.1L89.14%2011.52L91.06%2013.09L92.96%2014.72L94.03%2016.27L93.78%2017.61L92.24%2018.69L89.9%2019.56L87.55%2020.36L85.98%2021.29L85.67%2022.52L86.6%2024.09L88.27%2025.92L89.92%2027.8L90.75%2029.49L90.32%2030.78L88.64%2031.63L86.2%2032.15L83.76%2032.61L82.07%2033.31L81.59%2034.48L82.29%2036.17L83.69%2038.22L85.04%2040.32L85.63%2042.1L85.02%2043.32L83.24%2043.92L80.75%2044.09L78.27%2044.2L76.5%2044.65L75.85%2045.74L76.3%2047.51L77.4%2049.74L78.44%2052.01L78.77%2053.86L77.99%2054.98L76.14%2055.32L73.65%2055.13L71.18%2054.89L69.36%2055.08L68.57%2056.07L68.76%2057.89L69.53%2060.25L70.24%2062.64L70.3%2064.52L69.37%2065.52L67.49%2065.59L65.05%2065.05L62.64%2064.46L60.82%2064.4L59.89%2065.26L59.83%2067.08L60.25%2069.53L60.61%2072L60.4%2073.87L59.34%2074.73L57.47%2074.53L55.13%2073.65L52.83%2072.72L51.04%2072.4L50%2073.12L49.67%2074.91L49.74%2077.4L49.75%2079.89L49.28%2081.72L48.1%2082.41L46.28%2081.95L44.09%2080.75L41.95%2079.5L40.21%2078.92L39.08%2079.49L38.5%2081.22L38.22%2083.69L37.87%2086.16L37.15%2087.9L35.89%2088.42L34.15%2087.7L32.15%2086.2L30.21%2084.66L28.57%2083.84L27.37%2084.24L26.55%2085.87L25.92%2088.27L25.22%2090.67L24.26%2092.29L22.94%2092.63L21.32%2091.67L19.56%2089.9L17.85%2088.09L16.35%2087.05L15.1%2087.28L14.06%2088.78L13.09%2091.06L12.06%2093.34L10.88%2094.8L9.52%2094.95L8.05%2093.77L6.56%2091.77L5.13%2089.74L3.79%2088.49L2.53%2088.54L1.28%2089.87L0%2092L-1.34%2094.11L-2.72%2095.38L-4.09%2095.34L-5.37%2093.96L-6.56%2091.77L-7.69%2089.55L-8.84%2088.13L-10.1%2088L-11.52%2089.14L-13.09%2091.06L-14.72%2092.96L-16.27%2094.03L-17.61%2093.78L-18.69%2092.24L-19.56%2089.9L-20.36%2087.55L-21.29%2085.98L-22.52%2085.67L-24.09%2086.6L-25.92%2088.27L-27.8%2089.92L-29.49%2090.75L-30.78%2090.32L-31.63%2088.64L-32.15%2086.2L-32.61%2083.76L-33.31%2082.07L-34.48%2081.59L-36.17%2082.29L-38.22%2083.69L-40.32%2085.04L-42.1%2085.63L-43.32%2085.02L-43.92%2083.24L-44.09%2080.75L-44.2%2078.27L-44.65%2076.5L-45.74%2075.85L-47.51%2076.3L-49.74%2077.4L-52.01%2078.44L-53.86%2078.77L-54.98%2077.99L-55.32%2076.14L-55.13%2073.65L-54.89%2071.18L-55.08%2069.36L-56.07%2068.57L-57.89%2068.76L-60.25%2069.53L-62.64%2070.24L-64.52%2070.3L-65.52%2069.37L-65.59%2067.49L-65.05%2065.05L-64.46%2062.64L-64.4%2060.82L-65.26%2059.89L-67.08%2059.83L-69.53%2060.25L-72%2060.61L-73.87%2060.4L-74.73%2059.34L-74.53%2057.47L-73.65%2055.13L-72.72%2052.83L-72.4%2051.04L-73.12%2050L-74.91%2049.67L-77.4%2049.74L-79.89%2049.75L-81.72%2049.28L-82.41%2048.1L-81.95%2046.28L-80.75%2044.09L-79.5%2041.95L-78.92%2040.21L-79.49%2039.08L-81.22%2038.5L-83.69%2038.22L-86.16%2037.87L-87.9%2037.15L-88.42%2035.89L-87.7%2034.15L-86.2%2032.15L-84.66%2030.21L-83.84%2028.57L-84.24%2027.37L-85.87%2026.55L-88.27%2025.92L-90.67%2025.22L-92.29%2024.26L-92.63%2022.94L-91.67%2021.32L-89.9%2019.56L-88.09%2017.85L-87.05%2016.35L-87.28%2015.1L-88.78%2014.06L-91.06%2013.09L-93.34%2012.06L-94.8%2010.88L-94.95%209.52L-93.77%208.05L-91.77%206.56L-89.74%205.13L-88.49%203.79L-88.54%202.53L-89.87%201.28L-92%200L-94.11%20-1.34L-95.38%20-2.72L-95.34%20-4.09L-93.96%20-5.37L-91.77%20-6.56L-89.55%20-7.69L-88.13%20-8.84L-88%20-10.1L-89.14%20-11.52L-91.06%20-13.09L-92.96%20-14.72L-94.03%20-16.27L-93.78%20-17.61L-92.24%20-18.69L-89.9%20-19.56L-87.55%20-20.36L-85.98%20-21.29L-85.67%20-22.52L-86.6%20-24.09L-88.27%20-25.92L-89.92%20-27.8L-90.75%20-29.49L-90.32%20-30.78L-88.64%20-31.63L-86.2%20-32.15L-83.76%20-32.61L-82.07%20-33.31L-81.59%20-34.48L-82.29%20-36.17L-83.69%20-38.22L-85.04%20-40.32L-85.63%20-42.1L-85.02%20-43.32L-83.24%20-43.92L-80.75%20-44.09L-78.27%20-44.2L-76.5%20-44.65L-75.85%20-45.74L-76.3%20-47.51L-77.4%20-49.74L-78.44%20-52.01L-78.77%20-53.86L-77.99%20-54.98L-76.14%20-55.32L-73.65%20-55.13L-71.18%20-54.89L-69.36%20-55.08L-68.57%20-56.07L-68.76%20-57.89L-69.53%20-60.25L-70.24%20-62.64L-70.3%20-64.52L-69.37%20-65.52L-67.49%20-65.59L-65.05%20-65.05L-62.64%20-64.46L-60.82%20-64.4L-59.89%20-65.26L-59.83%20-67.08L-60.25%20-69.53L-60.61%20-72L-60.4%20-73.87L-59.34%20-74.73L-57.47%20-74.53L-55.13%20-73.65L-52.83%20-72.72L-51.04%20-72.4L-50%20-73.12L-49.67%20-74.91L-49.74%20-77.4L-49.75%20-79.89L-49.28%20-81.72L-48.1%20-82.41L-46.28%20-81.95L-44.09%20-80.75L-41.95%20-79.5L-40.21%20-78.92L-39.08%20-79.49L-38.5%20-81.22L-38.22%20-83.69L-37.87%20-86.16L-37.15%20-87.9L-35.89%20-88.42L-34.15%20-87.7L-32.15%20-86.2L-30.21%20-84.66L-28.57%20-83.84L-27.37%20-84.24L-26.55%20-85.87L-25.92%20-88.27L-25.22%20-90.67L-24.26%20-92.29L-22.94%20-92.63L-21.32%20-91.67L-19.56%20-89.9L-17.85%20-88.09L-16.35%20-87.05L-15.1%20-87.28L-14.06%20-88.78L-13.09%20-91.06L-12.06%20-93.34L-10.88%20-94.8L-9.52%20-94.95L-8.05%20-93.77L-6.56%20-91.77L-5.13%20-89.74L-3.79%20-88.49L-2.53%20-88.54L-1.28%20-89.87L0%20-92L1.34%20-94.11L2.72%20-95.38L4.09%20-95.34L5.37%20-93.96L6.56%20-91.77L7.69%20-89.55L8.84%20-88.13L10.1%20-88L11.52%20-89.14L13.09%20-91.06L14.72%20-92.96L16.27%20-94.03L17.61%20-93.78L18.69%20-92.24L19.56%20-89.9L20.36%20-87.55L21.29%20-85.98L22.52%20-85.67L24.09%20-86.6L25.92%20-88.27L27.8%20-89.92L29.49%20-90.75L30.78%20-90.32L31.63%20-88.64L32.15%20-86.2L32.61%20-83.76L33.31%20-82.07L34.48%20-81.59L36.17%20-82.29L38.22%20-83.69L40.32%20-85.04L42.1%20-85.63L43.32%20-85.02L43.92%20-83.24L44.09%20-80.75L44.2%20-78.27L44.65%20-76.5L45.74%20-75.85L47.51%20-76.3L49.74%20-77.4L52.01%20-78.44L53.86%20-78.77L54.98%20-77.99L55.32%20-76.14L55.13%20-73.65L54.89%20-71.18L55.08%20-69.36L56.07%20-68.57L57.89%20-68.76L60.25%20-69.53L62.64%20-70.24L64.52%20-70.3L65.52%20-69.37L65.59%20-67.49L65.05%20-65.05L64.46%20-62.64L64.4%20-60.82L65.26%20-59.89L67.08%20-59.83L69.53%20-60.25L72%20-60.61L73.87%20-60.4L74.73%20-59.34L74.53%20-57.47L73.65%20-55.13L72.72%20-52.83L72.4%20-51.04L73.12%20-50L74.91%20-49.67L77.4%20-49.74L79.89%20-49.75L81.72%20-49.28L82.41%20-48.1L81.95%20-46.28L80.75%20-44.09L79.5%20-41.95L78.92%20-40.21L79.49%20-39.08L81.22%20-38.5L83.69%20-38.22L86.16%20-37.87L87.9%20-37.15L88.42%20-35.89L87.7%20-34.15L86.2%20-32.15L84.66%20-30.21L83.84%20-28.57L84.24%20-27.37L85.87%20-26.55L88.27%20-25.92L90.67%20-25.22L92.29%20-24.26L92.63%20-22.94L91.67%20-21.32L89.9%20-19.56L88.09%20-17.85L87.05%20-16.35L87.28%20-15.1L88.78%20-14.06L91.06%20-13.09L93.34%20-12.06L94.8%20-10.88L94.95%20-9.52L93.77%20-8.05L91.77%20-6.56L89.74%20-5.13L88.49%20-3.79L88.54%20-2.53L89.87%20-1.28Z'%2F%3E%3Cpath%20id%3D'm'%20d%3D'M65%200L67.31%201.17L69.37%202.42L70.97%203.72L71.96%205.03L72.22%206.32L71.74%207.54L70.54%208.66L68.73%209.66L66.49%2010.53L64.01%2011.29L61.53%2011.96L59.27%2012.6L57.42%2013.26L56.15%2014L55.54%2014.88L55.63%2015.95L56.36%2017.23L57.63%2018.72L59.27%2020.41L61.08%2022.23L62.85%2024.12L64.35%2026L65.42%2027.77L65.9%2029.34L65.71%2030.64L64.83%2031.62L63.32%2032.26L61.28%2032.59L58.88%2032.64L56.29%2032.5L53.73%2032.28L51.38%2032.11L49.42%2032.1L47.97%2032.36L47.1%2032.98L46.82%2034.01L47.07%2035.47L47.75%2037.3L48.71%2039.45L49.79%2041.78L50.81%2044.16L51.58%2046.44L51.98%2048.47L51.89%2050.11L51.27%2051.27L50.11%2051.89L48.47%2051.98L46.44%2051.58L44.16%2050.81L41.78%2049.79L39.45%2048.71L37.3%2047.75L35.47%2047.07L34.01%2046.82L32.98%2047.1L32.36%2047.97L32.1%2049.42L32.11%2051.38L32.28%2053.73L32.5%2056.29L32.64%2058.88L32.59%2061.28L32.26%2063.32L31.62%2064.83L30.64%2065.71L29.34%2065.9L27.77%2065.42L26%2064.35L24.12%2062.85L22.23%2061.08L20.41%2059.27L18.72%2057.63L17.23%2056.36L15.95%2055.63L14.88%2055.54L14%2056.15L13.26%2057.42L12.6%2059.27L11.96%2061.53L11.29%2064.01L10.53%2066.49L9.66%2068.73L8.66%2070.54L7.54%2071.74L6.32%2072.22L5.03%2071.96L3.72%2070.97L2.42%2069.37L1.17%2067.31L0%2065L-1.09%2062.67L-2.11%2060.55L-3.08%2058.85L-4.04%2057.73L-5.01%2057.28L-6.05%2057.55L-7.18%2058.49L-8.43%2060L-9.81%2061.91L-11.29%2064.01L-12.84%2066.08L-14.43%2067.89L-15.99%2069.25L-17.45%2069.99L-18.76%2070.03L-19.88%2069.34L-20.78%2067.96L-21.45%2066.01L-21.92%2063.65L-22.23%2061.08L-22.46%2058.52L-22.7%2056.18L-23.03%2054.25L-23.54%2052.86L-24.3%2052.11L-25.37%2052.01L-26.75%2052.51L-28.45%2053.5L-30.39%2054.82L-32.5%2056.29L-34.67%2057.7L-36.78%2058.86L-38.71%2059.6L-40.34%2059.8L-41.58%2059.39L-42.4%2058.36L-42.77%2056.76L-42.73%2054.69L-42.36%2052.32L-41.78%2049.79L-41.12%2047.31L-40.54%2045.03L-40.19%2043.1L-40.2%2041.63L-40.66%2040.66L-41.63%2040.2L-43.1%2040.19L-45.03%2040.54L-47.31%2041.12L-49.79%2041.78L-52.32%2042.36L-54.69%2042.73L-56.76%2042.77L-58.36%2042.4L-59.39%2041.58L-59.8%2040.34L-59.6%2038.71L-58.86%2036.78L-57.7%2034.67L-56.29%2032.5L-54.82%2030.39L-53.5%2028.45L-52.51%2026.75L-52.01%2025.37L-52.11%2024.3L-52.86%2023.54L-54.25%2023.03L-56.18%2022.7L-58.52%2022.46L-61.08%2022.23L-63.65%2021.92L-66.01%2021.45L-67.96%2020.78L-69.34%2019.88L-70.03%2018.76L-69.99%2017.45L-69.25%2015.99L-67.89%2014.43L-66.08%2012.84L-64.01%2011.29L-61.91%209.81L-60%208.43L-58.49%207.18L-57.55%206.05L-57.28%205.01L-57.73%204.04L-58.85%203.08L-60.55%202.11L-62.67%201.09L-65%200L-67.31%20-1.17L-69.37%20-2.42L-70.97%20-3.72L-71.96%20-5.03L-72.22%20-6.32L-71.74%20-7.54L-70.54%20-8.66L-68.73%20-9.66L-66.49%20-10.53L-64.01%20-11.29L-61.53%20-11.96L-59.27%20-12.6L-57.42%20-13.26L-56.15%20-14L-55.54%20-14.88L-55.63%20-15.95L-56.36%20-17.23L-57.63%20-18.72L-59.27%20-20.41L-61.08%20-22.23L-62.85%20-24.12L-64.35%20-26L-65.42%20-27.77L-65.9%20-29.34L-65.71%20-30.64L-64.83%20-31.62L-63.32%20-32.26L-61.28%20-32.59L-58.88%20-32.64L-56.29%20-32.5L-53.73%20-32.28L-51.38%20-32.11L-49.42%20-32.1L-47.97%20-32.36L-47.1%20-32.98L-46.82%20-34.01L-47.07%20-35.47L-47.75%20-37.3L-48.71%20-39.45L-49.79%20-41.78L-50.81%20-44.16L-51.58%20-46.44L-51.98%20-48.47L-51.89%20-50.11L-51.27%20-51.27L-50.11%20-51.89L-48.47%20-51.98L-46.44%20-51.58L-44.16%20-50.81L-41.78%20-49.79L-39.45%20-48.71L-37.3%20-47.75L-35.47%20-47.07L-34.01%20-46.82L-32.98%20-47.1L-32.36%20-47.97L-32.1%20-49.42L-32.11%20-51.38L-32.28%20-53.73L-32.5%20-56.29L-32.64%20-58.88L-32.59%20-61.28L-32.26%20-63.32L-31.62%20-64.83L-30.64%20-65.71L-29.34%20-65.9L-27.77%20-65.42L-26%20-64.35L-24.12%20-62.85L-22.23%20-61.08L-20.41%20-59.27L-18.72%20-57.63L-17.23%20-56.36L-15.95%20-55.63L-14.88%20-55.54L-14%20-56.15L-13.26%20-57.42L-12.6%20-59.27L-11.96%20-61.53L-11.29%20-64.01L-10.53%20-66.49L-9.66%20-68.73L-8.66%20-70.54L-7.54%20-71.74L-6.32%20-72.22L-5.03%20-71.96L-3.72%20-70.97L-2.42%20-69.37L-1.17%20-67.31L0%20-65L1.09%20-62.67L2.11%20-60.55L3.08%20-58.85L4.04%20-57.73L5.01%20-57.28L6.05%20-57.55L7.18%20-58.49L8.43%20-60L9.81%20-61.91L11.29%20-64.01L12.84%20-66.08L14.43%20-67.89L15.99%20-69.25L17.45%20-69.99L18.76%20-70.03L19.88%20-69.34L20.78%20-67.96L21.45%20-66.01L21.92%20-63.65L22.23%20-61.08L22.46%20-58.52L22.7%20-56.18L23.03%20-54.25L23.54%20-52.86L24.3%20-52.11L25.37%20-52.01L26.75%20-52.51L28.45%20-53.5L30.39%20-54.82L32.5%20-56.29L34.67%20-57.7L36.78%20-58.86L38.71%20-59.6L40.34%20-59.8L41.58%20-59.39L42.4%20-58.36L42.77%20-56.76L42.73%20-54.69L42.36%20-52.32L41.78%20-49.79L41.12%20-47.31L40.54%20-45.03L40.19%20-43.1L40.2%20-41.63L40.66%20-40.66L41.63%20-40.2L43.1%20-40.19L45.03%20-40.54L47.31%20-41.12L49.79%20-41.78L52.32%20-42.36L54.69%20-42.73L56.76%20-42.77L58.36%20-42.4L59.39%20-41.58L59.8%20-40.34L59.6%20-38.71L58.86%20-36.78L57.7%20-34.67L56.29%20-32.5L54.82%20-30.39L53.5%20-28.45L52.51%20-26.75L52.01%20-25.37L52.11%20-24.3L52.86%20-23.54L54.25%20-23.03L56.18%20-22.7L58.52%20-22.46L61.08%20-22.23L63.65%20-21.92L66.01%20-21.45L67.96%20-20.78L69.34%20-19.88L70.03%20-18.76L69.99%20-17.45L69.25%20-15.99L67.89%20-14.43L66.08%20-12.84L64.01%20-11.29L61.91%20-9.81L60%20-8.43L58.49%20-7.18L57.55%20-6.05L57.28%20-5.01L57.73%20-4.04L58.85%20-3.08L60.55%20-2.11L62.67%20-1.09Z'%2F%3E%3Cpath%20id%3D'i'%20d%3D'M27%200L28.37%200.99L29.45%202.06L30.07%203.16L30.09%204.23L29.49%205.2L28.36%206.03L26.88%206.7L25.27%207.25L23.78%207.73L22.6%208.23L21.9%208.85L21.71%209.67L22%2010.73L22.62%2012.03L23.38%2013.5L24.07%2015.04L24.48%2016.51L24.46%2017.77L23.94%2018.7L22.94%2019.25L21.55%2019.4L19.93%2019.25L18.26%2018.91L16.73%2018.58L15.46%2018.43L14.54%2018.61L13.97%2019.23L13.69%2020.29L13.57%2021.72L13.5%2023.38L13.32%2025.06L12.94%2026.54L12.3%2027.62L11.38%2028.17L10.24%2028.14L8.96%2027.58L7.64%2026.63L6.36%2025.51L5.2%2024.46L4.18%2023.69L3.29%2023.39L2.48%2023.64L1.71%2024.41L0.89%2025.6L0%2027L-0.99%2028.37L-2.06%2029.45L-3.16%2030.07L-4.23%2030.09L-5.2%2029.49L-6.03%2028.36L-6.7%2026.88L-7.25%2025.27L-7.73%2023.78L-8.23%2022.6L-8.85%2021.9L-9.67%2021.71L-10.73%2022L-12.03%2022.62L-13.5%2023.38L-15.04%2024.07L-16.51%2024.48L-17.77%2024.46L-18.7%2023.94L-19.25%2022.94L-19.4%2021.55L-19.25%2019.93L-18.91%2018.26L-18.58%2016.73L-18.43%2015.46L-18.61%2014.54L-19.23%2013.97L-20.29%2013.69L-21.72%2013.57L-23.38%2013.5L-25.06%2013.32L-26.54%2012.94L-27.62%2012.3L-28.17%2011.38L-28.14%2010.24L-27.58%208.96L-26.63%207.64L-25.51%206.36L-24.46%205.2L-23.69%204.18L-23.39%203.29L-23.64%202.48L-24.41%201.71L-25.6%200.89L-27%200L-28.37%20-0.99L-29.45%20-2.06L-30.07%20-3.16L-30.09%20-4.23L-29.49%20-5.2L-28.36%20-6.03L-26.88%20-6.7L-25.27%20-7.25L-23.78%20-7.73L-22.6%20-8.23L-21.9%20-8.85L-21.71%20-9.67L-22%20-10.73L-22.62%20-12.03L-23.38%20-13.5L-24.07%20-15.04L-24.48%20-16.51L-24.46%20-17.77L-23.94%20-18.7L-22.94%20-19.25L-21.55%20-19.4L-19.93%20-19.25L-18.26%20-18.91L-16.73%20-18.58L-15.46%20-18.43L-14.54%20-18.61L-13.97%20-19.23L-13.69%20-20.29L-13.57%20-21.72L-13.5%20-23.38L-13.32%20-25.06L-12.94%20-26.54L-12.3%20-27.62L-11.38%20-28.17L-10.24%20-28.14L-8.96%20-27.58L-7.64%20-26.63L-6.36%20-25.51L-5.2%20-24.46L-4.18%20-23.69L-3.29%20-23.39L-2.48%20-23.64L-1.71%20-24.41L-0.89%20-25.6L0%20-27L0.99%20-28.37L2.06%20-29.45L3.16%20-30.07L4.23%20-30.09L5.2%20-29.49L6.03%20-28.36L6.7%20-26.88L7.25%20-25.27L7.73%20-23.78L8.23%20-22.6L8.85%20-21.9L9.67%20-21.71L10.73%20-22L12.03%20-22.62L13.5%20-23.38L15.04%20-24.07L16.51%20-24.48L17.77%20-24.46L18.7%20-23.94L19.25%20-22.94L19.4%20-21.55L19.25%20-19.93L18.91%20-18.26L18.58%20-16.73L18.43%20-15.46L18.61%20-14.54L19.23%20-13.97L20.29%20-13.69L21.72%20-13.57L23.38%20-13.5L25.06%20-13.32L26.54%20-12.94L27.62%20-12.3L28.17%20-11.38L28.14%20-10.24L27.58%20-8.96L26.63%20-7.64L25.51%20-6.36L24.46%20-5.2L23.69%20-4.18L23.39%20-3.29L23.64%20-2.48L24.41%20-1.71L25.6%20-0.89Z'%2F%3E%3C%2Fdefs%3E%20%3Cg%20fill%3D'none'%20stroke%3D'url(%23g)'%20stroke-width%3D'0.3'%20opacity%3D'0.25'%3E%20%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(0)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(1.023)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(2.045)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(3.068)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(4.091)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(5.114)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(6.136)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23o'%20transform%3D'rotate(7.159)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(0)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(2)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(4)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(6)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(8)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(10)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(12)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(14)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(16)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23m'%20transform%3D'rotate(18)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23i'%20transform%3D'rotate(0)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23i'%20transform%3D'rotate(5)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23i'%20transform%3D'rotate(10)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23i'%20transform%3D'rotate(15)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23i'%20transform%3D'rotate(20)'%2F%3E%3Cuse%20xlink%3Ahref%3D'%23i'%20transform%3D'rotate(25)'%2F%3E%20%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(0)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(7.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(15)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(22.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(30)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(37.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(45)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(52.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(60)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(67.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(75)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(82.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(90)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(97.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(105)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(112.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(120)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(127.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(135)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(142.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(150)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(157.5)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(165)'%2F%3E%3Cellipse%20rx%3D'47'%20ry%3D'12.5'%20transform%3D'rotate(172.5)'%2F%3E%3Ccircle%20cx%3D'79'%20cy%3D'0'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'78.03'%20cy%3D'12.36'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'75.13'%20cy%3D'24.41'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'70.39'%20cy%3D'35.87'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'63.91'%20cy%3D'46.44'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'55.86'%20cy%3D'55.86'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'46.44'%20cy%3D'63.91'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'35.87'%20cy%3D'70.39'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'24.41'%20cy%3D'75.13'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'12.36'%20cy%3D'78.03'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'0'%20cy%3D'79'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-12.36'%20cy%3D'78.03'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-24.41'%20cy%3D'75.13'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-35.87'%20cy%3D'70.39'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-46.44'%20cy%3D'63.91'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-55.86'%20cy%3D'55.86'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-63.91'%20cy%3D'46.44'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-70.39'%20cy%3D'35.87'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-75.13'%20cy%3D'24.41'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-78.03'%20cy%3D'12.36'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-79'%20cy%3D'0'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-78.03'%20cy%3D'-12.36'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-75.13'%20cy%3D'-24.41'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-70.39'%20cy%3D'-35.87'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-63.91'%20cy%3D'-46.44'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-55.86'%20cy%3D'-55.86'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-46.44'%20cy%3D'-63.91'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-35.87'%20cy%3D'-70.39'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-24.41'%20cy%3D'-75.13'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'-12.36'%20cy%3D'-78.03'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'0'%20cy%3D'-79'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'12.36'%20cy%3D'-78.03'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'24.41'%20cy%3D'-75.13'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'35.87'%20cy%3D'-70.39'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'46.44'%20cy%3D'-63.91'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'55.86'%20cy%3D'-55.86'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'63.91'%20cy%3D'-46.44'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'70.39'%20cy%3D'-35.87'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'75.13'%20cy%3D'-24.41'%20r%3D'9.5'%2F%3E%3Ccircle%20cx%3D'78.03'%20cy%3D'-12.36'%20r%3D'9.5'%2F%3E%3Ccircle%20r%3D'5'%2F%3E%3Ccircle%20r%3D'8.5'%2F%3E%3Ccircle%20r%3D'12.5'%2F%3E%3Ccircle%20r%3D'97'%2F%3E%3Ccircle%20r%3D'98.6'%2F%3E%20%3C%2Fg%3E%3C%2Fsvg%3E");
+  --tex-leather: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'300'%20height%3D'300'%3E%20%3Cfilter%20id%3D'l'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%20color-interpolation-filters%3D'sRGB'%3E%20%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'.46'%20numOctaves%3D'3'%20seed%3D'9'%20stitchTiles%3D'stitch'%20result%3D't'%2F%3E%20%3CfeDiffuseLighting%20in%3D't'%20surfaceScale%3D'2.4'%20diffuseConstant%3D'1'%20lighting-color%3D'%23fff'%20result%3D'd'%3E%3CfeDistantLight%20azimuth%3D'315'%20elevation%3D'54'%2F%3E%3C%2FfeDiffuseLighting%3E%20%3CfeColorMatrix%20in%3D'd'%20type%3D'matrix'%20values%3D'.30%200%200%200%20.136%20.075%200%200%200%20.03%20.10%200%200%200%20.078%200%200%200%200%201'%2F%3E%20%3C%2Ffilter%3E%3Crect%20width%3D'300'%20height%3D'300'%20filter%3D'url(%23l)'%2F%3E%3C%2Fsvg%3E");
+  --tex-rope: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'60'%20height%3D'12'%20fill%3D'none'%20stroke-width%3D'.5'%3E%3Cpath%20d%3D'M0%206L1.5%207.36L3%208.59L4.5%209.56L6%2010.18L7.5%2010.4L9%2010.18L10.5%209.56L12%208.59L13.5%207.36L15%206L16.5%204.64L18%203.41L19.5%202.44L21%201.82L22.5%201.6L24%201.82L25.5%202.44L27%203.41L28.5%204.64L30%206L31.5%207.36L33%208.59L34.5%209.56L36%2010.18L37.5%2010.4L39%2010.18L40.5%209.56L42%208.59L43.5%207.36L45%206L46.5%204.64L48%203.41L49.5%202.44L51%201.82L52.5%201.6L54%201.82L55.5%202.44L57%203.41L58.5%204.64L60%206'%20stroke%3D'rgba(122%2C31%2C53%2C.36)'%2F%3E%3Cpath%20d%3D'M0%209.81L1.5%2010.3L3%2010.38L4.5%2010.02L6%209.27L7.5%208.2L9%206.91L10.5%205.54L12%204.21L13.5%203.06L15%202.19L16.5%201.7L18%201.62L19.5%201.98L21%202.73L22.5%203.8L24%205.09L25.5%206.46L27%207.79L28.5%208.94L30%209.81L31.5%2010.3L33%2010.38L34.5%2010.02L36%209.27L37.5%208.2L39%206.91L40.5%205.54L42%204.21L43.5%203.06L45%202.19L46.5%201.7L48%201.62L49.5%201.98L51%202.73L52.5%203.8L54%205.09L55.5%206.46L57%207.79L58.5%208.94L60%209.81'%20stroke%3D'rgba(184%2C147%2C90%2C.62)'%2F%3E%3Cpath%20d%3D'M0%209.81L1.5%208.94L3%207.79L4.5%206.46L6%205.09L7.5%203.8L9%202.73L10.5%201.98L12%201.62L13.5%201.7L15%202.19L16.5%203.06L18%204.21L19.5%205.54L21%206.91L22.5%208.2L24%209.27L25.5%2010.02L27%2010.38L28.5%2010.3L30%209.81L31.5%208.94L33%207.79L34.5%206.46L36%205.09L37.5%203.8L39%202.73L40.5%201.98L42%201.62L43.5%201.7L45%202.19L46.5%203.06L48%204.21L49.5%205.54L51%206.91L52.5%208.2L54%209.27L55.5%2010.02L57%2010.38L58.5%2010.3L60%209.81'%20stroke%3D'rgba(122%2C31%2C53%2C.36)'%2F%3E%3Cpath%20d%3D'M0%206L1.5%204.64L3%203.41L4.5%202.44L6%201.82L7.5%201.6L9%201.82L10.5%202.44L12%203.41L13.5%204.64L15%206L16.5%207.36L18%208.59L19.5%209.56L21%2010.18L22.5%2010.4L24%2010.18L25.5%209.56L27%208.59L28.5%207.36L30%206L31.5%204.64L33%203.41L34.5%202.44L36%201.82L37.5%201.6L39%201.82L40.5%202.44L42%203.41L43.5%204.64L45%206L46.5%207.36L48%208.59L49.5%209.56L51%2010.18L52.5%2010.4L54%2010.18L55.5%209.56L57%208.59L58.5%207.36L60%206'%20stroke%3D'rgba(184%2C147%2C90%2C.62)'%2F%3E%3Cpath%20d%3D'M0%202.19L1.5%201.7L3%201.62L4.5%201.98L6%202.73L7.5%203.8L9%205.09L10.5%206.46L12%207.79L13.5%208.94L15%209.81L16.5%2010.3L18%2010.38L19.5%2010.02L21%209.27L22.5%208.2L24%206.91L25.5%205.54L27%204.21L28.5%203.06L30%202.19L31.5%201.7L33%201.62L34.5%201.98L36%202.73L37.5%203.8L39%205.09L40.5%206.46L42%207.79L43.5%208.94L45%209.81L46.5%2010.3L48%2010.38L49.5%2010.02L51%209.27L52.5%208.2L54%206.91L55.5%205.54L57%204.21L58.5%203.06L60%202.19'%20stroke%3D'rgba(122%2C31%2C53%2C.36)'%2F%3E%3Cpath%20d%3D'M0%202.19L1.5%203.06L3%204.21L4.5%205.54L6%206.91L7.5%208.2L9%209.27L10.5%2010.02L12%2010.38L13.5%2010.3L15%209.81L16.5%208.94L18%207.79L19.5%206.46L21%205.09L22.5%203.8L24%202.73L25.5%201.98L27%201.62L28.5%201.7L30%202.19L31.5%203.06L33%204.21L34.5%205.54L36%206.91L37.5%208.2L39%209.27L40.5%2010.02L42%2010.38L43.5%2010.3L45%209.81L46.5%208.94L48%207.79L49.5%206.46L51%205.09L52.5%203.8L54%202.73L55.5%201.98L57%201.62L58.5%201.7L60%202.19'%20stroke%3D'rgba(184%2C147%2C90%2C.62)'%2F%3E%3Cpath%20d%3D'M0%20.4H60M0%2011.6H60'%20stroke%3D'rgba(122%2C31%2C53%2C.3)'%20stroke-width%3D'.5'%2F%3E%3C%2Fsvg%3E");
+  --tex-micro-h: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'240'%20height%3D'6'%3E%3Ctext%20x%3D'0'%20y%3D'4.7'%20font-family%3D'Arial%2CHelvetica%2Csans-serif'%20font-weight%3D'700'%20font-size%3D'4.9'%20textLength%3D'238'%20lengthAdjust%3D'spacingAndGlyphs'%20fill%3D'rgba(122%2C31%2C53%2C.34)'%3ECYCY%20ET%20KEVIN%20%C2%B7%20NOS%20AVENTURES%20%C2%B7%20CYCY%20ET%20KEVIN%20%C2%B7%20NOS%20AVENTURES%20%C2%B7%20%3C%2Ftext%3E%3C%2Fsvg%3E");
+  --tex-micro-v: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'6'%20height%3D'240'%3E%3Ctext%20transform%3D'translate(1.3%200)%20rotate(90)'%20x%3D'0'%20y%3D'0'%20font-family%3D'Arial%2CHelvetica%2Csans-serif'%20font-weight%3D'700'%20font-size%3D'4.9'%20textLength%3D'238'%20lengthAdjust%3D'spacingAndGlyphs'%20fill%3D'rgba(122%2C31%2C53%2C.34)'%3ECYCY%20ET%20KEVIN%20%C2%B7%20NOS%20AVENTURES%20%C2%B7%20CYCY%20ET%20KEVIN%20%C2%B7%20NOS%20AVENTURES%20%C2%B7%20%3C%2Ftext%3E%3C%2Fsvg%3E");
+  --tex-wm: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20viewBox%3D'0%200%20200%20200'%3E%20%3Cfilter%20id%3D's'%20x%3D'-5%25'%20y%3D'-5%25'%20width%3D'110%25'%20height%3D'110%25'%3E%3CfeGaussianBlur%20stdDeviation%3D'.9'%2F%3E%3C%2Ffilter%3E%20%3Cg%20filter%3D'url(%23s)'%3E%20%3Cg%20transform%3D'translate(1.1%201.5)'%3E%3Cg%20fill%3D'none'%20stroke%3D'rgba(120%2C86%2C56%2C.10)'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%20%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'36'%20stroke-width%3D'4'%2F%3E%20%3Cellipse%20cx%3D'100'%20cy%3D'100'%20rx%3D'12.5'%20ry%3D'36'%20stroke-width%3D'2.38'%2F%3E%20%3Cellipse%20cx%3D'100'%20cy%3D'100'%20rx%3D'25'%20ry%3D'36'%20stroke-width%3D'2.38'%2F%3E%20%3Cpath%20d%3D'M100%2064V136M64%20100H136M68.8%2082H131.2M68.8%20118H131.2'%20stroke-width%3D'2.38'%2F%3E%20%3Cpath%20d%3D'M89.6%20159.1L85.5%20158.2L81.5%20157.1L77.5%20155.6L73.7%20153.9L70%20152L66.4%20149.7L63.1%20147.3L59.9%20144.6L56.8%20141.7L54%20138.6L51.5%20135.3L49.1%20131.8L47%20128.2L45.2%20124.4L43.6%20120.5L42.3%20116.5L41.3%20112.5L40.6%20108.4L40.1%20104.2L40%20100L40.1%2095.8L40.6%2091.6L41.3%2087.5L42.3%2083.5L43.6%2079.5L45.2%2075.6L47%2071.8L49.1%2068.2L51.5%2064.7'%20stroke-width%3D'2.63'%2F%3E%3Cpath%20d%3D'M89.6%20159.1L85.5%20158.2L81.5%20157.1L77.5%20155.6L73.7%20153.9L70%20152L66.4%20149.7L63.1%20147.3L59.9%20144.6L56.8%20141.7L54%20138.6L51.5%20135.3L49.1%20131.8L47%20128.2L45.2%20124.4L43.6%20120.5L42.3%20116.5L41.3%20112.5L40.6%20108.4L40.1%20104.2L40%20100L40.1%2095.8L40.6%2091.6L41.3%2087.5L42.3%2083.5L43.6%2079.5L45.2%2075.6L47%2071.8L49.1%2068.2L51.5%2064.7'%20stroke-width%3D'2.63'%20transform%3D'matrix(-1%200%200%201%20200%200)'%2F%3E%20%3Cpath%20d%3D'M100%2018.5L100%2013M107.4%2021.6L111.3%2017.7M110.5%2029L116%2029M107.4%2036.4L111.3%2040.3M100%2039.5L100%2045M92.6%2036.4L88.7%2040.3M89.5%2029L84%2029M92.6%2021.6L88.7%2017.7'%20stroke-width%3D'2.88'%2F%3E%20%3C%2Fg%3E%20%3Cg%20fill%3D'rgba(120%2C86%2C56%2C.10)'%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-204)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-192)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-180)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-96)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-168)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-84)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-156)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-72)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-144)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-60)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-132)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-48)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-36)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-24)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%2064.7)%20rotate(-54)'%2F%3E%3Cg%20transform%3D'matrix(-1%200%200%201%20200%200)'%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-204)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-192)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-180)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-96)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-168)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-84)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-156)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-72)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-144)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-60)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-132)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-48)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-36)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-24)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%2064.7)%20rotate(-54)'%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D'100'%20cy%3D'29'%20r%3D'6.4'%2F%3E%3Cpath%20d%3D'M100%20173C92%20166%2087.4%20161.4%2087.4%20157C87.4%20153.5%2090.1%20151.2%2093.2%20151.2C96%20151.2%2098.6%20153%20100%20155.6C101.4%20153%20104%20151.2%20106.8%20151.2C109.9%20151.2%20112.6%20153.5%20112.6%20157C112.6%20161.4%20108%20166%20100%20173Z'%2F%3E%3C%2Fg%3E%3Cg%20fill%3D'none'%20stroke%3D'rgba(120%2C86%2C56%2C.08)'%20stroke-width%3D'1.6'%3E%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'91'%2F%3E%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'83.4'%2F%3E%3Cpath%20d%3D'M184.6%20100L188.2%20100M184.39%20105.9L187.99%20106.15M183.78%20111.77L187.34%20112.28M182.75%20117.59L186.27%20118.34M181.32%20123.32L184.78%20124.31M179.5%20128.93L182.88%20130.17M177.29%20134.41L180.57%20135.87M174.7%20139.72L177.88%20141.41M171.74%20144.83L174.8%20146.74M168.44%20149.73L171.36%20151.84M164.81%20154.38L167.57%20156.69M160.86%20158.77L163.45%20161.27M156.61%20162.87L159.02%20165.55M152.08%20166.67L154.3%20169.5M147.31%20170.14L149.32%20173.12M142.3%20173.27L144.1%20176.38M137.09%20176.04L138.66%20179.27M131.69%20178.44L133.04%20181.78M126.14%20180.46L127.26%20183.88M120.47%20182.09L121.34%20185.58M114.69%20183.31L115.32%20186.86M108.84%20184.14L109.22%20187.72M102.95%20184.55L103.08%20188.15M97.05%20184.55L96.92%20188.15M91.16%20184.14L90.78%20187.72M85.31%20183.31L84.68%20186.86M79.53%20182.09L78.66%20185.58M73.86%20180.46L72.74%20183.88M68.31%20178.44L66.96%20181.78M62.91%20176.04L61.34%20179.27M57.7%20173.27L55.9%20176.38M52.69%20170.14L50.68%20173.12M47.92%20166.67L45.7%20169.5M43.39%20162.87L40.98%20165.55M39.14%20158.77L36.55%20161.27M35.19%20154.38L32.43%20156.69M31.56%20149.73L28.64%20151.84M28.26%20144.83L25.2%20146.74M25.3%20139.72L22.12%20141.41M22.71%20134.41L19.43%20135.87M20.5%20128.93L17.12%20130.17M18.68%20123.32L15.22%20124.31M17.25%20117.59L13.73%20118.34M16.22%20111.77L12.66%20112.28M15.61%20105.9L12.01%20106.15M15.4%20100L11.8%20100M15.61%2094.1L12.01%2093.85M16.22%2088.23L12.66%2087.72M17.25%2082.41L13.73%2081.66M18.68%2076.68L15.22%2075.69M20.5%2071.07L17.12%2069.83M22.71%2065.59L19.43%2064.13M25.3%2060.28L22.12%2058.59M28.26%2055.17L25.2%2053.26M31.56%2050.27L28.64%2048.16M35.19%2045.62L32.43%2043.31M39.14%2041.23L36.55%2038.73M43.39%2037.13L40.98%2034.45M47.92%2033.33L45.7%2030.5M52.69%2029.86L50.68%2026.88M57.7%2026.73L55.9%2023.62M62.91%2023.96L61.34%2020.73M68.31%2021.56L66.96%2018.22M73.86%2019.54L72.74%2016.12M79.53%2017.91L78.66%2014.42M85.31%2016.69L84.68%2013.14M91.16%2015.86L90.78%2012.28M97.05%2015.45L96.92%2011.85M102.95%2015.45L103.08%2011.85M108.84%2015.86L109.22%2012.28M114.69%2016.69L115.32%2013.14M120.47%2017.91L121.34%2014.42M126.14%2019.54L127.26%2016.12M131.69%2021.56L133.04%2018.22M137.09%2023.96L138.66%2020.73M142.3%2026.73L144.1%2023.62M147.31%2029.86L149.32%2026.88M152.08%2033.33L154.3%2030.5M156.61%2037.13L159.02%2034.45M160.86%2041.23L163.45%2038.73M164.81%2045.62L167.57%2043.31M168.44%2050.27L171.36%2048.16M171.74%2055.17L174.8%2053.26M174.7%2060.28L177.88%2058.59M177.29%2065.59L180.57%2064.13M179.5%2071.07L182.88%2069.83M181.32%2076.68L184.78%2075.69M182.75%2082.41L186.27%2081.66M183.78%2088.23L187.34%2087.72M184.39%2094.1L187.99%2093.85'%2F%3E%3C%2Fg%3E%3C%2Fg%3E%20%3Cg%20fill%3D'none'%20stroke%3D'rgba(255%2C255%2C255%2C.85)'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%20%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'36'%20stroke-width%3D'4'%2F%3E%20%3Cellipse%20cx%3D'100'%20cy%3D'100'%20rx%3D'12.5'%20ry%3D'36'%20stroke-width%3D'2.38'%2F%3E%20%3Cellipse%20cx%3D'100'%20cy%3D'100'%20rx%3D'25'%20ry%3D'36'%20stroke-width%3D'2.38'%2F%3E%20%3Cpath%20d%3D'M100%2064V136M64%20100H136M68.8%2082H131.2M68.8%20118H131.2'%20stroke-width%3D'2.38'%2F%3E%20%3Cpath%20d%3D'M89.6%20159.1L85.5%20158.2L81.5%20157.1L77.5%20155.6L73.7%20153.9L70%20152L66.4%20149.7L63.1%20147.3L59.9%20144.6L56.8%20141.7L54%20138.6L51.5%20135.3L49.1%20131.8L47%20128.2L45.2%20124.4L43.6%20120.5L42.3%20116.5L41.3%20112.5L40.6%20108.4L40.1%20104.2L40%20100L40.1%2095.8L40.6%2091.6L41.3%2087.5L42.3%2083.5L43.6%2079.5L45.2%2075.6L47%2071.8L49.1%2068.2L51.5%2064.7'%20stroke-width%3D'2.63'%2F%3E%3Cpath%20d%3D'M89.6%20159.1L85.5%20158.2L81.5%20157.1L77.5%20155.6L73.7%20153.9L70%20152L66.4%20149.7L63.1%20147.3L59.9%20144.6L56.8%20141.7L54%20138.6L51.5%20135.3L49.1%20131.8L47%20128.2L45.2%20124.4L43.6%20120.5L42.3%20116.5L41.3%20112.5L40.6%20108.4L40.1%20104.2L40%20100L40.1%2095.8L40.6%2091.6L41.3%2087.5L42.3%2083.5L43.6%2079.5L45.2%2075.6L47%2071.8L49.1%2068.2L51.5%2064.7'%20stroke-width%3D'2.63'%20transform%3D'matrix(-1%200%200%201%20200%200)'%2F%3E%20%3Cpath%20d%3D'M100%2018.5L100%2013M107.4%2021.6L111.3%2017.7M110.5%2029L116%2029M107.4%2036.4L111.3%2040.3M100%2039.5L100%2045M92.6%2036.4L88.7%2040.3M89.5%2029L84%2029M92.6%2021.6L88.7%2017.7'%20stroke-width%3D'2.88'%2F%3E%20%3C%2Fg%3E%20%3Cg%20fill%3D'rgba(255%2C255%2C255%2C.85)'%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-204)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-192)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-180)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-96)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-168)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-84)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-156)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-72)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-144)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-60)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-132)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-48)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-36)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-24)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%2064.7)%20rotate(-54)'%2F%3E%3Cg%20transform%3D'matrix(-1%200%200%201%20200%200)'%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-204)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-192)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-180)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-96)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-168)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-84)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-156)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-72)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-144)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-60)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-132)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-48)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-36)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-24)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%2064.7)%20rotate(-54)'%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D'100'%20cy%3D'29'%20r%3D'6.4'%2F%3E%3Cpath%20d%3D'M100%20173C92%20166%2087.4%20161.4%2087.4%20157C87.4%20153.5%2090.1%20151.2%2093.2%20151.2C96%20151.2%2098.6%20153%20100%20155.6C101.4%20153%20104%20151.2%20106.8%20151.2C109.9%20151.2%20112.6%20153.5%20112.6%20157C112.6%20161.4%20108%20166%20100%20173Z'%2F%3E%3C%2Fg%3E%3Cg%20fill%3D'none'%20stroke%3D'rgba(255%2C255%2C255%2C.8)'%20stroke-width%3D'1.6'%3E%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'91'%2F%3E%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'83.4'%2F%3E%3Cpath%20d%3D'M184.6%20100L188.2%20100M184.39%20105.9L187.99%20106.15M183.78%20111.77L187.34%20112.28M182.75%20117.59L186.27%20118.34M181.32%20123.32L184.78%20124.31M179.5%20128.93L182.88%20130.17M177.29%20134.41L180.57%20135.87M174.7%20139.72L177.88%20141.41M171.74%20144.83L174.8%20146.74M168.44%20149.73L171.36%20151.84M164.81%20154.38L167.57%20156.69M160.86%20158.77L163.45%20161.27M156.61%20162.87L159.02%20165.55M152.08%20166.67L154.3%20169.5M147.31%20170.14L149.32%20173.12M142.3%20173.27L144.1%20176.38M137.09%20176.04L138.66%20179.27M131.69%20178.44L133.04%20181.78M126.14%20180.46L127.26%20183.88M120.47%20182.09L121.34%20185.58M114.69%20183.31L115.32%20186.86M108.84%20184.14L109.22%20187.72M102.95%20184.55L103.08%20188.15M97.05%20184.55L96.92%20188.15M91.16%20184.14L90.78%20187.72M85.31%20183.31L84.68%20186.86M79.53%20182.09L78.66%20185.58M73.86%20180.46L72.74%20183.88M68.31%20178.44L66.96%20181.78M62.91%20176.04L61.34%20179.27M57.7%20173.27L55.9%20176.38M52.69%20170.14L50.68%20173.12M47.92%20166.67L45.7%20169.5M43.39%20162.87L40.98%20165.55M39.14%20158.77L36.55%20161.27M35.19%20154.38L32.43%20156.69M31.56%20149.73L28.64%20151.84M28.26%20144.83L25.2%20146.74M25.3%20139.72L22.12%20141.41M22.71%20134.41L19.43%20135.87M20.5%20128.93L17.12%20130.17M18.68%20123.32L15.22%20124.31M17.25%20117.59L13.73%20118.34M16.22%20111.77L12.66%20112.28M15.61%20105.9L12.01%20106.15M15.4%20100L11.8%20100M15.61%2094.1L12.01%2093.85M16.22%2088.23L12.66%2087.72M17.25%2082.41L13.73%2081.66M18.68%2076.68L15.22%2075.69M20.5%2071.07L17.12%2069.83M22.71%2065.59L19.43%2064.13M25.3%2060.28L22.12%2058.59M28.26%2055.17L25.2%2053.26M31.56%2050.27L28.64%2048.16M35.19%2045.62L32.43%2043.31M39.14%2041.23L36.55%2038.73M43.39%2037.13L40.98%2034.45M47.92%2033.33L45.7%2030.5M52.69%2029.86L50.68%2026.88M57.7%2026.73L55.9%2023.62M62.91%2023.96L61.34%2020.73M68.31%2021.56L66.96%2018.22M73.86%2019.54L72.74%2016.12M79.53%2017.91L78.66%2014.42M85.31%2016.69L84.68%2013.14M91.16%2015.86L90.78%2012.28M97.05%2015.45L96.92%2011.85M102.95%2015.45L103.08%2011.85M108.84%2015.86L109.22%2012.28M114.69%2016.69L115.32%2013.14M120.47%2017.91L121.34%2014.42M126.14%2019.54L127.26%2016.12M131.69%2021.56L133.04%2018.22M137.09%2023.96L138.66%2020.73M142.3%2026.73L144.1%2023.62M147.31%2029.86L149.32%2026.88M152.08%2033.33L154.3%2030.5M156.61%2037.13L159.02%2034.45M160.86%2041.23L163.45%2038.73M164.81%2045.62L167.57%2043.31M168.44%2050.27L171.36%2048.16M171.74%2055.17L174.8%2053.26M174.7%2060.28L177.88%2058.59M177.29%2065.59L180.57%2064.13M179.5%2071.07L182.88%2069.83M181.32%2076.68L184.78%2075.69M182.75%2082.41L186.27%2081.66M183.78%2088.23L187.34%2087.72M184.39%2094.1L187.99%2093.85'%2F%3E%3C%2Fg%3E%20%3C%2Fg%3E%3C%2Fsvg%3E");
+  --tex-wm-through: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20viewBox%3D'0%200%20200%20200'%3E%20%3Cfilter%20id%3D's'%20x%3D'-5%25'%20y%3D'-5%25'%20width%3D'110%25'%20height%3D'110%25'%3E%3CfeGaussianBlur%20stdDeviation%3D'1.2'%2F%3E%3C%2Ffilter%3E%20%3Cg%20filter%3D'url(%23s)'%3E%3Cg%20fill%3D'none'%20stroke%3D'rgba(255%2C250%2C236%2C.7)'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%20%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'36'%20stroke-width%3D'4.16'%2F%3E%20%3Cellipse%20cx%3D'100'%20cy%3D'100'%20rx%3D'12.5'%20ry%3D'36'%20stroke-width%3D'2.47'%2F%3E%20%3Cellipse%20cx%3D'100'%20cy%3D'100'%20rx%3D'25'%20ry%3D'36'%20stroke-width%3D'2.47'%2F%3E%20%3Cpath%20d%3D'M100%2064V136M64%20100H136M68.8%2082H131.2M68.8%20118H131.2'%20stroke-width%3D'2.47'%2F%3E%20%3Cpath%20d%3D'M89.6%20159.1L85.5%20158.2L81.5%20157.1L77.5%20155.6L73.7%20153.9L70%20152L66.4%20149.7L63.1%20147.3L59.9%20144.6L56.8%20141.7L54%20138.6L51.5%20135.3L49.1%20131.8L47%20128.2L45.2%20124.4L43.6%20120.5L42.3%20116.5L41.3%20112.5L40.6%20108.4L40.1%20104.2L40%20100L40.1%2095.8L40.6%2091.6L41.3%2087.5L42.3%2083.5L43.6%2079.5L45.2%2075.6L47%2071.8L49.1%2068.2L51.5%2064.7'%20stroke-width%3D'2.73'%2F%3E%3Cpath%20d%3D'M89.6%20159.1L85.5%20158.2L81.5%20157.1L77.5%20155.6L73.7%20153.9L70%20152L66.4%20149.7L63.1%20147.3L59.9%20144.6L56.8%20141.7L54%20138.6L51.5%20135.3L49.1%20131.8L47%20128.2L45.2%20124.4L43.6%20120.5L42.3%20116.5L41.3%20112.5L40.6%20108.4L40.1%20104.2L40%20100L40.1%2095.8L40.6%2091.6L41.3%2087.5L42.3%2083.5L43.6%2079.5L45.2%2075.6L47%2071.8L49.1%2068.2L51.5%2064.7'%20stroke-width%3D'2.73'%20transform%3D'matrix(-1%200%200%201%20200%200)'%2F%3E%20%3Cpath%20d%3D'M100%2018.5L100%2013M107.4%2021.6L111.3%2017.7M110.5%2029L116%2029M107.4%2036.4L111.3%2040.3M100%2039.5L100%2045M92.6%2036.4L88.7%2040.3M89.5%2029L84%2029M92.6%2021.6L88.7%2017.7'%20stroke-width%3D'2.99'%2F%3E%20%3C%2Fg%3E%20%3Cg%20fill%3D'rgba(255%2C250%2C236%2C.7)'%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-204)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-192)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-180)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-96)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-168)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-84)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-156)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-72)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-144)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-60)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-132)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-48)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-36)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-24)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%2064.7)%20rotate(-54)'%2F%3E%3Cg%20transform%3D'matrix(-1%200%200%201%20200%200)'%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-204)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(81.5%20157.1)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-192)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(70%20152)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-180)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(59.9%20144.6)%20rotate(-96)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-168)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%20135.3)%20rotate(-84)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-156)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%20124.4)%20rotate(-72)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-144)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%20112.5)%20rotate(-60)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-132)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(40%20100)%20rotate(-48)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-120)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(41.3%2087.5)%20rotate(-36)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-108)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(45.2%2075.6)%20rotate(-24)'%2F%3E%3Cpath%20d%3D'M0%200C3.3-3.5%208.8-3.9%2013.4%200C8.8%203.9%203.3%203.5%200%200Z'%20transform%3D'translate(51.5%2064.7)%20rotate(-54)'%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D'100'%20cy%3D'29'%20r%3D'6.4'%2F%3E%3Cpath%20d%3D'M100%20173C92%20166%2087.4%20161.4%2087.4%20157C87.4%20153.5%2090.1%20151.2%2093.2%20151.2C96%20151.2%2098.6%20153%20100%20155.6C101.4%20153%20104%20151.2%20106.8%20151.2C109.9%20151.2%20112.6%20153.5%20112.6%20157C112.6%20161.4%20108%20166%20100%20173Z'%2F%3E%3C%2Fg%3E%3Cg%20fill%3D'none'%20stroke%3D'rgba(255%2C250%2C236%2C.62)'%20stroke-width%3D'1.8'%3E%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'91'%2F%3E%3Ccircle%20cx%3D'100'%20cy%3D'100'%20r%3D'83.4'%2F%3E%3Cpath%20d%3D'M184.6%20100L188.2%20100M184.39%20105.9L187.99%20106.15M183.78%20111.77L187.34%20112.28M182.75%20117.59L186.27%20118.34M181.32%20123.32L184.78%20124.31M179.5%20128.93L182.88%20130.17M177.29%20134.41L180.57%20135.87M174.7%20139.72L177.88%20141.41M171.74%20144.83L174.8%20146.74M168.44%20149.73L171.36%20151.84M164.81%20154.38L167.57%20156.69M160.86%20158.77L163.45%20161.27M156.61%20162.87L159.02%20165.55M152.08%20166.67L154.3%20169.5M147.31%20170.14L149.32%20173.12M142.3%20173.27L144.1%20176.38M137.09%20176.04L138.66%20179.27M131.69%20178.44L133.04%20181.78M126.14%20180.46L127.26%20183.88M120.47%20182.09L121.34%20185.58M114.69%20183.31L115.32%20186.86M108.84%20184.14L109.22%20187.72M102.95%20184.55L103.08%20188.15M97.05%20184.55L96.92%20188.15M91.16%20184.14L90.78%20187.72M85.31%20183.31L84.68%20186.86M79.53%20182.09L78.66%20185.58M73.86%20180.46L72.74%20183.88M68.31%20178.44L66.96%20181.78M62.91%20176.04L61.34%20179.27M57.7%20173.27L55.9%20176.38M52.69%20170.14L50.68%20173.12M47.92%20166.67L45.7%20169.5M43.39%20162.87L40.98%20165.55M39.14%20158.77L36.55%20161.27M35.19%20154.38L32.43%20156.69M31.56%20149.73L28.64%20151.84M28.26%20144.83L25.2%20146.74M25.3%20139.72L22.12%20141.41M22.71%20134.41L19.43%20135.87M20.5%20128.93L17.12%20130.17M18.68%20123.32L15.22%20124.31M17.25%20117.59L13.73%20118.34M16.22%20111.77L12.66%20112.28M15.61%20105.9L12.01%20106.15M15.4%20100L11.8%20100M15.61%2094.1L12.01%2093.85M16.22%2088.23L12.66%2087.72M17.25%2082.41L13.73%2081.66M18.68%2076.68L15.22%2075.69M20.5%2071.07L17.12%2069.83M22.71%2065.59L19.43%2064.13M25.3%2060.28L22.12%2058.59M28.26%2055.17L25.2%2053.26M31.56%2050.27L28.64%2048.16M35.19%2045.62L32.43%2043.31M39.14%2041.23L36.55%2038.73M43.39%2037.13L40.98%2034.45M47.92%2033.33L45.7%2030.5M52.69%2029.86L50.68%2026.88M57.7%2026.73L55.9%2023.62M62.91%2023.96L61.34%2020.73M68.31%2021.56L66.96%2018.22M73.86%2019.54L72.74%2016.12M79.53%2017.91L78.66%2014.42M85.31%2016.69L84.68%2013.14M91.16%2015.86L90.78%2012.28M97.05%2015.45L96.92%2011.85M102.95%2015.45L103.08%2011.85M108.84%2015.86L109.22%2012.28M114.69%2016.69L115.32%2013.14M120.47%2017.91L121.34%2014.42M126.14%2019.54L127.26%2016.12M131.69%2021.56L133.04%2018.22M137.09%2023.96L138.66%2020.73M142.3%2026.73L144.1%2023.62M147.31%2029.86L149.32%2026.88M152.08%2033.33L154.3%2030.5M156.61%2037.13L159.02%2034.45M160.86%2041.23L163.45%2038.73M164.81%2045.62L167.57%2043.31M168.44%2050.27L171.36%2048.16M171.74%2055.17L174.8%2053.26M174.7%2060.28L177.88%2058.59M177.29%2065.59L180.57%2064.13M179.5%2071.07L182.88%2069.83M181.32%2076.68L184.78%2075.69M182.75%2082.41L186.27%2081.66M183.78%2088.23L187.34%2087.72M184.39%2094.1L187.99%2093.85'%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --tex-portolan: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20viewBox%3D'0%200%20100%20142'%20preserveAspectRatio%3D'xMidYMid%20slice'%3E%3Cg%20fill%3D'none'%20opacity%3D'.62'%3E%3Cpath%20d%3D'M50%2071L190%2071'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L187.3%2098.3'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L179.3%20124.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L166.4%20148.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L149%20170'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L127.8%20187.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L103.6%20200.3'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L77.3%20208.3'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L50%20211'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L22.7%20208.3'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-3.6%20200.3'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-27.8%20187.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-49%20170'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-66.4%20148.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-79.3%20124.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-87.3%2098.3'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-90%2071'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-87.3%2043.7'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-79.3%2017.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-66.4%20-6.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-49%20-28'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-27.8%20-45.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L-3.6%20-58.3'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L22.7%20-66.3'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L50%20-69'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L77.3%20-66.3'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L103.6%20-58.3'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L127.8%20-45.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L149%20-28'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L166.4%20-6.8'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L179.3%2017.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M50%2071L187.3%2043.7'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.16'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L148.8%2087.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L144.2%20110'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L131.2%20129.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L111.8%20142.5'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L88.8%20147.1'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L65.8%20142.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L46.4%20129.5'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L33.4%20110'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L28.8%2087.1'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L33.4%2064.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L46.4%2044.6'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L65.8%2031.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L88.8%2027.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L111.8%2031.6'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L131.2%2044.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2087.1L144.2%2064.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L126.1%20109.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L121.5%20132.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L108.5%20152.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L89%20165.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L66.1%20169.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L43.1%20165.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L23.6%20152.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L10.6%20132.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L6.1%20109.8'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L10.6%2086.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L23.6%2067.4'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L43.1%2054.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L66.1%2049.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L89%2054.4'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L108.5%2067.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%20109.8L121.5%2086.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L93.9%20109.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L89.4%20132.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L76.4%20152.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L56.9%20165.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L33.9%20169.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L11%20165.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L-8.5%20152.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L-21.5%20132.8'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L-26.1%20109.8'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L-21.5%2086.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L-8.5%2067.4'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L11%2054.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L33.9%2049.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L56.9%2054.4'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L76.4%2067.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%20109.8L89.4%2086.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L71.2%2087.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L66.6%20110'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L53.6%20129.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L34.2%20142.5'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L11.2%20147.1'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-11.8%20142.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-31.2%20129.5'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-44.2%20110'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-48.8%2087.1'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-44.2%2064.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-31.2%2044.6'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L-11.8%2031.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L11.2%2027.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L34.2%2031.6'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L53.6%2044.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2087.1L66.6%2064.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L71.2%2054.9'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L66.6%2077.9'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L53.6%2097.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L34.2%20110.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L11.2%20114.9'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-11.8%20110.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-31.2%2097.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-44.2%2077.9'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-48.8%2054.9'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-44.2%2032'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-31.2%2012.5'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L-11.8%20-0.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L11.2%20-5.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L34.2%20-0.5'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L53.6%2012.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M11.2%2054.9L66.6%2032'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L93.9%2032.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L89.4%2055.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L76.4%2074.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L56.9%2087.6'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L33.9%2092.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L11%2087.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L-8.5%2074.6'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L-21.5%2055.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L-26.1%2032.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L-21.5%209.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L-8.5%20-10.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L11%20-23.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L33.9%20-27.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L56.9%20-23.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L76.4%20-10.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M33.9%2032.2L89.4%209.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L126.1%2032.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L121.5%2055.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L108.5%2074.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L89%2087.6'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L66.1%2092.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L43.1%2087.6'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L23.6%2074.6'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L10.6%2055.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L6.1%2032.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L10.6%209.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L23.6%20-10.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L43.1%20-23.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L66.1%20-27.8'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L89%20-23.2'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L108.5%20-10.2'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M66.1%2032.2L121.5%209.2'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L148.8%2054.9'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L144.2%2077.9'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L131.2%2097.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L111.8%20110.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L88.8%20114.9'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L65.8%20110.4'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L46.4%2097.4'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L33.4%2077.9'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L28.8%2054.9'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L33.4%2032'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L46.4%2012.5'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L65.8%20-0.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L88.8%20-5.1'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L111.8%20-0.5'%20stroke%3D'%238E6E3C'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L131.2%2012.5'%20stroke%3D'%232B1A1E'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M88.8%2054.9L144.2%2032'%20stroke%3D'%237A1F35'%20stroke-width%3D'0.12'%2F%3E%3Cpath%20d%3D'M-3.3%20140.8C-3%20139.9%20-2.3%20137.4%20-1.1%20135.5C0.1%20133.6%202.5%20131.1%203.8%20129.2C5%20127.2%205.3%20124.5%206.2%20123.9C7.2%20123.3%208.7%20126.2%209.4%20125.5C10.2%20124.8%2010.1%20121.3%2010.8%20119.8C11.4%20118.2%2012.3%20116.8%2013.5%20116C14.7%20115.1%2016.1%20114.6%2017.8%20114.6C19.5%20114.7%2022.5%20116.5%2023.6%20116.3C24.6%20116.1%2023.7%20113.8%2024.3%20113.6C24.8%20113.3%2026.1%20114.3%2026.9%20114.8C27.8%20115.2%2028%20115.7%2029.5%20116.4C30.9%20117.1%2034.4%20117.8%2035.6%20119C36.8%20120.3%2036%20122.3%2036.8%20123.8C37.7%20125.2%2039.1%20126.4%2040.5%20127.6C41.8%20128.8%2043.5%20129.8%2044.9%20131.2C46.3%20132.6%2048.2%20134.3%2048.9%20136.2C49.6%20138.1%2048.5%20140.9%2049.1%20142.7C49.7%20144.5%2051.9%20146.2%2052.5%20146.9L54%20146L-4%20146Z'%20fill%3D'%23E9D9BC'%20fill-opacity%3D'.55'%20stroke%3D'%237A1F35'%20stroke-width%3D'.35'%2F%3E%3Cpath%20d%3D'M-3.3%20138.6C-3%20137.7%20-2.3%20135.2%20-1.1%20133.3C0.1%20131.4%202.5%20128.9%203.8%20127C5%20125%205.3%20122.3%206.2%20121.7C7.2%20121.1%208.7%20124%209.4%20123.3C10.2%20122.6%2010.1%20119.1%2010.8%20117.6C11.4%20116%2012.3%20114.6%2013.5%20113.8C14.7%20112.9%2016.1%20112.4%2017.8%20112.4C19.5%20112.5%2022.5%20114.3%2023.6%20114.1C24.6%20113.9%2023.7%20111.6%2024.3%20111.4C24.8%20111.1%2026.1%20112.1%2026.9%20112.6C27.8%20113%2028%20113.5%2029.5%20114.2C30.9%20114.9%2034.4%20115.6%2035.6%20116.8C36.8%20118.1%2036%20120.1%2036.8%20121.6C37.7%20123%2039.1%20124.2%2040.5%20125.4C41.8%20126.6%2043.5%20127.6%2044.9%20129C46.3%20130.4%2048.2%20132.1%2048.9%20134C49.6%20135.9%2048.5%20138.7%2049.1%20140.5C49.7%20142.3%2051.9%20144%2052.5%20144.7'%20stroke%3D'%237A1F35'%20stroke-width%3D'.2'%20stroke-opacity%3D'0.38'%2F%3E%3Cpath%20d%3D'M-3.3%20136.4C-3%20135.5%20-2.3%20133%20-1.1%20131.1C0.1%20129.2%202.5%20126.7%203.8%20124.8C5%20122.8%205.3%20120.1%206.2%20119.5C7.2%20118.9%208.7%20121.8%209.4%20121.1C10.2%20120.4%2010.1%20116.9%2010.8%20115.4C11.4%20113.8%2012.3%20112.4%2013.5%20111.6C14.7%20110.7%2016.1%20110.2%2017.8%20110.2C19.5%20110.3%2022.5%20112.1%2023.6%20111.9C24.6%20111.7%2023.7%20109.4%2024.3%20109.2C24.8%20108.9%2026.1%20109.9%2026.9%20110.4C27.8%20110.8%2028%20111.3%2029.5%20112C30.9%20112.7%2034.4%20113.4%2035.6%20114.6C36.8%20115.9%2036%20117.9%2036.8%20119.4C37.7%20120.8%2039.1%20122%2040.5%20123.2C41.8%20124.4%2043.5%20125.4%2044.9%20126.8C46.3%20128.2%2048.2%20129.9%2048.9%20131.8C49.6%20133.7%2048.5%20136.5%2049.1%20138.3C49.7%20140.1%2051.9%20141.8%2052.5%20142.5'%20stroke%3D'%237A1F35'%20stroke-width%3D'.2'%20stroke-opacity%3D'0.26'%2F%3E%3Cpath%20d%3D'M-3.3%20134.2C-3%20133.3%20-2.3%20130.8%20-1.1%20128.9C0.1%20127%202.5%20124.5%203.8%20122.6C5%20120.6%205.3%20117.9%206.2%20117.3C7.2%20116.7%208.7%20119.6%209.4%20118.9C10.2%20118.2%2010.1%20114.7%2010.8%20113.2C11.4%20111.6%2012.3%20110.2%2013.5%20109.4C14.7%20108.5%2016.1%20108%2017.8%20108C19.5%20108.1%2022.5%20109.9%2023.6%20109.7C24.6%20109.5%2023.7%20107.2%2024.3%20107C24.8%20106.7%2026.1%20107.7%2026.9%20108.2C27.8%20108.6%2028%20109.1%2029.5%20109.8C30.9%20110.5%2034.4%20111.2%2035.6%20112.4C36.8%20113.7%2036%20115.7%2036.8%20117.2C37.7%20118.6%2039.1%20119.8%2040.5%20121C41.8%20122.2%2043.5%20123.2%2044.9%20124.6C46.3%20126%2048.2%20127.7%2048.9%20129.6C49.6%20131.5%2048.5%20134.3%2049.1%20136.1C49.7%20137.9%2051.9%20139.6%2052.5%20140.3'%20stroke%3D'%237A1F35'%20stroke-width%3D'.2'%20stroke-opacity%3D'0.14'%2F%3E%3Cpath%20d%3D'M88.9%2028C88.7%2029.2%2087.3%2030.4%2086.4%2031.4C85.4%2032.5%2084.6%2034%2083.2%2034.4C81.8%2034.8%2079.8%2033.7%2078%2033.9C76.2%2034%2073.8%2035.5%2072.2%2035.2C70.6%2034.9%2068.9%2033.2%2068.3%2032C67.7%2030.8%2068.1%2029.2%2068.5%2028C68.9%2026.8%2070%2026.1%2070.7%2025C71.4%2023.9%2071.3%2021.8%2072.5%2021.2C73.8%2020.7%2076.3%2021.5%2078%2021.6C79.7%2021.8%2081.2%2021.7%2082.8%2022.1C84.4%2022.5%2086.5%2023.1%2087.5%2024.1C88.5%2025.1%2089.1%2026.8%2088.9%2028Z'%20fill%3D'%23E9D9BC'%20fill-opacity%3D'.6'%20stroke%3D'%237A1F35'%20stroke-width%3D'.35'%2F%3E%3Cpath%20d%3D'M91.6%2028C91.4%2029.6%2089.6%2031.1%2088.5%2032.5C87.3%2033.9%2086.2%2035.8%2084.5%2036.4C82.7%2036.9%2080.3%2035.5%2078%2035.6C75.7%2035.8%2072.7%2037.8%2070.7%2037.4C68.7%2036.9%2066.7%2034.7%2065.9%2033.2C65.2%2031.6%2065.6%2029.5%2066.1%2028C66.6%2026.5%2068%2025.5%2068.8%2024.1C69.7%2022.6%2069.6%2019.9%2071.2%2019.2C72.7%2018.5%2075.9%2019.6%2078%2019.7C80.1%2019.9%2082%2019.8%2084%2020.3C85.9%2020.9%2088.6%2021.6%2089.9%2022.9C91.2%2024.2%2091.9%2026.4%2091.6%2028Z'%20stroke%3D'%237A1F35'%20stroke-width%3D'.2'%20stroke-opacity%3D'.4'%2F%3E%3Cg%20transform%3D'translate(50%2071)'%3E%3Ccircle%20r%3D'15'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.4'%2F%3E%3Ccircle%20r%3D'13.4'%20stroke%3D'%238E6E3C'%20stroke-width%3D'.25'%20stroke-dasharray%3D'.6%20.9'%2F%3E%3Cpath%20d%3D'M0%200L2.6%200L0%20-20Z'%20fill%3D'%237A1F35'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-2.6%200L0%20-20Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L1.5%200.6L3.4%20-8.3Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-1.5%20-0.6L3.4%20-8.3Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L1.1%201.1L9.2%20-9.2Z'%20fill%3D'%23B8935A'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-1.1%20-1.1L9.2%20-9.2Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%23B8935A'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L0.6%201.5L8.3%20-3.4Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-0.6%20-1.5L8.3%20-3.4Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L0%202.6L20%200Z'%20fill%3D'%237A1F35'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L0%20-2.6L20%200Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-0.6%201.5L8.3%203.4Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L0.6%20-1.5L8.3%203.4Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-1.1%201.1L9.2%209.2Z'%20fill%3D'%23B8935A'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L1.1%20-1.1L9.2%209.2Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%23B8935A'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-1.5%200.6L3.4%208.3Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L1.5%20-0.6L3.4%208.3Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-2.6%200L0%2020Z'%20fill%3D'%237A1F35'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L2.6%200L0%2020Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-1.5%20-0.6L-3.4%208.3Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L1.5%200.6L-3.4%208.3Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-1.1%20-1.1L-9.2%209.2Z'%20fill%3D'%23B8935A'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L1.1%201.1L-9.2%209.2Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%23B8935A'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L-0.6%20-1.5L-8.3%203.4Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L0.6%201.5L-8.3%203.4Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L0%20-2.6L-20%200Z'%20fill%3D'%237A1F35'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L0%202.6L-20%200Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L0.6%20-1.5L-8.3%20-3.4Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-0.6%201.5L-8.3%20-3.4Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L1.1%20-1.1L-9.2%20-9.2Z'%20fill%3D'%23B8935A'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-1.1%201.1L-9.2%20-9.2Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%23B8935A'%20stroke-width%3D'.25'%2F%3E%3Cpath%20d%3D'M0%200L1.5%20-0.6L-3.4%20-8.3Z'%20fill%3D'%232B1A1E'%20fill-opacity%3D'.85'%2F%3E%3Cpath%20d%3D'M0%200L-1.5%200.6L-3.4%20-8.3Z'%20fill%3D'%23F6EDDD'%20stroke%3D'%232B1A1E'%20stroke-width%3D'.25'%2F%3E%3Ccircle%20r%3D'1.4'%20fill%3D'%23B8935A'%20stroke%3D'%237A1F35'%20stroke-width%3D'.3'%2F%3E%3C%2Fg%3E%3Cg%20transform%3D'translate(88.8%2087.1)'%3E%3Ccircle%20r%3D'3.2'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.3'%2F%3E%3Cpath%20d%3D'M0%20-4.6L.9%200L0%204.6L-.9%200Z%20M-4.6%200L0%20.9L4.6%200L0%20-.9Z'%20fill%3D'%237A1F35'%20fill-opacity%3D'.8'%2F%3E%3C%2Fg%3E%3Cg%20transform%3D'translate(11.2%2054.9)'%3E%3Ccircle%20r%3D'3.2'%20fill%3D'%23F6EDDD'%20stroke%3D'%237A1F35'%20stroke-width%3D'.3'%2F%3E%3Cpath%20d%3D'M0%20-4.6L.9%200L0%204.6L-.9%200Z%20M-4.6%200L0%20.9L4.6%200L0%20-.9Z'%20fill%3D'%237A1F35'%20fill-opacity%3D'.8'%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  --tex-map: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20viewBox%3D'200%200%20600%201000'%20preserveAspectRatio%3D'xMidYMid%20slice'%3E%20%3Cstyle%3E*%7Bvector-effect%3Anon-scaling-stroke%7Dtext%7Bfont-family%3AGeorgia%2C'Times%20New%20Roman'%2Cserif%3Bfont-style%3Aitalic%3Bfont-size%3A17px%3Bfill%3Argba(15%2C95%2C93%2C.34)%3Bletter-spacing%3A.02em%7D%3C%2Fstyle%3E%20%3Cg%20opacity%3D'.62'%3E%3Cg%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%20%3Cpath%20d%3D'M200%200V1000M400%200V1000M600%200V1000M800%200V1000M1000%200V1000M1200%200V1000M1400%200V1000M0%20200H1600M0%20400H1600M0%20600H1600M0%20800H1600'%20stroke%3D'rgba(15%2C110%2C108%2C.07)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M0%200H470455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000V1000H0Z'%20fill%3D'rgba(15%2C140%2C138%2C.07)'%20stroke%3D'none'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20stroke%3D'rgba(15%2C110%2C108%2C.34)'%20stroke-width%3D'1.5'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20transform%3D'translate(-12%200)'%20stroke%3D'rgba(15%2C110%2C108%2C.16)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20transform%3D'translate(-26%200)'%20stroke%3D'rgba(15%2C110%2C108%2C.10)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20transform%3D'translate(-44%200)'%20stroke%3D'rgba(15%2C110%2C108%2C.06)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M400%20118C418%20108%20448%20112%20462%20122C450%20131%20420%20131%20400%20118Z%20M448%20190C460%20205%20466%20236%20458%20262C450%20240%20444%20214%20448%20190Z'%20fill%3D'rgba(255%2C253%2C249%2C.5)'%20stroke%3D'rgba(15%2C110%2C108%2C.34)'%20stroke-width%3D'1.2'%2F%3E%20%3Cpath%20d%3D'M500%20318C540%20352%20590%20410%20640%20470C700%20540%20800%20600%20900%20640C1100%20720%201300%20740%201600%20760'%20stroke%3D'rgba(70%2C160%2C190%2C.20)'%20stroke-width%3D'5'%2F%3E%20%3Cpath%20d%3D'M600%20420C700%20440%20850%20455%201000%20470C1150%20480%201350%20440%201600%20400'%20stroke%3D'rgba(70%2C160%2C190%2C.18)'%20stroke-width%3D'3.5'%2F%3E%20%3Cpath%20d%3D'M500%201000C580%20958%20690%20992%20800%20950C900%20912%201000%20962%201100%20930C1210%20898%201320%20952%201600%20902'%20stroke%3D'rgba(15%2C110%2C108%2C0.13)'%2F%3E%3Cpath%20d%3D'M500%20978C580%20936%20690%20970%20800%20928C900%20890%201000%20940%201100%20908C1210%20876%201320%20930%201600%20880'%20stroke%3D'rgba(15%2C110%2C108%2C0.1)'%2F%3E%3Cpath%20d%3D'M500%20956C580%20914%20690%20948%20800%20906C900%20868%201000%20918%201100%20886C1210%20854%201320%20908%201600%20858'%20stroke%3D'rgba(15%2C110%2C108%2C0.07)'%2F%3E%3Cpath%20d%3D'M500%20934C580%20892%20690%20926%20800%20884C900%20846%201000%20896%201100%20864C1210%20832%201320%20886%201600%20836'%20stroke%3D'rgba(15%2C110%2C108%2C0.05)'%2F%3E%20%3Cpath%20d%3D'M1040%20520C1080%20500%201130%20512%201150%20540C1168%20566%201120%20590%201080%20580C1040%20570%201010%20545%201040%20520Z%20M1020%20505C1070%20470%201150%20488%201180%20530C1210%20575%201140%20615%201080%20605C1010%20595%20975%20545%201020%20505Z'%20stroke%3D'rgba(15%2C110%2C108%2C.09)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M505%20312C560%20360%20600%20420%20640%20470'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M505%20312C560%20360%20600%20420%20640%20470'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M600%20720C640%20700%20700%20690%20760%20700C820%20712%20880%20690%20940%20660'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M600%20720C640%20700%20700%20690%20760%20700C820%20712%20880%20690%20940%20660'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M1000%20462C1030%20500%201080%20520%201140%20530C1200%20540%201260%20600%201300%20660'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M1000%20462C1030%20500%201080%20520%201140%20530C1200%20540%201260%20600%201300%20660'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M455%20140C520%20150%20600%20180%20690%20200'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M455%20140C520%20150%20600%20180%20690%20200'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M690%20330C800%20330%20900%20380%201000%20462'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M690%20330C800%20330%20900%20380%201000%20462'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M540%20905C620%20880%20700%20900%20780%20880'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M540%20905C620%20880%20700%20900%20780%20880'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%20%3Cpath%20d%3D'M760%200C730%20120%20700%20230%20690%20330C682%20400%20660%20440%20640%20470'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M760%200C730%20120%20700%20230%20690%20330C682%20400%20660%20440%20640%20470'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M640%20470C650%20560%20610%20640%20600%20720C590%20800%20560%20860%20540%20905C535%20930%20548%20945%20560%20945'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M640%20470C650%20560%20610%20640%20600%20720C590%20800%20560%20860%20540%20905C535%20930%20548%20945%20560%20945'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M640%20470C760%20455%20880%20470%201000%20462C1150%20452%201320%20420%201600%20380'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M640%20470C760%20455%20880%20470%201000%20462C1150%20452%201320%20420%201600%20380'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M640%20470C760%20560%20900%20620%201060%20700C1220%20780%201400%20820%201600%20860'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M640%20470C760%20560%20900%20620%201060%20700C1220%20780%201400%20820%201600%20860'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M505%20312C560%20270%20620%20220%20690%20200C760%20180%20860%20150%201000%20140C1200%20128%201400%2090%201600%2060'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M505%20312C560%20270%20620%20220%20690%20200C760%20180%20860%20150%201000%20140C1200%20128%201400%2090%201600%2060'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%20%3Cpath%20d%3D'M640%20470C760%20400%20920%20410%201000%20462C1060%20380%20700%20140%20430%20122C470%20200%20520%20262%20505%20312C560%20500%20640%20640%20630%20700C620%20800%20580%20900%20560%20945'%20stroke%3D'rgba(122%2C31%2C53%2C.30)'%20stroke-width%3D'2.4'%20stroke-dasharray%3D'.5%209'%2F%3E%20%3Cpath%20d%3D'M1060%20700C1200%20760%201330%20860%201420%20930C1470%20965%201530%20985%201600%20990'%20stroke%3D'rgba(122%2C31%2C53%2C.26)'%20stroke-width%3D'2.4'%20stroke-dasharray%3D'.5%209'%2F%3E%20%3Cg%20transform%3D'translate(250%20840)'%20stroke%3D'rgba(15%2C110%2C108%2C.22)'%20stroke-width%3D'1.2'%3E%3Ccircle%20r%3D'34'%2F%3E%3Ccircle%20r%3D'27'%2F%3E%3Cpath%20d%3D'M0%20-52L7%20-7L52%200L7%207L0%2052L-7%207L-52%200L-7%20-7Z'%20fill%3D'rgba(255%2C253%2C249%2C.35)'%2F%3E%3Cpath%20d%3D'M0%20-52V52M-52%200H52'%2F%3E%3C%2Fg%3E%20%3C%2Fg%3E%20%3Ccircle%20cx%3D'430'%20cy%3D'122'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'505'%20cy%3D'312'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'640'%20cy%3D'470'%20r%3D'7'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'1000'%20cy%3D'462'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'630'%20cy%3D'700'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'560'%20cy%3D'945'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'1420'%20cy%3D'930'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%20%3Ctext%20x%3D'372'%20y%3D'96'%20text-anchor%3D'start'%3E%C3%8Ele%20de%20R%C3%A9%3C%2Ftext%3E%3Ctext%20x%3D'522'%20y%3D'336'%20text-anchor%3D'start'%3ERoyan%3C%2Ftext%3E%3Ctext%20x%3D'626'%20y%3D'500'%20text-anchor%3D'end'%3EBordeaux%3C%2Ftext%3E%3Ctext%20x%3D'1016'%20y%3D'492'%20text-anchor%3D'start'%3EDordogne%3C%2Ftext%3E%3Ctext%20x%3D'616'%20y%3D'728'%20text-anchor%3D'end'%3EMarqu%C3%A8ze%3C%2Ftext%3E%3Ctext%20x%3D'578'%20y%3D'972'%20text-anchor%3D'start'%3EEspelette%3C%2Ftext%3E%3Ctext%20x%3D'1404'%20y%3D'920'%20text-anchor%3D'end'%3ECollioure%3C%2Ftext%3E%3Ctext%20x%3D'1520'%20y%3D'975'%20text-anchor%3D'middle'%3EBarcelone%20%E2%80%BA%3C%2Ftext%3E%20%3C%2Fg%3E%3C%2Fsvg%3E");
+  --tex-grain: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20width%3D'200'%20height%3D'200'%3E%3Cfilter%20id%3D'n'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'.85'%20numOctaves%3D'3'%20seed%3D'2'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20values%3D'0%200%200%200%20.05%200%200%200%200%20.33%200%200%200%200%20.32%200%200%200%20.07%200'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'200'%20height%3D'200'%20filter%3D'url(%23n)'%2F%3E%3C%2Fsvg%3E");
+}
+@media (min-width: 760px) {
+  .screen-passport {
+    --tex-map: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20xmlns%3Axlink%3D'http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink'%20viewBox%3D'0%200%201600%201000'%20preserveAspectRatio%3D'xMidYMid%20slice'%3E%20%3Cstyle%3E*%7Bvector-effect%3Anon-scaling-stroke%7Dtext%7Bfont-family%3AGeorgia%2C'Times%20New%20Roman'%2Cserif%3Bfont-style%3Aitalic%3Bfont-size%3A17px%3Bfill%3Argba(15%2C95%2C93%2C.34)%3Bletter-spacing%3A.02em%7D%3C%2Fstyle%3E%20%3Cg%20opacity%3D'.62'%3E%3Cg%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%20%3Cpath%20d%3D'M200%200V1000M400%200V1000M600%200V1000M800%200V1000M1000%200V1000M1200%200V1000M1400%200V1000M0%20200H1600M0%20400H1600M0%20600H1600M0%20800H1600'%20stroke%3D'rgba(15%2C110%2C108%2C.07)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M0%200H470455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000V1000H0Z'%20fill%3D'rgba(15%2C140%2C138%2C.07)'%20stroke%3D'none'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20stroke%3D'rgba(15%2C110%2C108%2C.34)'%20stroke-width%3D'1.5'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20transform%3D'translate(-12%200)'%20stroke%3D'rgba(15%2C110%2C108%2C.16)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20transform%3D'translate(-26%200)'%20stroke%3D'rgba(15%2C110%2C108%2C.10)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M470%200C455%2050%20480%2095%20455%20140C440%20170%20470%20205%20492%20245C505%20270%20488%20292%20505%20312C522%20340%20482%20372%20470%20410C455%20480%20448%20570%20440%20660C434%20750%20428%20840%20425%20905C423%20945%20440%20978%20470%201000'%20transform%3D'translate(-44%200)'%20stroke%3D'rgba(15%2C110%2C108%2C.06)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M400%20118C418%20108%20448%20112%20462%20122C450%20131%20420%20131%20400%20118Z%20M448%20190C460%20205%20466%20236%20458%20262C450%20240%20444%20214%20448%20190Z'%20fill%3D'rgba(255%2C253%2C249%2C.5)'%20stroke%3D'rgba(15%2C110%2C108%2C.34)'%20stroke-width%3D'1.2'%2F%3E%20%3Cpath%20d%3D'M500%20318C540%20352%20590%20410%20640%20470C700%20540%20800%20600%20900%20640C1100%20720%201300%20740%201600%20760'%20stroke%3D'rgba(70%2C160%2C190%2C.20)'%20stroke-width%3D'5'%2F%3E%20%3Cpath%20d%3D'M600%20420C700%20440%20850%20455%201000%20470C1150%20480%201350%20440%201600%20400'%20stroke%3D'rgba(70%2C160%2C190%2C.18)'%20stroke-width%3D'3.5'%2F%3E%20%3Cpath%20d%3D'M500%201000C580%20958%20690%20992%20800%20950C900%20912%201000%20962%201100%20930C1210%20898%201320%20952%201600%20902'%20stroke%3D'rgba(15%2C110%2C108%2C0.13)'%2F%3E%3Cpath%20d%3D'M500%20978C580%20936%20690%20970%20800%20928C900%20890%201000%20940%201100%20908C1210%20876%201320%20930%201600%20880'%20stroke%3D'rgba(15%2C110%2C108%2C0.1)'%2F%3E%3Cpath%20d%3D'M500%20956C580%20914%20690%20948%20800%20906C900%20868%201000%20918%201100%20886C1210%20854%201320%20908%201600%20858'%20stroke%3D'rgba(15%2C110%2C108%2C0.07)'%2F%3E%3Cpath%20d%3D'M500%20934C580%20892%20690%20926%20800%20884C900%20846%201000%20896%201100%20864C1210%20832%201320%20886%201600%20836'%20stroke%3D'rgba(15%2C110%2C108%2C0.05)'%2F%3E%20%3Cpath%20d%3D'M1040%20520C1080%20500%201130%20512%201150%20540C1168%20566%201120%20590%201080%20580C1040%20570%201010%20545%201040%20520Z%20M1020%20505C1070%20470%201150%20488%201180%20530C1210%20575%201140%20615%201080%20605C1010%20595%20975%20545%201020%20505Z'%20stroke%3D'rgba(15%2C110%2C108%2C.09)'%20stroke-width%3D'1'%2F%3E%20%3Cpath%20d%3D'M505%20312C560%20360%20600%20420%20640%20470'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M505%20312C560%20360%20600%20420%20640%20470'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M600%20720C640%20700%20700%20690%20760%20700C820%20712%20880%20690%20940%20660'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M600%20720C640%20700%20700%20690%20760%20700C820%20712%20880%20690%20940%20660'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M1000%20462C1030%20500%201080%20520%201140%20530C1200%20540%201260%20600%201300%20660'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M1000%20462C1030%20500%201080%20520%201140%20530C1200%20540%201260%20600%201300%20660'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M455%20140C520%20150%20600%20180%20690%20200'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M455%20140C520%20150%20600%20180%20690%20200'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M690%20330C800%20330%20900%20380%201000%20462'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M690%20330C800%20330%20900%20380%201000%20462'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M540%20905C620%20880%20700%20900%20780%20880'%20stroke%3D'rgba(15%2C110%2C108%2C.18)'%20stroke-width%3D'3.4'%2F%3E%3Cpath%20d%3D'M540%20905C620%20880%20700%20900%20780%20880'%20stroke%3D'rgba(255%2C253%2C249%2C.75)'%20stroke-width%3D'1.6'%2F%3E%20%3Cpath%20d%3D'M760%200C730%20120%20700%20230%20690%20330C682%20400%20660%20440%20640%20470'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M760%200C730%20120%20700%20230%20690%20330C682%20400%20660%20440%20640%20470'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M640%20470C650%20560%20610%20640%20600%20720C590%20800%20560%20860%20540%20905C535%20930%20548%20945%20560%20945'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M640%20470C650%20560%20610%20640%20600%20720C590%20800%20560%20860%20540%20905C535%20930%20548%20945%20560%20945'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M640%20470C760%20455%20880%20470%201000%20462C1150%20452%201320%20420%201600%20380'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M640%20470C760%20455%20880%20470%201000%20462C1150%20452%201320%20420%201600%20380'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M640%20470C760%20560%20900%20620%201060%20700C1220%20780%201400%20820%201600%20860'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M640%20470C760%20560%20900%20620%201060%20700C1220%20780%201400%20820%201600%20860'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%3Cpath%20d%3D'M505%20312C560%20270%20620%20220%20690%20200C760%20180%20860%20150%201000%20140C1200%20128%201400%2090%201600%2060'%20stroke%3D'rgba(15%2C110%2C108%2C.20)'%20stroke-width%3D'6.4'%2F%3E%3Cpath%20d%3D'M505%20312C560%20270%20620%20220%20690%20200C760%20180%20860%20150%201000%20140C1200%20128%201400%2090%201600%2060'%20stroke%3D'rgba(255%2C253%2C249%2C.82)'%20stroke-width%3D'3.6'%2F%3E%20%3Cpath%20d%3D'M640%20470C760%20400%20920%20410%201000%20462C1060%20380%20700%20140%20430%20122C470%20200%20520%20262%20505%20312C560%20500%20640%20640%20630%20700C620%20800%20580%20900%20560%20945'%20stroke%3D'rgba(122%2C31%2C53%2C.30)'%20stroke-width%3D'2.4'%20stroke-dasharray%3D'.5%209'%2F%3E%20%3Cpath%20d%3D'M1060%20700C1200%20760%201330%20860%201420%20930C1470%20965%201530%20985%201600%20990'%20stroke%3D'rgba(122%2C31%2C53%2C.26)'%20stroke-width%3D'2.4'%20stroke-dasharray%3D'.5%209'%2F%3E%20%3Cg%20transform%3D'translate(250%20840)'%20stroke%3D'rgba(15%2C110%2C108%2C.22)'%20stroke-width%3D'1.2'%3E%3Ccircle%20r%3D'34'%2F%3E%3Ccircle%20r%3D'27'%2F%3E%3Cpath%20d%3D'M0%20-52L7%20-7L52%200L7%207L0%2052L-7%207L-52%200L-7%20-7Z'%20fill%3D'rgba(255%2C253%2C249%2C.35)'%2F%3E%3Cpath%20d%3D'M0%20-52V52M-52%200H52'%2F%3E%3C%2Fg%3E%20%3C%2Fg%3E%20%3Ccircle%20cx%3D'430'%20cy%3D'122'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'505'%20cy%3D'312'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'640'%20cy%3D'470'%20r%3D'7'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'1000'%20cy%3D'462'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'630'%20cy%3D'700'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'560'%20cy%3D'945'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%3Ccircle%20cx%3D'1420'%20cy%3D'930'%20r%3D'5'%20fill%3D'rgba(255%2C253%2C249%2C.75)'%20stroke%3D'rgba(15%2C110%2C108%2C.42)'%20stroke-width%3D'1.6'%2F%3E%20%3Ctext%20x%3D'372'%20y%3D'96'%20text-anchor%3D'start'%3E%C3%8Ele%20de%20R%C3%A9%3C%2Ftext%3E%3Ctext%20x%3D'522'%20y%3D'336'%20text-anchor%3D'start'%3ERoyan%3C%2Ftext%3E%3Ctext%20x%3D'626'%20y%3D'500'%20text-anchor%3D'end'%3EBordeaux%3C%2Ftext%3E%3Ctext%20x%3D'1016'%20y%3D'492'%20text-anchor%3D'start'%3EDordogne%3C%2Ftext%3E%3Ctext%20x%3D'616'%20y%3D'728'%20text-anchor%3D'end'%3EMarqu%C3%A8ze%3C%2Ftext%3E%3Ctext%20x%3D'578'%20y%3D'972'%20text-anchor%3D'start'%3EEspelette%3C%2Ftext%3E%3Ctext%20x%3D'1404'%20y%3D'920'%20text-anchor%3D'end'%3ECollioure%3C%2Ftext%3E%3Ctext%20x%3D'1520'%20y%3D'975'%20text-anchor%3D'middle'%3EBarcelone%20%E2%80%BA%3C%2Ftext%3E%20%3C%2Fg%3E%3C%2Fsvg%3E");
+  }
 }
