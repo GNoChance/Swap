@@ -39,7 +39,8 @@ function split(text) {
 }
 
 /** createPassport({ aventures, stamps: { [id]: { ink, tilt } }, statuses, onSlot(id, slotEl), onPage(page) }):
- *  { el, arrive, openAt, goTo, page, slotOf, refresh, press, dispose }. It starts closed and hidden. */
+ *  { el, arrive, arriveAt, arriving, land, openAt, goTo, page, slotOf, refresh, press, dispose }. It starts closed and
+ *  hidden; .pp has .is-arriving while it arrives. */
 export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) {
   const t = content.aventures;
   const p = `pp${++instances}`;
@@ -436,6 +437,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
   function stopArrival() {
     landed?.();
     landed = null;
+    el.classList.remove("is-arriving");
     if (!arrival) return;
     stopClock(arrival);
     arrival.kill();
@@ -466,10 +468,11 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     book.style.transform = `translateZ(${7 * k}px)`;
   }
 
-  /** It rises in a spin, lands, and the cover opens on page 0. */
-  function arrive() {
+  /** It rises in a spin, lands, and the cover opens on page 0. also(timeline): tweens to add, kept in step with it. */
+  function arrive(also) {
     close();
     el.classList.remove("is-away");
+    el.classList.add("is-arriving");
     startSheen();
     const spin = { a: 0 };
     const flat = { k: 1 };
@@ -506,6 +509,7 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
         .to(volRibbon, { opacity: 0, duration: 0.2 }, "open")
         .to(openOnly, { opacity: 1, duration: 0.35 }, "open+=0.65")
         .to(foot, { autoAlpha: 1, duration: 0.3 }, "open+=0.7");
+      also?.(arrival);
       onClock(arrival);
     });
   }
@@ -520,6 +524,25 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
     opened();
     settle();
     run();
+  }
+
+  /** A quick arrival: already open on `page`, it rises into place in 0.6 s. Resolves as arrive() does. */
+  function arriveAt(page) {
+    openAt(page);
+    el.classList.add("is-arriving");
+    return new Promise((resolve) => {
+      landed = resolve;
+      arrival = gsap
+        .timeline({
+          onComplete() {
+            gsap.set(stage, { clearProps: "transform" });
+            stopArrival();
+          },
+        })
+        .fromTo(stage, { y: () => innerHeight * 0.5 }, { y: 0, duration: 0.6, ease: "power3.out" })
+        .fromTo(foot, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.3);
+      onClock(arrival);
+    });
   }
 
   /** One leaf by itself, in `dir` (+1: forward, -1: back), in TURN s. */
@@ -662,6 +685,10 @@ export function createPassport({ aventures, stamps, statuses, onSlot, onPage }) 
   return {
     el,
     arrive,
+    arriveAt,
+    arriving: () => Boolean(arrival),
+    /** An arrival under way ends at once, landed and open. */
+    land: () => arrival?.progress(1),
     openAt,
     goTo,
     page: () => current,
