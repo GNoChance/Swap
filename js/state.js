@@ -1,12 +1,15 @@
 // Progress storage. ?demo → nothing is saved; ?reset → saved progress is wiped.
 import { initialProgress, sanitize } from "./logic.js";
+import { demoProgress, sanitizeProgress } from "./aventures/logic.js";
 
 const KEY = "swap-cyrielle:v1";
 const SOUND_KEY = "swap-cyrielle:muted";
 const DEBRIEF_KEY = "swap-cyrielle:debrief";
+const AVENTURES_KEY = "swap-cyrielle:aventures";
 
 const params = new URLSearchParams(location.search);
 export const isDemo = params.has("demo");
+const demoTampon = params.get("tampon"); // ?demo&tampon=<id>: the passport at the moment of that stamp
 // ?rejouer (« Tout rejouer depuis le début » on the home page): the swap from the start, gifts unlocking one by one
 // as the first time, but nothing is saved: her progress and her debrief answers stay as they were.
 export const isReplay = params.has("rejouer");
@@ -33,6 +36,7 @@ function write(key, value) {
 if (params.has("reset")) {
   write(KEY, null);
   write(DEBRIEF_KEY, null);
+  write(AVENTURES_KEY, null);
   params.delete("reset");
   const query = params.toString();
   history.replaceState(null, "", location.pathname + (query ? `?${query}` : "") + location.hash);
@@ -49,6 +53,22 @@ export function loadProgress() {
 
 export function saveProgress(progress) {
   if (!transient) write(KEY, JSON.stringify(progress));
+}
+
+/** The passport's progress. ?demo → every outing stamped, or those before ?tampon=<id> whose stamp waits. */
+export function loadAventures(aventures) {
+  if (isDemo) return demoProgress(aventures, demoTampon);
+  const ids = aventures.map((a) => a.id);
+  try {
+    return sanitizeProgress(JSON.parse(read(AVENTURES_KEY)), ids);
+  } catch {
+    return sanitizeProgress(null, ids);
+  }
+}
+
+/** Nothing is saved in ?demo. */
+export function saveAventures(progress) {
+  if (!isDemo) write(AVENTURES_KEY, JSON.stringify(progress));
 }
 
 const HUB_KEY = "swap-cyrielle:hub";
