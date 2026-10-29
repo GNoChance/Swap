@@ -119,7 +119,12 @@ Validé par Kevin le 2026-10-29 (questions de cadrage, design, planches de stick
 - Une seule bulle : « Re ! On en était à {aventure suivante} 👀 » pendant le parcours, « On repart où aujourd'hui ? » une fois complet, « Oh, un nouveau tampon à gagner : {nom} ✨ » si une sortie a été ajoutée depuis.
 - Le passeport arrive et s'ouvre directement à la page de la prochaine aventure, ou à la dernière page consultée une fois le passeport complet. Un toucher accélère tout.
 
-**Les tampons** : chacun est personnalisé et dessiné en SVG (pas d'image à fournir). Forme, encre et pictogramme, légèrement de travers (−12° à 12°, fixé par sortie), double bordure, nom et dates, grain d'encre irrégulier (filtre `feTurbulence` en masque). Propositions, à ajuster dans les données :
+**Les tampons** : un fichier SVG par sortie, `assets/aventures/tampons/<id>.svg`, dessiné comme l'empreinte d'un tampon en caoutchouc : une encre, double bordure, nom et dates, pictogramme, grain d'encre irrégulier (filtres `feTurbulence` dans le fichier). Le texte est converti en tracés, donc le rendu est le même sur tous les téléphones.
+- Ils sont produits par `node tools/tampons/generate.mjs` : la liste des tampons est en tête du fichier, les polices (Bebas Neue, Courier Prime, licence OFL) sont dans `tools/tampons/fonts/`. L'aperçu des 15 se trouve dans `tools/tampons/apercu.html`.
+- `tampons.json`, à côté des SVG, donne pour chacun `{ id, name, ink, tilt }`. Le passeport incline le tampon de `tilt` degrés (entre −9° et 9°) et utilise `ink` pour le tampon encreur.
+- Pour remplacer un tampon par une image faite à la main, il suffit de la poser à sa place, sous le même nom.
+
+Formes, encres et pictogrammes actuels :
 
 | Sortie | Forme | Encre | Pictogramme |
 |---|---|---|---|
@@ -224,4 +229,4 @@ Validé par Kevin le 2026-10-29 (questions de cadrage, design, planches de stick
 - **Planches de Cycy et Kevin** : Île de Ré, Marquèze, Premier Airbnb, Boxers, Nos 1 an en Dordogne, Royan, Royan la bande (et Paris, le retour, si elle a les siennes).
 - **Invités** : Caro, Marius, Manon, Noé ; le père de Kevin, Doumi, Élodie, Paolo, Paolina, Pierre, Paul, Jeanne, Jenifer (Dédé et Nini ont déjà des planches).
 - **Véhicules** : canoë, vélos, petit train de Marquèze, camping-car ; en option, le bus de Sardaigne.
-- **À confirmer** : les noms de tampon (§ 3) et leurs formes et couleurs (§ 4).
+- **À confirmer** : les noms de tampon (§ 3) et le dessin des 15 tampons (§ 4, `tools/tampons/apercu.html`).

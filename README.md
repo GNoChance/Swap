@@ -4,6 +4,8 @@ Petit site interactif pour un swap de 9 cadeaux. Chaque cadeau est caché derri�
 
 - Dossier : `C:\Users\eliott.colin\swap-cyrielle`
 - Stack : HTML/CSS/JS vanilla (modules natifs), GSAP 3.12.5 copié dans `js/vendor/`, pas de build
+- Planches sources des stickers : `planches/swap/`, `planches/ubb/` (maillots, Dédé et Nini, stickers de dos), `planches/voyages/` (les prochaines) ; hors git, seulement sur le PC de l'utilisateur. Les stickers découpés utilisés par le site sont dans `assets/cyrielle/`
+- Tampons de « Nos aventures » : `assets/aventures/tampons/<id>.svg` (+ `tampons.json` : nom, encre, inclinaison), produits par `node tools/tampons/generate.mjs` (la liste est en tête du fichier ; texte converti en tracés avec les polices OFL de `tools/tampons/fonts/`). Aperçu : ouvrir `tools/tampons/apercu.html`
 - Hébergement prévu : Vercel (repo git créé par l'utilisateur, URL pas encore fournie ; ne rien pousser sans son accord)
 - Appareil de jeu : iPhone 17 (Safari) de l'utilisateur. Cyrielle a un Android mais jouera sur l'iPhone
 - Lancer en local : `npm run dev` puis http://localhost:5173 (tests : `npm test`). Pour refaire la grille de mots croisés si l'utilisateur change les mots : chercher une disposition compacte (script de recherche à réécrire, il était dans le scratchpad), puis vérifier avec `npm test`

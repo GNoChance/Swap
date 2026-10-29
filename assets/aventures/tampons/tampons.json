@@ -1,0 +1,92 @@
+[
+  {
+    "id": "bivouac-1",
+    "name": "Premier bivouac",
+    "ink": "#2E5E3E",
+    "tilt": -8
+  },
+  {
+    "id": "canoe",
+    "name": "Premier canoë · Dordogne",
+    "ink": "#1E6E9E",
+    "tilt": 6
+  },
+  {
+    "id": "ile-de-re",
+    "name": "Île de Ré",
+    "ink": "#1B4F8A",
+    "tilt": -4
+  },
+  {
+    "id": "marqueze",
+    "name": "Marquèze",
+    "ink": "#7B4A24",
+    "tilt": 9
+  },
+  {
+    "id": "airbnb",
+    "name": "Premier Airbnb",
+    "ink": "#D2553F",
+    "tilt": -6
+  },
+  {
+    "id": "boxers",
+    "name": "Boxers de Bordeaux",
+    "ink": "#2F7FB5",
+    "tilt": 7
+  },
+  {
+    "id": "paris-1",
+    "name": "Paris",
+    "ink": "#1F2C5C",
+    "tilt": -3
+  },
+  {
+    "id": "paris-2",
+    "name": "Paris, le retour",
+    "ink": "#B42A24",
+    "tilt": 5
+  },
+  {
+    "id": "sardaigne",
+    "name": "Sardaigne",
+    "ink": "#0F8C8A",
+    "tilt": -9
+  },
+  {
+    "id": "dordogne-1-an",
+    "name": "Nos 1 an en Dordogne",
+    "ink": "#7A1F35",
+    "tilt": 4
+  },
+  {
+    "id": "bivouac-2",
+    "name": "Deuxième bivouac",
+    "ink": "#4A7A2E",
+    "tilt": 8
+  },
+  {
+    "id": "royan-1",
+    "name": "Royan",
+    "ink": "#2A66A8",
+    "tilt": -5
+  },
+  {
+    "id": "royan-2",
+    "name": "Royan, la bande",
+    "ink": "#D97A1E",
+    "tilt": 6
+  },
+  {
+    "id": "roadtrip",
+    "name": "Roadtrip catalan",
+    "ink": "#C8102E",
+    "tilt": -7
+  },
+  {
+    "id": "espelette",
+    "name": "Fête du piment · Espelette",
+    "ink": "#C0151F",
+    "tilt": 5
+  }
+]
