@@ -51,6 +51,28 @@ export function saveProgress(progress) {
   if (!transient) write(KEY, JSON.stringify(progress));
 }
 
+const FOLD_KEY = "swap-cyrielle:fold";
+
+/** Leaving a world by reloading the page (the swap): which card the hub's plate folds back into once reloaded. */
+export function setFold(world) {
+  try {
+    sessionStorage.setItem(FOLD_KEY, world);
+  } catch {
+    /* blocked storage: the hub simply opens without the fold */
+  }
+}
+
+/** The world to fold back into, read once (null if none). */
+export function takeFold() {
+  try {
+    const world = sessionStorage.getItem(FOLD_KEY);
+    sessionStorage.removeItem(FOLD_KEY);
+    return world;
+  } catch {
+    return null;
+  }
+}
+
 export function loadMuted() {
   return read(SOUND_KEY) === "1";
 }

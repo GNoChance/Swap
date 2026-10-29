@@ -1,5 +1,5 @@
-// Home page, the site's new entry: « Redécouvrir le swap » (her path as she left it, or everything from the start
-// without erasing anything), and below it the gallery of the matches we went to together.
+// The swap's home page (#/swap): « Redécouvrir le swap », her path as she left it, or everything from the start
+// without erasing anything. The ⌂ button takes her back to the hub.
 import { content } from "./content.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { createAvatar } from "./avatar.js";
@@ -7,7 +7,7 @@ import { h, bump } from "./dom.js";
 
 const gsap = window.gsap;
 
-export function homeScreen({ onResume, onReplay, onMuseum }) {
+export function homeScreen({ onResume, onReplay }) {
   const t = content.home;
   const buddy = createAvatar({
     face: t.face,
@@ -53,20 +53,6 @@ export function homeScreen({ onResume, onReplay, onMuseum }) {
     },
     t.swap,
   );
-  const museumButton = h(
-    "button",
-    {
-      class: "btn btn-secondary home-museum",
-      type: "button",
-      onclick() {
-        unlockAudio();
-        sfx("tap");
-        onMuseum();
-      },
-    },
-    t.museum,
-  );
-
   const card = h(
     "div",
     { class: "home-card" },
@@ -74,13 +60,12 @@ export function homeScreen({ onResume, onReplay, onMuseum }) {
     h("p", { class: "eyebrow" }, t.kicker),
     h("h1", { class: "home-title" }, t.title),
     h("p", { class: "ornament", "aria-hidden": "true" }, "✦"),
-    h("div", { class: "home-actions" }, swapButton, choices, museumButton),
+    h("div", { class: "home-actions" }, swapButton, choices),
   );
   const el = h("section", { class: "screen screen-home" }, card);
 
   return {
     el,
-    noHome: true,
     enter() {
       gsap.from(card.children, { opacity: 0, y: 16, duration: 0.7, stagger: 0.1, delay: 0.15, ease: "power2.out", clearProps: "opacity,transform" });
       setTimeout(() => buddy.jump(24), 700);

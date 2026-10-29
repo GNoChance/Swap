@@ -2,7 +2,11 @@
 import { content } from "./content.js";
 import * as P from "./logic.js";
 import { fill, pick } from "./logic.js";
-import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted } from "./state.js";
+import { isDemo, isReplay, loadProgress, saveProgress, loadMuted, saveMuted, setFold } from "./state.js";
+import { createRouter, legacyRedirect, routeHash } from "./router.js";
+import { hubScreen } from "./hub.js";
+import { hubWorlds } from "./hub-logic.js";
+import { AVENTURES } from "./aventures/data.js";
 import { sfx, unlockAudio, setMuted } from "./audio.js";
 import { mountEffects, playEffect, fireworks, hearts, goldDust } from "./effects.js";
 import { h, svg, icons, seal, shake, bump, centerOf, flash } from "./dom.js";
@@ -62,30 +66,82 @@ function reachOf(p) {
 const app = document.getElementById("app");
 let current = null;
 
-/** Fade the current screen out, then the next one in. `enter` runs once it is in the DOM. */
-function show(screen) {
+/** Fade the current screen out, then the next one in (`instant`: swap them at once, under a plate). `enter` runs
+ *  once it is in the DOM; the promise resolves when the next screen is fully in. */
+function show(screen, { instant = false } = {}) {
   const previous = current;
   current = screen;
-  const enter = () => {
-    previous?.el.remove();
-    previous?.leave?.();
-    homeButton.hidden = Boolean(screen.noHome);
-    window.scrollTo(0, 0);
-    app.append(screen.el);
-    gsap.fromTo(screen.el, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.2 : 0.6, ease: "power1.out" });
-    screen.enter?.();
-  };
-  if (!previous) return enter();
-  gsap.to(previous.el, { opacity: 0, duration: 0.3, ease: "power1.in", onComplete: enter });
+  return new Promise((resolve) => {
+    const enter = () => {
+      previous?.el.remove();
+      previous?.leave?.();
+      homeButton.hidden = Boolean(screen.noHome);
+      window.scrollTo(0, 0);
+      app.append(screen.el);
+      if (instant) resolve();
+      else gsap.fromTo(screen.el, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.2 : 0.6, ease: "power1.out", onComplete: resolve });
+      screen.enter?.();
+    };
+    if (!previous || instant) return enter();
+    gsap.to(previous.el, { opacity: 0, duration: 0.3, ease: "power1.in", onComplete: enter });
+  });
 }
 
-// ── Home page & gallery of our matches ──────────────────────
+// ── The portal: the hub and its worlds ──────────────────────
+
+const router = createRouter(sync);
+let shown = null; // the route on screen
+let busy = false; // a world is opening: taps on the cards wait, a change of address is handled right after
+
+const sameRoute = (a, b) => a.world === b.world && a.id === b.id;
+
+/** Puts the router's route on screen, one change at a time. */
+async function sync() {
+  if (busy) return; // done again once the current change is over
+  const target = router.current();
+  if (shown && sameRoute(shown, target)) return;
+  busy = true;
+  const from = shown;
+  shown = target;
+  try {
+    await display(target, from);
+  } finally {
+    busy = false;
+  }
+  sync(); // the address may have changed meanwhile (the browser's back button)
+}
+
+async function display(route, from) {
+  // the swap was not written to be left without reloading (timers, a pub, a debrief…): leave it by reloading
+  if (from?.world === "swap" && route.world !== "swap") return leaveSwap(route);
+  if (route.world === "hub") return show(hubScreen({ worlds: hubWorlds(content, AVENTURES.length), start: from?.world ?? "swap", onEnter: enterWorld }));
+  if (route.world === "swap") return show(home());
+  if (route.world === "ubb") return show(await museumWorld(() => router.back()));
+  const { aventuresScreen } = await import("./aventures/screen.js");
+  return show(aventuresScreen({ onBack: () => router.back() }));
+}
+
+function enterWorld(world) {
+  if (!busy) router.go({ world, id: null });
+}
+
+/** Leaves the swap by reloading the page on `route`; back on the hub, the plate folds into the Swap card. */
+function leaveSwap(route) {
+  if (route.world === "hub") setFold("swap");
+  history.replaceState(null, "", location.pathname + routeHash(route));
+  location.reload();
+  return new Promise(() => {}); // the page is going away
+}
+
+/** ⌂ on the swap's screens: back to the hub, reloading (also from ?rejouer, ?pub, ?demo…). */
+function reloadToHub() {
+  leaveSwap({ world: "hub", id: null });
+}
 
 function home() {
   return homeScreen({
     onResume: resume,
     onReplay: () => location.assign(`${location.pathname}?rejouer`),
-    onMuseum: openMuseum,
   });
 }
 
@@ -99,22 +155,16 @@ function hasWebGL() {
   }
 }
 
-let openingMuseum = false;
-
-/** The gallery in 3D, loaded only now (three.js is heavy); the CSS corridor if there is no WebGL, if loading fails,
- *  or with ?musee&css. */
-async function openMuseum() {
-  if (openingMuseum) return; // a double tap while three.js loads
-  openingMuseum = true;
-  setTimeout(() => (openingMuseum = false), 1500);
-  const onBack = () => show(home());
-  const css = () => show(museumScreen({ onBack }));
+/** The gallery's screen: in 3D, loaded only now (three.js is heavy); the CSS corridor if there is no WebGL, if loading
+ *  fails, or with ?css. */
+async function museumWorld(onBack) {
+  const css = () => museumScreen({ onBack });
   if (new URLSearchParams(location.search).has("css") || !hasWebGL()) return css();
   try {
     const { museum3dScreen } = await import("./museum3d.js");
-    show(museum3dScreen({ onBack, onFail: css }));
+    return museum3dScreen({ onBack, onFail: () => show(css()) });
   } catch {
-    css();
+    return css();
   }
 }
 
@@ -946,7 +996,7 @@ const homeButton = h(
     "aria-label": content.home.homeButton,
     onclick() {
       sfx("tap");
-      location.assign(location.pathname);
+      reloadToHub();
     },
   },
   "⌂",
@@ -970,6 +1020,10 @@ if (vv) {
 }
 
 // ── Boot ────────────────────────────────────────────────────
+
+// ?musee, the gallery's address before the portal, becomes #/ubb (keeping ?css and the others)
+const legacy = legacyRedirect(location.search);
+if (legacy) history.replaceState(null, "", location.pathname + legacy.search + legacy.hash);
 
 mountEffects();
 preloadFaces();
@@ -1010,6 +1064,5 @@ else if (preview.has("pub")) playPub({ waitForTap: true, preview: true });
 else if (preview.has("debrief")) show(debriefReport({ onPlay: () => show(debrief()) })); // her answers, for you
 else if (preview.has("secret")) show(secret({ preview: true })); // the secret ending, without finding the 13 endings
 else if (preview.has("ubb")) show(ubbPreviewScreen()); // the UBB surprise on its own
-else if (preview.has("musee")) openMuseum(); // the gallery of our matches
 else if (isReplay) show(welcome()); // « Tout rejouer depuis le début »: the intro, nothing saved
-else show(home());
+else router.start(); // the hub, or the world in the address

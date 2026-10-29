@@ -645,7 +645,6 @@ export const content = {
     resumeNote: "tes cadeaux, ton débrief, tout est gardé",
     replay: "Tout rejouer depuis le début",
     replayNote: "rien n'est effacé",
-    museum: "🏉 Notre galerie des matchs",
     homeButton: "Accueil",
   },
 

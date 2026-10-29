@@ -49,6 +49,7 @@ export function createRouter(onRoute) {
       arrive(hub());
     },
     start() {
+      route = parseRoute(location.hash); // the address may have been rewritten since (?musee → #/ubb)
       addEventListener("popstate", () => arrive(parseRoute(location.hash)));
       onRoute(route, null);
     },

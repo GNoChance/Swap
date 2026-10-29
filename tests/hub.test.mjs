@@ -54,3 +54,7 @@ test("aventures: the 15 outings, in date order, matching the stamps", () => {
   assert.equal(AVENTURES[0].from, "2025-05-17");
   assert.equal(AVENTURES[14].to, "2026-10-25");
 });
+
+test("hub: the swap's home page no longer has its gallery button", () => {
+  assert.equal(content.home.museum, undefined);
+});

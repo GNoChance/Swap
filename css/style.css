@@ -3330,11 +3330,7 @@ body.is-ubb .mute {
   color: var(--ink-soft);
 }
 
-.home-museum {
-  margin-top: 6px;
-}
-
-/* The way back to the home page, on the swap's screens (top left, like the sound button on the right) */
+/* The way back to the hub, on the swap's screens (top left, like the sound button on the right) */
 .home-button {
   position: fixed;
   top: calc(var(--sat) + 10px);
@@ -4360,4 +4356,87 @@ html.is-museum {
 
 .g3d-viewer[data-zoom]:not([data-zoom="1.00"]) .g3d-viewer-frame img {
   cursor: grab;
+}
+
+/* ── The portal: the hub (#/) and its worlds ─────────────── */
+
+.screen-hub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  min-height: 100dvh;
+  padding: calc(var(--sat) + 24px) 0 calc(var(--sab) + 24px);
+}
+
+.hub-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 2.4rem;
+  font-weight: 600;
+  color: var(--wine);
+}
+
+.hub-track {
+  display: flex;
+  gap: 16px;
+}
+
+.hub-card {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  width: 100px;
+  aspect-ratio: 3 / 4;
+  border: 0;
+  border-radius: 28px;
+  font-family: var(--sans);
+  color: var(--world-ink);
+  background: var(--world-bg);
+}
+
+.hub-card-title {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* The way back to the hub from a world (the gallery has its own, .mu-back) */
+.world-back {
+  position: fixed;
+  top: calc(var(--sat) + 10px);
+  left: calc(var(--sal) + 12px);
+  z-index: 50;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 248, 231, 0.4);
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff8e7;
+  background: rgba(0, 0, 0, 0.14);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.screen-aventures {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: calc(var(--sat) + 72px) 24px calc(var(--sab) + 24px);
+  color: #fff8e7;
+  background: #0f8c8a;
+}
+
+.aventures-soon {
+  text-align: center;
+}
+
+.aventures-title {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+  font-size: 2.6rem;
+  font-weight: 600;
 }
