@@ -171,6 +171,11 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
       await cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     },
     beforeLoad: (source) => cmd("Page.addScriptToEvaluateOnNewDocument", { source }),
+    /** Makes requests to matching urls fail ("*aventures/screen.js*"), as on a flaky connection; [] lifts it. */
+    async block(patterns) {
+      await cmd("Network.enable");
+      await cmd("Network.setBlockedURLs", { urls: patterns });
+    },
     /** A PNG of the page, or of `clip` ({ x, y, width, height }); `transparent` keeps the page's empty areas see-through. */
     async screenshot(file, { clip, transparent = false } = {}) {
       if (transparent) await cmd("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });

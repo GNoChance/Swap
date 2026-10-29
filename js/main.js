@@ -106,6 +106,8 @@ async function sync() {
   shown = target;
   try {
     await display(target, from);
+  } catch (error) {
+    console.error(error);
   } finally {
     busy = false;
   }
@@ -126,7 +128,18 @@ async function display(route, from) {
     current.dive(route.world);
     plate = await coverFrom(card.getBoundingClientRect(), colorOf(route.world));
   }
-  await show(await worldScreen(route), { instant: Boolean(plate) });
+  let screen;
+  try {
+    screen = await worldScreen(route);
+  } catch (error) {
+    // the world did not load (a flaky connection): no plate left behind, back where we were
+    console.error(error);
+    plate?.remove();
+    shown = from;
+    router.back();
+    return;
+  }
+  await show(screen, { instant: Boolean(plate) });
   if (plate) await reveal(plate);
 }
 

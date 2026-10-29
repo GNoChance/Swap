@@ -20,11 +20,12 @@ const centred = (world) => `document.querySelector(".screen-hub")?.dataset.curre
 const atHub = `["", "#/"].includes(location.hash)`;
 
 async function suite(page, vp) {
-  async function check(name, fn) {
+  /** allowErrors: for a check that breaks something on purpose (a blocked file logs its failure). */
+  async function check(name, fn, { allowErrors = false } = {}) {
     const before = page.errors.length;
     try {
       await fn();
-      if (page.errors.length > before) throw new Error(`erreur dans la page : ${page.errors.slice(before).join(" | ")}`);
+      if (!allowErrors && page.errors.length > before) throw new Error(`erreur dans la page : ${page.errors.slice(before).join(" | ")}`);
       console.log(`  ✔ ${name}`);
     } catch (error) {
       console.log(`  ✘ ${name} : ${error.message}`);
@@ -39,7 +40,9 @@ async function suite(page, vp) {
   /** Brings a world's card to the middle (a touch on a side card), without entering. */
   async function centre(world) {
     await page.waitFor(`${hubShown} && !document.querySelector(".plate")`, 4000); // a touch during a transition is ignored
-    await sleep(900); // the hub's entrance (0.8 s)
+    // the hub's entrance is over (a fixed wait was too short on a busy machine)
+    await page.waitFor(`[...document.querySelectorAll(".screen-hub, .hub-card, .hub-buddies")].every((el) => !gsap.isTweening(el))`, 4000);
+    await sleep(150);
     if ((await current()) === world) return;
     await page.tap(`.hub-dot:nth-child(${["swap", "ubb", "aventures"].indexOf(world) + 1})`); // a card two notches away is off the screen
     await page.waitFor(centred(world));
@@ -209,6 +212,21 @@ async function suite(page, vp) {
     await page.eval(`history.back()`);
     await page.waitFor(`${hubShown} && !document.querySelector(".plate")`, 4000);
   });
+
+  await check(
+    "un monde qui ne se charge pas (réseau coupé) : pas de plaque figée, retour au hub, la navigation continue",
+    async () => {
+      await page.goto(BASE);
+      await page.block(["*aventures/screen.js*"]);
+      await centre("aventures");
+      await page.tap(`[data-world="aventures"]`);
+      await page.waitFor(`!document.querySelector(".plate") && ${hubShown} && ${atHub}`, 4000);
+      await page.block([]);
+      await enter("ubb"); // the next change of address still goes through
+      await page.waitFor(`location.hash === "#/ubb" && ${galleryShown}`, 8000);
+    },
+    { allowErrors: true },
+  );
 
   // ── The swap, unchanged inside ────────────────────────────
 
