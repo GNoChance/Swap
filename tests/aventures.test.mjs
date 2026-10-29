@@ -92,6 +92,8 @@ test("aventures: a damaged or old save is cleaned up, a good one is kept as it i
 test("aventures: the outings added since the last visit, once welcomed", () => {
   assert.deepEqual(addedSince([a, b, c], { ...initialProgress(), welcomed: true, known: ["a", "c"] }), ["b"]);
   assert.deepEqual(addedSince([a, b, c], initialProgress()), []);
+  // an outing already lived is never announced as a new stamp to win (an old save without `known`)
+  assert.deepEqual(addedSince([a, b, c], { ...initialProgress(), welcomed: true, known: [], stamped: ["a"], pending: ["b"] }), ["c"]);
 });
 
 test("aventures: the passport's pages: identity, two stamps a page, then the next destination", () => {
@@ -111,6 +113,10 @@ test("aventures: dates in French", () => {
   assert.equal(formatRange("2025-08-11", "2025-08-11"), "11 août 2025");
   assert.equal(formatRange("2026-04-30", "2026-05-02"), "30 avril – 2 mai 2026");
   assert.equal(formatRange("2025-12-29", "2026-01-05"), "29 décembre 2025 – 5 janvier 2026");
+  // French typography: the first of the month is « 1er » (Royan, la bande: 1er août 2026)
+  assert.equal(formatRange("2026-08-01", "2026-08-01"), "1er août 2026");
+  assert.equal(formatRange("2026-05-01", "2026-05-03"), "1er–3 mai 2026");
+  assert.equal(formatRange("2026-04-30", "2026-05-01"), "30 avril – 1er mai 2026");
   assert.equal(shortDate("2025-05-17"), "17/05/2025");
   assert.equal(monthYear("2025-05-17"), "mai 2025");
 });

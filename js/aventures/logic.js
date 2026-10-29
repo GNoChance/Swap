@@ -82,10 +82,10 @@ export function openable(aventures, progress, id) {
 /** The outings added since the last visit (not in known), once Mini Cycy has welcomed us. */
 export function addedSince(aventures, progress) {
   if (!progress.welcomed) return [];
-  const known = new Set(progress.known);
+  const seen = new Set([...progress.known, ...progress.stamped, ...progress.pending]); // a lived outing is never "new"
   return ordered(aventures)
     .map((x) => x.id)
-    .filter((id) => !known.has(id));
+    .filter((id) => !seen.has(id));
 }
 
 /** ?demo: every outing stamped; with ?tampon=<id>, those before it stamped and its stamp waiting (unknown id: all stamped). */
@@ -119,7 +119,7 @@ export function pageOf(aventures, id) {
 
 function parts(iso) {
   const [year, month, day] = iso.split("-");
-  return { year, month: MONTHS[Number(month) - 1], day: Number(day) };
+  return { year, month: MONTHS[Number(month) - 1], day: Number(day) === 1 ? "1er" : Number(day) }; // « 1er août »
 }
 
 /** "17–18 mai 2025", "30 avril – 2 mai 2026", "29 décembre 2025 – 5 janvier 2026"; one day: "11 août 2025". */
