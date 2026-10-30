@@ -40,17 +40,17 @@ test("decoupe: 12 islands in a 4×3 grid come back in reading order", () => {
   boxes.forEach((box, i) => assert.deepEqual(centre(box), centre(cells[i]), `sticker ${i}`)); // row by row, left to right
 });
 
-test("decoupe: stickers whose outlines touch are told apart", () => {
-  // Like the real boards: 40 × 40 of art in a 4 px white outline, and the rows' outlines overlapping by 2 px.
+/** Like the real boards: 12 stickers of 40 × 40 of art in a 4 px white outline (48 × 48), the 3 of a column glued (their
+ *  outlines overlap by 2 px). `white` flags the outline pixels. */
+function glued(height = 170) {
   const width = 360;
-  const height = 170;
-  const { alpha, rect } = board(width, height);
+  const b = board(width, height);
   const white = new Uint8Array(width * height);
   const cells = [];
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 4; col++) {
       const [x, y] = [20 + col * 90, 10 + row * 46];
-      rect(x, y, 48, 48);
+      b.rect(x, y, 48, 48);
       cells.push({ x, y });
     }
   }
@@ -59,6 +59,11 @@ test("decoupe: stickers whose outlines touch are told apart", () => {
   };
   cells.forEach(({ x, y }) => mark(x, y, 48, 48, 1));
   cells.forEach(({ x, y }) => mark(x + 4, y + 4, 40, 40, 0)); // the art
+  return { ...b, white, cells };
+}
+
+test("decoupe: stickers whose outlines touch are told apart", () => {
+  const { alpha, width, height, white, cells } = glued();
   const { boxes, owner } = cutStickers(alpha, width, height, { white });
   assert.equal(boxes.length, 12);
   boxes.forEach((box, i) => {
@@ -71,6 +76,49 @@ test("decoupe: stickers whose outlines touch are told apart", () => {
   });
 });
 
+test("decoupe: 4 glued columns plus 8 loose bits", () => {
+  const { alpha, width, height, white, cells, rect } = glued();
+  for (let i = 0; i < 8; i++) rect(cells[i].x + 48 + 6, cells[i].y + 10, 14, 14); // a bit 6 px from the right of a sticker
+  const boxes = findStickers(alpha, width, height, { white });
+  assert.equal(boxes.length, 12);
+  boxes.forEach((box, i) => {
+    assert.ok(Math.abs(box.x - cells[i].x) <= 1 && Math.abs(box.w - (i < 8 ? 68 : 48)) <= 1, `sticker ${i}: ${JSON.stringify(box)}`);
+  });
+});
+
+test("decoupe: bits about a third of a sticker never end up written as stickers", () => {
+  // Bits that big look like stickers: the board has to be cut right or stopped, never written wrong.
+  const withBits = (size, count) => {
+    const { alpha, width, height, white, rect } = glued(210);
+    for (let i = 0; i < count; i++) rect(10 + i * 38, 175, size, size);
+    return () => findStickers(alpha, width, height, { white });
+  };
+  for (const size of [24, 28]) {
+    for (const count of [0, 6, 8, 9]) {
+      let boxes;
+      try {
+        boxes = withBits(size, count)();
+      } catch (error) {
+        assert.match(error.message, /stickers trouvés|tailles trop inégales/);
+        continue;
+      }
+      assert.equal(boxes.length, 12, `${count} bits of ${size}`);
+      boxes.forEach((box) => assert.ok(box.w >= 48 && box.h >= 44, `${count} bits of ${size}: a ${box.w} × ${box.h} sticker`));
+    }
+  }
+  assert.equal(withBits(28, 0)().length, 12);
+  assert.throws(withBits(28, 6), /10 stickers trouvés, 12 attendus/);
+  assert.throws(withBits(28, 8), /tailles trop inégales/); // 12 islands, but 4 columns among 8 bits
+  assert.throws(withBits(28, 9), /13 stickers trouvés, 12 attendus/);
+});
+
+test("decoupe: a sticker half as big again is not taken for two", () => {
+  const { alpha, width, height, rect } = board();
+  for (let i = 0; i < 10; i++) rect(30 + (i % 4) * 90, 30 + Math.floor(i / 4) * 90, 40, 40);
+  rect(30 + 2 * 90, 30 + 2 * 90, 40, 60); // the 11th, 1.5 times as big: 11 stickers, not 12
+  assert.throws(() => findStickers(alpha, width, height, {}), /11 stickers trouvés, 12 attendus/);
+});
+
 test("decoupe: specks are dropped", () => {
   const { alpha, width, height, rect } = grid();
   for (let i = 0; i < 20; i++) rect(5 + (i % 10) * 38, 300 + (i % 2) * 14, 2, 2); // 2 × 2 specks at the bottom
@@ -81,8 +129,7 @@ test("decoupe: a detached « ? » joins its sticker", () => {
   const { alpha, width, height, rect, cells } = grid();
   const cell = cells[5];
   rect(cell.x + 17, cell.y - 5 - 8, 6, 8); // 5 px above the sticker
-  // The board is tiny next to a real one, so the speck floor is lowered to keep a 6 × 8 mark.
-  const boxes = findStickers(alpha, width, height, { speck: 0.0003 });
+  const boxes = findStickers(alpha, width, height, {});
   assert.equal(boxes.length, 12);
   assert.deepEqual(boxes[5], { x: cell.x, y: cell.y - 13, w: 40, h: 53 });
   assert.deepEqual(boxes[4], cells[4]); // the neighbours are untouched

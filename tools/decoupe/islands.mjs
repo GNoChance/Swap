@@ -2,6 +2,14 @@
 // told apart, loose bits (« ? », hearts, « zzz », speed lines) joined to the nearest sticker, then put in reading order.
 // Pure: runs under Node on a plain alpha array. Box = { x, y, w, h } in board pixels.
 
+/** Islands under this share of the board are specks and dropped. The specks of the real boards are a few pixels, the
+ *  loose bits of an emote about 1000 px at the least on a 1448 × 1086 board (0.0006 of it): this keeps both sides clear. */
+export const SPECK = 0.0003;
+
+/** A standard board's stickers are about the same size: one is never smaller or bigger than this, in times the median
+ *  (the real boards stay within 0.8 to 1.2), or the board was cut wrong. */
+const SIZE_RANGE = [0.5, 1.6];
+
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = sorted.length >> 1;
@@ -77,10 +85,13 @@ function gap(a, b) {
 
 /** Stickers whose outlines touch come out as one island. An island is worth as many stickers as it holds the mean
  *  sticker's area, and is cut into that many. Returns the islands as they are when the counts do not add up to
- *  `expected` (the count error follows). */
+ *  `expected`, or when an island is no clear number of stickers (1.5 times the mean is no sticker and a half): the
+ *  count error follows. */
 function unglue(bodies, expected, board) {
   const mean = bodies.reduce((sum, b) => sum + b.area, 0) / expected;
-  const counts = bodies.map((b) => Math.max(1, Math.round(b.area / mean)));
+  const times = bodies.map((b) => b.area / mean);
+  if (times.some((n) => n >= 1.5 && Math.abs(n - Math.round(n)) > 0.35)) return bodies;
+  const counts = times.map((n) => Math.max(1, Math.round(n)));
   if (counts.reduce((sum, n) => sum + n, 0) !== expected) return bodies;
   return bodies.flatMap((body, i) => (counts[i] > 1 ? split(body, counts[i], board) : [body]));
 }
@@ -197,14 +208,18 @@ function readingOrder(bodies) {
  * its own pixels, so a neighbour whose outline touches it does not show. `alpha` is one byte per pixel, opaque above
  * `threshold`. `white` (optional, 1 for the pixels of a white outline) lets stickers whose outlines touch be cut
  * along the gap between their art. Islands smaller than `speck` of the board are dropped. With `expected` (12 for a
- * standard board) any other count throws; with `expected: null` the count is free (a scene board).
+ * standard board) any other count, or stickers of very unequal sizes, throws; with `expected: null` the count is free
+ * (a scene board).
  */
-export function cutStickers(alpha, width, height, { threshold = 24, speck = 0.0015, expected = 12, white = null } = {}) {
+export function cutStickers(alpha, width, height, { threshold = 24, speck = SPECK, expected = 12, white = null } = {}) {
   const { found, labels } = islands(alpha, width, height, threshold);
   const kept = found.filter((island) => island.area >= speck * width * height);
-  // Bodies are the big islands, judged against the biggest ones; the others are loose bits.
-  const biggest = [...kept].sort((a, b) => b.area - a.area).slice(0, expected ?? 12);
-  const floor = 0.25 * median(biggest.map((island) => island.area));
+  // Bodies are the big islands, the others loose bits: a body is at least a quarter of the mean sticker. A standard
+  // board's mean is its islands' area over `expected` (glued stickers make few islands, so no count of islands will do);
+  // a scene board has no count, its biggest islands tell.
+  const biggest = [...kept].sort((a, b) => b.area - a.area).slice(0, 12);
+  const mean = expected != null ? kept.reduce((sum, island) => sum + island.area, 0) / expected : median(biggest.map((island) => island.area));
+  const floor = 0.25 * mean;
   // piece: who each pixel goes with, its island until the island is cut; art: the heart of what is not a white outline
   // (eroded: the thin grey rim of an outline is not art).
   const piece = Int32Array.from(labels);
@@ -225,7 +240,14 @@ export function cutStickers(alpha, width, height, { threshold = 24, speck = 0.00
     box.y1 = Math.max(box.y1, bit.y1);
     places.set(bit.id, at + 1);
   }
-  if (expected != null && boxes.length !== expected) throw new Error(`${boxes.length} stickers trouvés, ${expected} attendus`);
+  if (expected != null) {
+    if (boxes.length !== expected) throw new Error(`${boxes.length} stickers trouvés, ${expected} attendus`);
+    const areas = ordered.map((body) => body.area);
+    const [small, big] = [Math.min(...areas), Math.max(...areas)].map((area) => area / median(areas));
+    if (small < SIZE_RANGE[0] || big > SIZE_RANGE[1]) {
+      throw new Error(`tailles trop inégales entre les stickers (de ${small.toFixed(1)} à ${big.toFixed(1)} fois la médiane) : stickers collés mal séparés, ou des morceaux pris pour des stickers`);
+    }
+  }
   const owner = piece.map((id) => places.get(id) ?? 0);
   return { boxes: boxes.map((b) => ({ x: b.x0, y: b.y0, w: b.x1 - b.x0 + 1, h: b.y1 - b.y0 + 1 })), owner };
 }

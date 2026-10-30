@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch } from "../../tests/e2e/cdp.mjs";
-import { cutStickers, padBox } from "./islands.mjs";
+import { SPECK, cutStickers, padBox } from "./islands.mjs";
 import { VEHICLES, boardOf, fileNames, outingOf, slug } from "./names.mjs";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -18,9 +18,6 @@ const ASSETS = here("../../assets/aventures/");
 const SHEETS = here("./apercu/");
 const WIDTH = 300; // px, a cut sticker
 const MARGIN = 6; // px kept around a sticker: its white outline must stay whole
-// The loose bits of an emote are small (down to about 1000 px on a 1448 × 1086 board) and the specks of a board are a
-// few pixels: islands under this share of the board are dropped.
-const SPECK = 0.0003;
 const WHITE = 225; // a pixel with red, green and blue all above this is part of a white outline
 const WEBP_KB = [10, 60]; // a sticker's expected weight
 
