@@ -1,0 +1,198 @@
+/* ── The outings' own intros (js/aventures/scene/): the stage, its paper layers and grain (st-*), and the closing
+   poster (af-*). Lengths inside the world are stage units (390 × 760 px, scaled by stage.js). GSAP moves the layers and
+   every piece of the poster: no CSS transition, and no @keyframes on them ── */
+
+/* the screen; its world is placed by the CSS variables stage.js sets on each resize: the action framing (--st-a*) and
+   the whole stage in the height (--st-w*), mixed by --st-whole (0 → 1 for the poster, a GSAP tween) */
+.st-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0; /* under « Passer ▸ » (31) */
+  overflow: hidden;
+  background: #a3c0d6; /* the sky, until its layer is painted */
+  pointer-events: none; /* a touch goes to the screen (it may skip the intro) */
+  will-change: transform; /* one layer for the whole decor until the camera moves (stage.js: pan) */
+}
+
+.st-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 390px;
+  height: 760px;
+  transform-origin: 0 0;
+  transform: translate(calc((var(--st-ax) + (var(--st-wx) - var(--st-ax)) * var(--st-whole)) * 1px), calc((var(--st-ay) + (var(--st-wy) - var(--st-ay)) * var(--st-whole)) * 1px))
+    scale(calc(var(--st-as) + (var(--st-ws) - var(--st-as)) * var(--st-whole)));
+}
+
+/* a layer: drawn once (its shadows and edges included), then only moved; a layer of its own from the camera's first
+   move (pan() sets its will-change) */
+.st-layer {
+  position: absolute;
+  top: 0;
+  height: 760px;
+  transform-origin: 50% 50%; /* the camera zooms around the stage's centre */
+}
+
+.st-paper,
+.st-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.st-poster {
+  will-change: opacity; /* its fade-in never repaints the paper under it */
+}
+
+/* the paper's grain, still over the moving layers: a 128 px tile of dark speckles and light fibres (brown at most
+   0.16, cream at most 0.14: its strength in the tile, the layer fades 0 → 1), a bitmap drawn once offline (a noise
+   filter costs too much to draw on a small device, a tile made at run time too much to encode) */
+.st-grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/png;base64,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");
+  background-size: 128px 128px;
+  will-change: opacity;
+}
+
+/* ── The poster: the picture (x 34 to 356, y 24 to 736) on a cream sheet (x 12 to 378, the whole height), the rest of
+   the screen a darker paper; its rule, its lettering on the navy sky ── */
+.af-poster {
+  --af-navy: #22344f;
+  --af-cream: #f4e4c1;
+  --af-sun: #f6c453;
+  --af-wall: #e3cfa6;
+  --af-shade: #c8b28a; /* the sheet's shadow on the wall: opaque, nothing shows through */
+  position: absolute;
+  left: 605px; /* in its 1600-unit layer: the stage's own x */
+  top: 0;
+  width: 390px;
+  height: 760px;
+}
+
+.af-mat {
+  position: absolute;
+  background: var(--af-cream);
+}
+
+.af-mat--left {
+  left: -1500px;
+  top: -1500px;
+  width: 1534px;
+  height: 3760px;
+  background: linear-gradient(to left, var(--af-cream) 22px, var(--af-shade) 22px, var(--af-wall) 31px);
+}
+
+.af-mat--right {
+  left: 356px;
+  top: -1500px;
+  width: 1534px;
+  height: 3760px;
+  background: linear-gradient(to right, var(--af-cream) 22px, var(--af-shade) 22px, var(--af-wall) 31px);
+}
+
+.af-mat--top,
+.af-mat--bottom {
+  left: 33px; /* a unit over the sides: no seam */
+  width: 324px;
+  height: 1524px;
+}
+
+.af-mat--top {
+  top: -1500px;
+}
+
+.af-mat--bottom {
+  top: 736px;
+}
+
+.af-frame {
+  position: absolute;
+  left: 29px;
+  top: 19px;
+  width: 332px;
+  height: 722px;
+}
+
+/* the rule draws itself round the picture, side after side */
+.af-rule {
+  position: absolute;
+  background: var(--af-navy);
+}
+
+.af-rule--top {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 1.3px;
+  transform-origin: 0 50%;
+}
+
+.af-rule--right {
+  right: 0;
+  top: 0;
+  width: 1.3px;
+  height: 100%;
+  transform-origin: 50% 0;
+}
+
+.af-rule--bottom {
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1.3px;
+  transform-origin: 100% 50%;
+}
+
+.af-rule--left {
+  left: 0;
+  bottom: 0;
+  width: 1.3px;
+  height: 100%;
+  transform-origin: 50% 100%;
+}
+
+.af-title,
+.af-line {
+  position: absolute;
+  left: 34px;
+  width: 322px;
+  margin: 0;
+  text-align: center;
+  white-space: pre;
+}
+
+.af-title {
+  top: 42px;
+  font: 600 26px / 1 var(--serif);
+  letter-spacing: 0.13em;
+  text-indent: 0.13em; /* the spacing after its last letter, put back before the first: centred */
+  color: var(--af-cream);
+}
+
+.af-letter {
+  display: inline-block;
+}
+
+.af-line {
+  top: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font: 600 13px / 1 var(--serif);
+  font-variant-caps: small-caps;
+  letter-spacing: 0.1em;
+  color: var(--af-sun);
+}
+
+.af-line::before,
+.af-line::after {
+  content: "";
+  width: 14px;
+  height: 1px;
+  background: currentColor;
+}

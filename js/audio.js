@@ -131,6 +131,11 @@ const sounds = {
     src.connect(bp).connect(g).connect(master);
     src.start(t);
   },
+  /** Paper rustling: the tent unfolding, the poster's frame closing in. */
+  paper() {
+    for (let i = 0; i < 6; i++) noise({ at: i * 0.034 + Math.random() * 0.018, dur: 0.06, gain: 0.06 + Math.random() * 0.05, filter: 2000 + Math.random() * 2600, q: 0.7 });
+    noise({ at: 0.03, dur: 0.24, gain: 0.05, filter: 850, q: 0.45 });
+  },
   /** A crisp packet tears open. */
   rip() {
     for (let i = 0; i < 7; i++) noise({ at: i * 0.028, dur: 0.05, gain: 0.22 - i * 0.015, filter: 2600 + i * 250, q: 1.1 });
@@ -289,7 +294,8 @@ export function stopMusic(fade = 2) {
 }
 
 export function sfx(name) {
-  if (!muted && haptics[name] && navigator.vibrate) {
+  // before any touch the browser refuses a vibration (and logs it): an intro's timeline can play a sound by then
+  if (!muted && haptics[name] && navigator.vibrate && navigator.userActivation?.hasBeenActive !== false) {
     try {
       navigator.vibrate(haptics[name]);
     } catch {

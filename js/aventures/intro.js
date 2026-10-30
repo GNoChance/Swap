@@ -76,9 +76,11 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
       // it ends on its own timeline, not by the clock: a locked phone (a hidden page) holds it where it was, so the
       // first time it is seen in full (GSAP's lag smoothing resumes it there; a frame under 0.5 s costs nothing)
       timeline.call(finish, null, end);
-      await ready;
+      await Promise.resolve(ready).catch(() => {}); // it resolves; were it to reject, the intro plays all the same
       if (finished) return; // left (or skipped) while it was getting ready
-      timeline.seek(startAt()).play(); // a seek fires none of the callbacks it passes
+      const start = startAt();
+      if (start >= end) return finish(); // ?t= past its end: over at once, not frozen on its last frame
+      timeline.seek(start).play(); // a seek fires none of the callbacks it passes
     },
     leave() {
       stop();
