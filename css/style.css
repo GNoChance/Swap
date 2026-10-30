@@ -6001,6 +6001,45 @@ html.is-museum {
   color: rgba(107, 79, 44, 0.82);
 }
 
+/* a phone on its side: a page 90 to 130 px wide, where the floors above (11 to 13 px, for a page 300 px wide) push
+   the words out of their slots and into one another. Lower floors, still legible on its dense screen; no room left
+   for the running head between the frame and the first slot's number */
+@media (max-height: 500px) {
+  .pg-running {
+    display: none;
+  }
+
+  .pg-folio {
+    font-size: max(6.5px, calc(var(--u) * 2.5));
+  }
+
+  .slot-no {
+    font-size: max(6.5px, calc(var(--u) * 2.3));
+    letter-spacing: 0.1em;
+  }
+
+  .slot-date {
+    font-size: max(7px, calc(var(--u) * 3.5));
+    letter-spacing: 0.08em;
+  }
+
+  .slot-body--locked .slot-date {
+    font-size: max(7.5px, calc(var(--u) * 3.9));
+  }
+
+  .pp-slot-name {
+    font-size: max(6px, calc(var(--u) * 4.9));
+  }
+
+  .id-field dt {
+    font-size: max(4.5px, calc(var(--u) * 2.35));
+  }
+
+  .nx-date {
+    font-size: max(4.5px, calc(var(--u) * 3.4));
+  }
+}
+
 /* ── The rubber stamp (js/aventures/stamper.js): its parts in the air over the right page (outside the leaves, which
    clip), in a box the size of its slot (--sx --sy --sw --sh, in u); its ink on the page itself. GSAP moves every part ── */
 .pp-air,
@@ -6121,6 +6160,7 @@ html.is-museum {
 .pp-nav {
   position: relative;
   display: grid;
+  flex: none; /* round even under a page narrower than the two (a phone on its side) */
   place-items: center;
   width: 50px;
   height: 50px;

@@ -91,6 +91,8 @@ const WELCOME = A.welcome.map((line) => fill(line, { since: monthYear(AVENTURES.
 const LOCKED = A.locked.map((line) => fill(line, { next: nameOf("bivouac-1") }));
 const STAMPED = (next) => A.stamped.map((line) => fill(line, { next: nameOf(next) })); // after a stamp, `next` to live
 const WELCOMED = { welcomed: true, known: ids }; // a save whose welcome is seen, nothing lived
+const LONGEST = AVENTURES.reduce((a, b) => (b.name.length > a.name.length ? b : a)); // the outing with the longest name
+const nbsp = (name) => name.replace(/ /g, "\u00a0"); // an outing's name in her bubble: never broken
 
 // The rubber stamp, in the page: __toolAt, when a .pp-tool last came on screen; __nudgeAt, when Mini Cycy began a nudge
 // since (her bubble's data-say), in performance.now() ms; __said, every line she began (data-say); __vibes, the
@@ -260,16 +262,41 @@ async function suite(page, vp) {
     ].filter(Boolean);
     if (wrong.length) throw new Error(`${what && `${what} : `}${wrong.join(" ; ")} : ${JSON.stringify(fit)}`);
   }
-  /** Mini Cycy's bubble whole on screen, clear of « ‹ Accueil », and of the rubber stamp and its hint if there. */
+  /** Mini Cycy's bubble whole on screen, its line inside it, clear of « ‹ Accueil », and of the rubber stamp and its
+   *  hint if there. */
   async function bubbleFits(what) {
     const fit = await page.eval(`(() => {
       const [bubble, back, tool, hint] = [".pp-head .bubble", ".world-back", ".pp-tool", ".pp-tool-hint"].map((s) => document.querySelector(s)?.getBoundingClientRect());
+      const range = document.createRange();
+      range.selectNodeContents(document.querySelector(".pp-head .bubble-text"));
+      const text = range.getBoundingClientRect(); // its line, an unbreakable name included
       const meet = (a, b) => Boolean(a && b) && a.top < b.bottom && b.top < a.bottom && a.left < b.right && b.left < a.right;
       return { inside: bubble.width > 0 && bubble.top >= 0 && bubble.left >= 0 && bubble.bottom <= innerHeight && bubble.right <= innerWidth,
+        spills: text.left < bubble.left || text.right > bubble.right || text.top < bubble.top || text.bottom > bubble.bottom,
         meets: meet(bubble, back), tool: meet(bubble, tool) || meet(bubble, hint), bubble: [bubble.left, bubble.top, bubble.right, bubble.bottom].map(Math.round) };
     })()`);
-    const wrong = [!fit.inside && "sort de l'écran", fit.meets && "touche « ‹ Accueil »", fit.tool && "touche le tampon encreur"].filter(Boolean);
+    const wrong = [!fit.inside && "sort de l'écran", fit.spills && "laisse dépasser sa ligne", fit.meets && "touche « ‹ Accueil »", fit.tool && "touche le tampon encreur"].filter(Boolean);
     if (wrong.length) throw new Error(`${what} : la bulle ${wrong.join(", ")} (${fit.bubble.join(", ")})`);
+  }
+  /** The words of the page on show: a slot's (its number, « À vivre », the name, the date, the padlock) inside it, its
+   *  number across its top edge; the page's own (running head, folio, identity fields, next destination) inside the
+   *  page; no two touching. */
+  async function labelsFit(what) {
+    const labels = await page.eval(`(() => {
+      const front = document.querySelector(".pp-leaf.is-current > .leaf-front");
+      const box = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
+      const label = (el, within, edge = false) => ({ name: (el.textContent.trim() || el.getAttribute("class")).replace(/\\s+/g, " "), box: box(el), within: box(within), edge, shown: el.getClientRects().length > 0 });
+      const slots = [...front.querySelectorAll(".pp-slot")].flatMap((slot) => [...slot.querySelectorAll(".slot-no, .slot-body > *")].map((el) => label(el, slot, el.matches(".slot-no"))));
+      const own = [...front.querySelectorAll(".pg-running, .pg-folio, .id-title, .id-field dt, .id-field dd, .id-mrz span, .nx-date, .nx-text")].map((el) => label(el, front.querySelector(".pp-pg")));
+      return [...slots, ...own].filter((l) => l.shown);
+    })()`);
+    const E = 0.5; // px of rounding
+    const out = labels.filter(({ box: b, within: w, edge }) =>
+      b.left < w.left - E || b.right > w.right + E || (edge ? b.top > w.top || b.bottom < w.top : b.top < w.top - E || b.bottom > w.bottom + E));
+    const meet = (a, b) => a.left < b.right - E && b.left < a.right - E && a.top < b.bottom - E && b.top < a.bottom - E;
+    const touching = labels.flatMap((a, k) => labels.slice(k + 1).filter((b) => meet(a.box, b.box)).map((b) => `« ${a.name} » et « ${b.name} »`));
+    const wrong = [...out.map((l) => `« ${l.name} » déborde`), ...touching.map((pair) => `${pair} se touchent`)];
+    if (wrong.length) throw new Error(`${what} : ${wrong.join(" ; ")}`);
   }
 
   await check("?demo#/aventures (une visite suivante) : le passeport monte déjà ouvert sur la page 0, sans couverture qui tourne, avec ses 15 tampons chargés", async () => {
@@ -502,6 +529,51 @@ async function suite(page, vp) {
       previous = (await page.eval(said))[0];
     }
   });
+
+  await check(
+    `les bulles à surveiller (BRIEF.md, piège 17) : welcome[1] et welcome[2] (Mini Cycy au milieu, le passeport caché), locked[1] avec le nom le plus long (« ${LONGEST.name} ») ; entières dans l'écran, sans toucher « ‹ Accueil » ; locked[1] ne couvre ni le tampon encreur ni le contenu des emplacements`,
+    async () => {
+      // the welcome: two touches a bubble, the next one out in full at once
+      await seeded(`#/aventures`);
+      await page.waitFor(`${buddy} && ${saying(WELCOME[0])}`, 6000);
+      for (const k of [1, 2]) {
+        await page.tap(".bubble");
+        await page.tap(".bubble");
+        await page.waitFor(`${saying(WELCOME[k])} && ${hiddenBook} && !gsap.isTweening(document.querySelector(".pp-head .bubble"))`, 2000);
+        await bubbleFits(`welcome[${k}]`);
+      }
+      // locked[1]: a locked slot touched (Marquèze) while the rubber stamp waits over the top slot of its page, until she
+      // says locked[1]. The longest name never follows a locked slot today (Espelette is the last outing): it takes the
+      // place of {next} in her line as the page wrote it, which sizes the bubble as say() would (.bubble::before)
+      await page.goto(`${BASE}?demo&tampon=ile-de-re#/aventures`);
+      await toolOn("ile-de-re");
+      const lines = A.locked.map((line) => fill(line, { next: nameOf("ile-de-re") }));
+      for (let k = 0, previous = null; previous !== lines[1]; k++) {
+        if (k === 10) throw new Error(`dix touchers sans locked[1] : ${JSON.stringify(await page.eval(said))}`);
+        await page.tap(slot("marqueze"));
+        await page.waitFor(`${said}.length === 1 && ${JSON.stringify(lines)}.includes(${said}[0]) && ${said}[0] !== ${JSON.stringify(previous)}`, 3000);
+        previous = (await page.eval(said))[0];
+      }
+      await page.waitFor(`!gsap.isTweening(document.querySelector(".pp-head .bubble"))`, 2000);
+      const line = await page.eval(`(() => {
+        const bubble = document.querySelector(".pp-head .bubble");
+        const line = bubble.dataset.say.replace(${JSON.stringify(nbsp(nameOf("ile-de-re")))}, ${JSON.stringify(nbsp(LONGEST.name))});
+        if (line === bubble.dataset.say) return null;
+        bubble.dataset.say = line;
+        bubble.querySelector(".bubble-text").textContent = line;
+        return line;
+      })()`);
+      if (!line) throw new Error(`« ${nameOf("ile-de-re")} » introuvable dans sa bulle : ${JSON.stringify(await page.eval(said))}`);
+      await bubbleFits(`locked[1] (« ${line.replace(/\u00a0/g, " ")} »)`);
+      const covered = await page.eval(`(() => {
+        const b = document.querySelector(".pp-head .bubble").getBoundingClientRect();
+        const meet = (r) => r.width > 0 && r.left < b.right && b.left < r.right && r.top < b.bottom && b.top < r.bottom;
+        const inside = document.querySelectorAll(".pp-leaf.is-current .pp-slot :is(.slot-no, .slot-body > *, .pp-stamp)");
+        return [...inside].filter((el) => meet(el.getBoundingClientRect())).map((el) => el.textContent.trim() || el.getAttribute("class"));
+      })()`);
+      if (covered.length) throw new Error(`locked[1] couvre dans les emplacements : ${covered.join(", ")}`);
+    },
+  );
 
   await check("profil neuf, la 1re bulle : l'écran tourne (h × w) puis revient (w × h) ; après chaque changement, Mini Cycy et sa bulle sont entières dans l'écran", async () => {
     await seeded(`#/aventures`);
@@ -990,9 +1062,10 @@ async function suite(page, vp) {
   if (vp.mobile && !landscaped) {
     landscaped = true;
     await check(
-      "un téléphone en paysage (852 × 393, puis 667 × 375) : la 4e bulle de l'accueil, Mini Cycy montée, « Re ! … » et nudge sur un tampon encreur en haut de page, « Re ! … » en bas de page, stamped, complete[0] et complete[1] entières dans l'écran, sans toucher le tampon encreur ni « ‹ Accueil » ; « Touche pour tamponner » dans sa page",
+      "un téléphone en paysage (852 × 393, puis 667 × 375) : la 4e bulle de l'accueil, Mini Cycy montée, « Re ! … » et nudge sur un tampon encreur en haut de page, « Re ! … » en bas de page, stamped, complete[0] et complete[1] entières dans l'écran, sans toucher le tampon encreur ni « ‹ Accueil » ; « Touche pour tamponner » dans sa page ; les mots des pages (identité, emplacements de chaque sorte, le nom le plus long, « Prochaine destination ? ») dans leur emplacement ou leur page, sans se toucher ; ‹ › ronds",
       async () => {
         const greeting = (id) => saying(fill(A.again.progress, { next: nameOf(id) }));
+        const still = (n) => `${opened} && ${onPage(n)} && !${book}.classList.contains("is-turning")`; // resting open on page n
         try {
           for (const [w, h] of [[852, 393], [667, 375]]) {
             const at = `en ${w} × ${h}`;
@@ -1003,9 +1076,23 @@ async function suite(page, vp) {
             await welcomePairs([".bubble", ".bubble", ".bubble"], 1);
             await page.waitFor(`${opened} && ${saying(WELCOME[3])} && !gsap.isTweening(document.querySelector(".pp-head"))`, 6000);
             await bubbleFits(`${at}, welcome[3]`);
+            // then the page of the outing to live: a slot to live, a slot locked
+            await page.waitFor(still(1), 5000);
+            await labelsFit(`${at}, page 1 (à vivre, verrouillé)`);
+            // under a page narrower than the two of them, ‹ › stay round
+            const discs = await page.eval(`[".pp-prev", ".pp-next"].map((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [r.width, r.height].map(Math.round); })`);
+            if (discs.some(([dw, dh]) => Math.abs(dw - dh) > 1)) throw new Error(`${at} : ‹ › écrasés (${JSON.stringify(discs)})`);
+            // the identity page, and the outing with the longest name to live
+            await page.goto(`${BASE}?demo#/aventures`);
+            await page.waitFor(still(0), 8000);
+            await labelsFit(`${at}, page d'identité`);
+            await seeded(`#/aventures`, { ...WELCOMED, stamped: ids.slice(0, ids.indexOf(LONGEST.id)) });
+            await page.waitFor(still(pageOf(AVENTURES, LONGEST.id)), 8000);
+            await labelsFit(`${at}, « ${LONGEST.name} » à vivre`);
             // a slot at the top of its page (Île de Ré): the tool comes nearest to her bubble
             await page.goto(`${BASE}?demo&tampon=ile-de-re#/aventures`);
             await toolOn("ile-de-re");
+            await labelsFit(`${at}, page 2 (à tamponner, verrouillé)`);
             await page.waitFor(greeting("ile-de-re"), 3000);
             await apart(`${at}, « Re ! … »`);
             await page.waitFor(`window.__nudgeAt && ${said}.length === 1 && ${JSON.stringify(A.nudge)}.includes(${said}[0])`, 9000);
@@ -1013,9 +1100,14 @@ async function suite(page, vp) {
             await page.tap(".pp-tool");
             await page.waitFor(`${said}.length === 1 && ${JSON.stringify(STAMPED("marqueze"))}.includes(${said}[0])`, 4000);
             await bubbleFits(`${at}, stamped`);
+            // Marquèze lit, under the fresh stamp
+            const lit = `document.querySelector('${slot("marqueze")}[data-status="open"] .slot-body')`;
+            await page.waitFor(`${lit} && !gsap.isTweening(${lit})`, 3000);
+            await labelsFit(`${at}, page 2 (tamponné, à vivre)`);
             // a slot at the bottom of its page (the canoe): the hint nearest to the page's edge
             await page.goto(`${BASE}?demo&tampon=canoe#/aventures`);
             await toolOn("canoe");
+            await labelsFit(`${at}, page 1 (tamponné, à tamponner)`);
             await page.waitFor(greeting("canoe"), 3000);
             await apart(`${at}, « Re ! … » en bas de page`);
             // the passport complete
@@ -1026,6 +1118,8 @@ async function suite(page, vp) {
             await bubbleFits(`${at}, complete[0]`);
             await page.waitFor(saying(A.complete[1]), 9000);
             await bubbleFits(`${at}, complete[1]`);
+            await page.waitFor(still(9), 4000);
+            await labelsFit(`${at}, « Prochaine destination ? »`);
           }
         } finally {
           await page.resize(vp.width, vp.height);
@@ -1033,6 +1127,17 @@ async function suite(page, vp) {
       },
     );
   }
+
+  await check("?test : le groupe « Nos aventures » a ses 5 adresses (la vraie progression, tout tamponné, le moment du tampon, une intro, la remise à zéro), qu'aucun autre groupe ne reprend", async () => {
+    await page.goto(`${BASE}?test`);
+    await page.waitFor(`document.querySelector(".test-group")`, 4000);
+    const groups = await page.eval(`[...document.querySelectorAll(".test-group")].map((g) => ({ title: g.querySelector("h2").textContent, hrefs: [...g.querySelectorAll("a")].map((a) => a.getAttribute("href")) }))`);
+    const ours = groups.find((g) => g.title === "Nos aventures")?.hrefs ?? [];
+    const want = ["./#/aventures", "?demo#/aventures", "?demo&tampon=bivouac-1#/aventures", "?demo#/aventures/roadtrip", "?reset#/aventures"];
+    if (ours.join(" ") !== want.join(" ")) throw new Error(`« Nos aventures » : ${JSON.stringify(ours)}`);
+    const elsewhere = groups.filter((g) => g.title !== "Nos aventures").flatMap((g) => g.hrefs).filter((href) => href.includes("#/aventures"));
+    if (elsewhere.length) throw new Error(`ailleurs sur la page : ${elsewhere.join(", ")}`);
+  });
 
   if (SHOTS) {
     // an intro once its sign hangs (not in a timed check: a screenshot can take seconds here)
