@@ -10,7 +10,7 @@ import { check as checker } from "./check.mjs";
 import { content } from "../../js/content.js";
 import { fill } from "../../js/logic.js";
 import { AVENTURES } from "../../js/aventures/data.js";
-import { monthYear, pageOf, sanitizeProgress, statuses } from "../../js/aventures/logic.js";
+import { monthYear, pageOf, passportPages, sanitizeProgress, statuses } from "../../js/aventures/logic.js";
 
 const BASE = process.env.BASE || "http://localhost:5173/";
 const SHOTS = process.env.SHOTS;
@@ -37,7 +37,11 @@ const INTRO_CLOCK = `new MutationObserver(() => {
   const watch = setInterval(() => {
     if (window.__intro !== el) return clearInterval(watch);
     const { id } = el.dataset;
-    if (location.hash === "#/aventures/" + id && !JSON.parse(localStorage.getItem("${KEY}"))?.pending?.includes(id)) return;
+    let lived = false;
+    try {
+      lived = JSON.parse(localStorage.getItem("${KEY}"))?.pending?.includes(id);
+    } catch {} // blocked storage: by its address alone
+    if (location.hash === "#/aventures/" + id && !lived) return;
     window.__introEnd = performance.now() - at;
     clearInterval(watch);
   }, 20);
@@ -83,6 +87,16 @@ const SAVE_CLOCK = `{
 const NO_STORAGE = `if (location.search.includes("stockage-bloque"))
   for (const name of ["localStorage", "sessionStorage"])
     Object.defineProperty(window, name, { configurable: true, get() { throw new DOMException("The operation is insecure.", "SecurityError"); } });`;
+
+// The audio's wake-up (main.js), in the page from its first line: __unlocks, the document's events that call unlockAudio
+// once (the bench plays sound without a touch: what iOS needs, the end of a touch, is checked here by its listeners)
+const AUDIO_SPY = `{
+  const add = document.addEventListener;
+  document.addEventListener = function (type, listener, options) {
+    if (listener?.name === "unlockAudio" && options?.once && options?.capture) (window.__unlocks ??= []).push(type);
+    return add.call(this, type, listener, options);
+  };
+}`;
 
 // Mini Cycy's lines, as content.js writes them (the page may put no-break spaces in: read as spaces)
 const A = content.aventures;
@@ -142,7 +156,8 @@ async function suite(page, vp) {
   await page.beforeLoad(SAVE_CLOCK);
   await page.beforeLoad(NO_STORAGE);
   await page.beforeLoad(TOOL_CLOCK);
-  const shown = () => page.eval(`Number(${book}.dataset.page)`);
+  await page.beforeLoad(AUDIO_SPY);
+  const shown =() => page.eval(`Number(${book}.dataset.page)`);
   const saved = () => page.eval(`JSON.parse(localStorage.getItem("${KEY}"))`);
   /** A tap or a swipe that must not move the book (a bound). */
   async function stays(n, gesture) {
@@ -180,17 +195,22 @@ async function suite(page, vp) {
     const end = await page.eval(`window.__introEnd`);
     if (end !== null && end < LENGTH - 300) throw new Error(`un toucher a passé l'intro (finie ${Math.round(end)} ms après son début)`);
   }
-  /** From the hub, a fresh profile whose welcome is seen: the passport by its card, open on the outing to live. */
-  async function viaHub() {
-    await seeded(`#/`, WELCOMED);
+  /** The hub on screen (alone, its entrance over): a touch on the passport's card. */
+  async function throughCard() {
     const hub = `document.querySelector(".screen-hub")`;
-    await page.waitFor(`${hub} && [...document.querySelectorAll(".screen-hub, .hub-card, .hub-buddies")].every((el) => !gsap.isTweening(el))`, 8000);
+    await page.waitFor(`${hub} && document.querySelectorAll("#app > .screen").length === 1 && !document.querySelector(".plate")
+      && [...document.querySelectorAll(".screen-hub, .hub-card, .hub-buddies")].every((el) => !gsap.isTweening(el))`, 8000);
     if ((await page.eval(`${hub}.dataset.current`)) !== "aventures") {
       await page.tap(`.hub-dot:nth-child(3)`); // its card may be two notches away, off the screen
       await page.waitFor(`${hub}.dataset.current === "aventures"`, 4000);
       await sleep(600); // the smooth scroll settles
     }
     await page.tap(`[data-world="aventures"]`);
+  }
+  /** From the hub, a fresh profile whose welcome is seen: the passport by its card, open on the outing to live. */
+  async function viaHub() {
+    await seeded(`#/`, WELCOMED);
+    await throughCard();
     await page.waitFor(`!document.querySelector(".plate") && ${opened} && ${onPage(1)}`, 12000); // the plate gone: a touch counts
   }
   /** The page's clock for the next touch: __tapAt (performance.now() ms); __said, __vibes and __tchacAt start empty. */
@@ -311,6 +331,11 @@ async function suite(page, vp) {
     await page.waitFor(onPage(0), 2000);
     await sleep(600);
     await shot("identity");
+  });
+
+  await check("ouvert d'un lien direct, le son se réveille au premier toucher : unlockAudio écoute pointerdown, pointerup, touchend et keydown (iOS ne le réveille qu'à la fin d'un toucher)", async () => {
+    const types = await page.eval(`(window.__unlocks || []).slice().sort().join()`);
+    if (types !== "keydown,pointerdown,pointerup,touchend") throw new Error(`unlockAudio écoute : ${types || "rien"}`);
   });
 
   await check("?demo#/aventures : Mini Cycy dit « On repart où aujourd'hui ? », sa seule bulle", async () => {
@@ -542,28 +567,36 @@ async function suite(page, vp) {
         await page.waitFor(`${saying(WELCOME[k])} && ${hiddenBook} && !gsap.isTweening(document.querySelector(".pp-head .bubble"))`, 2000);
         await bubbleFits(`welcome[${k}]`);
       }
-      // locked[1]: a locked slot touched (Marquèze) while the rubber stamp waits over the top slot of its page, until she
-      // says locked[1]. The longest name never follows a locked slot today (Espelette is the last outing): it takes the
-      // place of {next} in her line as the page wrote it, which sizes the bubble as say() would (.bubble::before)
-      await page.goto(`${BASE}?demo&tampon=ile-de-re#/aventures`);
-      await toolOn("ile-de-re");
-      const lines = A.locked.map((line) => fill(line, { next: nameOf("ile-de-re") }));
+      // locked[1]: a locked slot touched (Marquèze) while the rubber stamp waits over the top slot of its page (Île de
+      // Ré), until she says locked[1]. The longest name never follows a locked slot today (Espelette is the last outing):
+      // it takes the place of {next} in her line as the page wrote it, which sizes the bubble as say() would
+      // (.bubble::before); so {next} is a page's top outing other than the longest, Île de Ré while it qualifies
+      const tops = passportPages(AVENTURES).filter((p) => p.ids?.length === 2 && p.ids[0] !== LONGEST.id).map((p) => p.ids);
+      const [host, shut] = tops.find(([top]) => top === "ile-de-re") ?? tops[0];
+      await page.goto(`${BASE}?demo&tampon=${host}#/aventures`);
+      await toolOn(host);
+      const lines = A.locked.map((line) => fill(line, { next: nameOf(host) }));
+      // never the same line twice running: one chance in two at each touch after the first
       for (let k = 0, previous = null; previous !== lines[1]; k++) {
-        if (k === 10) throw new Error(`dix touchers sans locked[1] : ${JSON.stringify(await page.eval(said))}`);
-        await page.tap(slot("marqueze"));
+        if (k === 30) throw new Error(`trente touchers sans locked[1] : ${JSON.stringify(await page.eval(said))}`);
+        await page.tap(slot(shut));
         await page.waitFor(`${said}.length === 1 && ${JSON.stringify(lines)}.includes(${said}[0]) && ${said}[0] !== ${JSON.stringify(previous)}`, 3000);
         previous = (await page.eval(said))[0];
       }
-      await page.waitFor(`!gsap.isTweening(document.querySelector(".pp-head .bubble"))`, 2000);
+      // written out, and in place: say() no longer rewrites the line under the measure
+      await page.waitFor(`(() => {
+        const bubble = document.querySelector(".pp-head .bubble");
+        return !gsap.isTweening(bubble) && bubble.querySelector(".bubble-text").textContent === bubble.dataset.say;
+      })()`, 4000);
       const line = await page.eval(`(() => {
         const bubble = document.querySelector(".pp-head .bubble");
-        const line = bubble.dataset.say.replace(${JSON.stringify(nbsp(nameOf("ile-de-re")))}, ${JSON.stringify(nbsp(LONGEST.name))});
+        const line = bubble.dataset.say.replace(${JSON.stringify(nbsp(nameOf(host)))}, ${JSON.stringify(nbsp(LONGEST.name))});
         if (line === bubble.dataset.say) return null;
         bubble.dataset.say = line;
         bubble.querySelector(".bubble-text").textContent = line;
         return line;
       })()`);
-      if (!line) throw new Error(`« ${nameOf("ile-de-re")} » introuvable dans sa bulle : ${JSON.stringify(await page.eval(said))}`);
+      if (!line) throw new Error(`« ${nameOf(host)} » introuvable dans sa bulle : ${JSON.stringify(await page.eval(said))}`);
       await bubbleFits(`locked[1] (« ${line.replace(/\u00a0/g, " ")} »)`);
       const covered = await page.eval(`(() => {
         const b = document.querySelector(".pp-head .bubble").getBoundingClientRect();
@@ -654,13 +687,43 @@ async function suite(page, vp) {
     },
   );
 
-  await check("stockage bloqué : l'accueil se déroule, le passeport arrive (page 0) puis s'ouvre sur la page 1, sans erreur", async () => {
-    await page.goto(`${BASE}?stockage-bloque#/aventures`);
-    if (!(await page.eval(`(() => { try { localStorage; return false; } catch { return true; } })()`))) throw new Error("le stockage n'est pas bloqué");
-    await welcomePairs([".bubble", ".bubble", ".bubble"], 1); // the arrival this time in full
+  await check(
+    "stockage bloqué : l'accueil se déroule, le passeport arrive (page 0) puis s'ouvre sur la page 1, sans erreur ; la page retient tout : Premier bivouac vécu puis tamponné, le canoë s'ouvre ; revenu du hub, pas d'accueil mais « Re ! On en était à Premier canoë · Dordogne 👀 »",
+    async () => {
+      await page.goto(`${BASE}?stockage-bloque#/aventures`);
+      if (!(await page.eval(`(() => { try { localStorage; return false; } catch { return true; } })()`))) throw new Error("le stockage n'est pas bloqué");
+      await welcomePairs([".bubble", ".bubble", ".bubble"], 1); // the arrival this time in full
+      await page.waitFor(saying(WELCOME[3]), 3000);
+      await page.waitFor(`${opened} && ${onPage(0)}`, 4000);
+      await page.waitFor(`${opened} && ${onPage(1)} && !${book}.classList.contains("is-turning")`, 4000);
+      // its intro seen through, then its stamp: the page remembers both
+      await page.tap(slot("bivouac-1"));
+      await page.waitFor(intro(false), 4000);
+      await backOn(1, 9000);
+      await toolOn("bivouac-1");
+      await page.tap(".pp-tool");
+      await page.waitFor(`${stampOn("bivouac-1")} && document.querySelector('${slot("canoe")}[data-status="open"]')`, 4000).catch(async () => {
+        throw new Error(`pas tamponné : ${JSON.stringify(await page.eval(`[...document.querySelectorAll(".pp-slot")].slice(0, 2).map((s) => s.dataset.status)`))}`);
+      });
+      // to the hub and back, in the same page: her word of a later visit, not the welcome
+      await page.tap(".world-back");
+      await throughCard();
+      await page.waitFor(saying(fill(A.again.progress, { next: nameOf("canoe") })), 8000).catch(async () => {
+        throw new Error(`revenu du hub : ${JSON.stringify(await page.eval(said))}`);
+      });
+    },
+  );
+
+  await check("?demo&accueil#/aventures : l'accueil de la première visite (Mini Cycy, le passeport caché, puis son arrivée, Premier bivouac à vivre), sans rien écrire dans le stockage", async () => {
+    await page.goto(`${BASE}?demo&accueil#/aventures`);
+    // a save in place, which the welcome must neither read nor change ("welcomed":false: SAVE_CLOCK stays quiet)
+    const kept = JSON.stringify({ stamped: ids, pending: [], welcomed: false, known: [], page: 3 });
+    await page.eval(`localStorage.setItem("${KEY}", ${JSON.stringify(kept)})`);
+    await welcomePairs([".bubble", ".bubble", ".bubble"], 1);
     await page.waitFor(saying(WELCOME[3]), 3000);
-    await page.waitFor(`${opened} && ${onPage(0)}`, 4000);
-    await page.waitFor(`${opened} && ${onPage(1)}`, 4000);
+    await page.waitFor(`${opened} && ${onPage(1)} && document.querySelector('${slot("bivouac-1")}[data-status="open"]')`, 8000);
+    const after = await page.eval(`({ save: localStorage.getItem("${KEY}"), welcomed: window.__welcomedAt ?? null })`);
+    if (after.save !== kept || after.welcomed !== null) throw new Error(`le stockage a changé : ${JSON.stringify(after)}`);
   });
 
   // ── Living an outing: its intro, the unlocking ────────────
@@ -748,6 +811,29 @@ async function suite(page, vp) {
     await page.reload();
     await page.waitFor(`document.querySelector('${slot("bivouac-1")}[data-status="pending"]')`, 6000);
   });
+
+  await check(
+    "le téléphone verrouillé 4 s pendant l'intro de la première fois (la page cachée et gelée) : au retour, l'aventure est toujours à vivre ; l'intro reprend où elle en était et ne finit qu'après ses 4,5 s en page visible",
+    async () => {
+      await fresh();
+      await page.tap(slot("bivouac-1"));
+      await page.waitFor(intro(false), 4000);
+      await page.waitFor(`performance.now() - window.__introAt > 1500`, 4000);
+      await page.eval(`window.__seen = []; document.addEventListener("visibilitychange", () => window.__seen.push(performance.now() - window.__introAt))`);
+      await page.lock(4000);
+      await page.waitFor(`document.visibilityState === "visible" && window.__seen.length === 2`, 3000);
+      if ((await statusOf("bivouac-1")) !== "open") throw new Error(`marquée vécue dès le retour : ${await statusOf("bivouac-1")}`);
+      await page.waitFor(`window.__introEnd !== null`, LENGTH + 4000);
+      const [hidden, back] = await page.eval(`window.__seen`);
+      const end = await page.eval(`window.__introEnd`);
+      // visible from its start to `hidden`, then from `back` to its end: 4.5 s in all, give or take a frame
+      console.log(`    (cachée de ${(hidden / 1000).toFixed(2)} s à ${(back / 1000).toFixed(2)} s, finie à ${(end / 1000).toFixed(2)} s)`);
+      if (back - hidden < 3900) throw new Error(`la page n'a été cachée que ${Math.round(back - hidden)} ms`);
+      if (end - (back - hidden) < LENGTH - 250) throw new Error(`finie à ${Math.round(end)} ms : ${Math.round(end - (back - hidden))} ms en page visible, pas 4,5 s`);
+      await backOn(1, 4000);
+      if ((await statusOf("bivouac-1")) !== "pending") throw new Error(`statut enregistré : ${await statusOf("bivouac-1")}`);
+    },
+  );
 
   await check("profil neuf : toucher Premier bivouac ouvre son intro, impossible à passer ; en moins de 7 s, le passeport déjà ouvert sur sa page, son tampon attend", async () => {
     await fresh();
@@ -941,6 +1027,33 @@ async function suite(page, vp) {
     if (wrong.length) throw new Error(wrong.join(" ; "));
   });
 
+  await check("?demo&tampon=bivouac-1 : après le tampon, toucher le canoë ouvre son intro, une seule entrée d'historique de plus ; à sa fin, le tampon encreur attend sur le canoë ; rien n'est enregistré", async () => {
+    await page.goto(`${BASE}?demo&tampon=bivouac-1#/aventures`);
+    const kept = await page.eval(`localStorage.getItem("${KEY}")`);
+    await toolOn("bivouac-1");
+    await page.tap(".pp-tool");
+    const lit = `document.querySelector('${slot("canoe")}[data-status="open"] .slot-body')`;
+    await page.waitFor(`${stampOn("bivouac-1")} && ${lit} && !gsap.isTweening(${lit})`, 4000);
+    // the entries the page writes from now on (history.length stops at 50, which a long run reaches)
+    await page.eval(`window.__entries = { push: 0, replace: 0 };
+      for (const kind of ["push", "replace"]) {
+        const write = history[kind + "State"];
+        history[kind + "State"] = function (...args) {
+          window.__entries[kind]++;
+          return write.apply(this, args);
+        };
+      }`);
+    await page.tap(slot("canoe"));
+    await page.waitFor(`location.hash === "#/aventures/canoe" && document.querySelector('.screen-intro[data-id="canoe"]')`, 4000).catch(async () => {
+      throw new Error(`pas d'intro du canoë : ${JSON.stringify(await page.eval(`({ hash: location.hash, entries: window.__entries, canoe: document.querySelector('${slot("canoe")}')?.dataset.status })`))}`);
+    });
+    const entries = await page.eval(`window.__entries`);
+    if (entries.push !== 1 || entries.replace !== 0) throw new Error(`historique : ${JSON.stringify(entries)} (une entrée ajoutée, aucune réécrite)`);
+    await backOn(1, 9000);
+    await toolOn("canoe");
+    if ((await page.eval(`localStorage.getItem("${KEY}")`)) !== kept) throw new Error(`la sauvegarde a changé : ${await page.eval(`localStorage.getItem("${KEY}")`)}`);
+  });
+
   await check("toucher l'emplacement lui-même (hors du tampon encreur et de sa pastille) tamponne aussi : un seul « TCHAC », Premier bivouac enregistré stamped", async () => {
     await seeded(`#/aventures`, { ...WELCOMED, pending: ["bivouac-1"] });
     await toolOn("bivouac-1");
@@ -1128,14 +1241,29 @@ async function suite(page, vp) {
     );
   }
 
-  await check("?test : le groupe « Nos aventures » a ses 5 adresses (la vraie progression, tout tamponné, le moment du tampon, une intro, la remise à zéro), qu'aucun autre groupe ne reprend", async () => {
+  await check("un double toucher rapide sur « ‹ Accueil » (venu du hub, une page du site avant lui) : le hub, une seule entrée en arrière", async () => {
+    await page.goto(`${BASE}?test`);
+    await page.waitFor(`document.querySelector(".test-group")`, 4000);
+    await viaHub();
+    await page.eval(`window.__same = true`); // gone if the page before the hub opens
+    const { x, y } = await page.center(".world-back");
+    await page.doubleTap(x, y);
+    await page.waitFor(`location.search === "?test" || (document.querySelector(".screen-hub") && document.querySelectorAll("#app > .screen").length === 1 && !document.querySelector(".plate"))`, 8000);
+    const now = await page.eval(`({ search: location.search, hash: location.hash, same: window.__same === true })`);
+    if (now.search !== "" || now.hash !== "#/" || !now.same) throw new Error(`deux entrées en arrière : ${JSON.stringify(now)}`);
+  });
+
+  await check("?test : le groupe « Nos aventures » a ses 5 adresses (la vraie progression, tout tamponné, l'accueil de Mini Cycy, le moment du tampon, la remise à zéro), « Les intros » une par sortie dans l'ordre du passeport ; aucun autre groupe ne les reprend", async () => {
     await page.goto(`${BASE}?test`);
     await page.waitFor(`document.querySelector(".test-group")`, 4000);
     const groups = await page.eval(`[...document.querySelectorAll(".test-group")].map((g) => ({ title: g.querySelector("h2").textContent, hrefs: [...g.querySelectorAll("a")].map((a) => a.getAttribute("href")) }))`);
     const ours = groups.find((g) => g.title === "Nos aventures")?.hrefs ?? [];
-    const want = ["./#/aventures", "?demo#/aventures", "?demo&tampon=bivouac-1#/aventures", "?demo#/aventures/roadtrip", "?reset#/aventures"];
+    const want = ["./#/aventures", "?demo#/aventures", "?demo&accueil#/aventures", "?demo&tampon=bivouac-1#/aventures", "?reset#/aventures"];
     if (ours.join(" ") !== want.join(" ")) throw new Error(`« Nos aventures » : ${JSON.stringify(ours)}`);
-    const elsewhere = groups.filter((g) => g.title !== "Nos aventures").flatMap((g) => g.hrefs).filter((href) => href.includes("#/aventures"));
+    const intros = groups.find((g) => g.title === "Les intros")?.hrefs ?? [];
+    const each = passportPages(AVENTURES).flatMap((p) => p.ids || []).map((id) => `?demo#/aventures/${id}`);
+    if (intros.join(" ") !== each.join(" ")) throw new Error(`« Les intros » : ${JSON.stringify(intros)}`);
+    const elsewhere = groups.filter((g) => !["Nos aventures", "Les intros"].includes(g.title)).flatMap((g) => g.hrefs).filter((href) => href.includes("#/aventures"));
     if (elsewhere.length) throw new Error(`ailleurs sur la page : ${elsewhere.join(", ")}`);
   });
 

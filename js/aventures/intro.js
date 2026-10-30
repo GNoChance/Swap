@@ -1,7 +1,7 @@
 // An outing's intro (#/aventures/<id>), provisional until the recipes of sub-project 3 (spec § 5, its title sign only):
 // the sign, the passport's leather and paper, drops on its cords and swings; Cycy and Kevin hop in on each side;
-// confetti of the outing's ink. 4.5 s, then onDone(), unless the browser's back or forward has left its address. The
-// first time it plays in full; once the outing is stamped, « Passer ▸ » or a touch anywhere ends it.
+// confetti of the outing's ink. 4.5 s of its timeline, then onDone(), unless the browser's back or forward has left its
+// address. The first time it plays in full; once the outing is stamped, « Passer ▸ » or a touch anywhere ends it.
 import { content } from "../content.js";
 import { sfx } from "../audio.js";
 import { h, svg } from "../dom.js";
@@ -103,13 +103,9 @@ export function introScreen({ aventure, ink, skippable, onDone }) {
     skip,
   );
 
-  let timer = 0;
   let timeline = null;
   let finished = false;
-  const stop = () => {
-    finished = true;
-    clearTimeout(timer);
-  };
+  const stop = () => (finished = true);
   // The browser's back or forward can leave its address while it plays (it stays on screen until the next screen is
   // ready): then it is over at once, with no effect. And it never ends for an address it has already left.
   const here = () => {
@@ -143,7 +139,6 @@ export function introScreen({ aventure, ink, skippable, onDone }) {
     el,
     noHome: true,
     enter() {
-      timer = setTimeout(finish, LENGTH); // by the clock: a slow frame never lengthens the intro
       addEventListener("popstate", left);
       const land = 0.8; // s: the cords go taut
       const offside = (k) => (k ? 1 : -1) * (innerWidth / 2 + 40); // a buddy off its side of the screen
@@ -183,6 +178,9 @@ export function introScreen({ aventure, ink, skippable, onDone }) {
         HOPS[k].forEach((when, j) => hop(timeline, b, when, size * (j === 2 ? 0.42 : 0.28), (k ? -1 : 1) * (j % 2 ? -5 : 5)));
       });
       if (skip) timeline.to(skip, { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.5);
+      // it ends on its own timeline, not by the clock: a locked phone (a hidden page) holds it where it was, so the
+      // first time it is seen in full (GSAP's lag smoothing resumes it there; a frame under 0.5 s costs nothing)
+      timeline.call(finish, null, LENGTH / 1000);
     },
     leave() {
       stop();

@@ -3,10 +3,15 @@
 // she plays.
 import { content } from "./content.js";
 import { h } from "./dom.js";
+import { AVENTURES } from "./aventures/data.js";
+import { formatRange, passportPages } from "./aventures/logic.js";
 
 export function testScreen() {
   const link = (label, href, note) => h("a", { class: "test-link", href }, h("span", {}, label), note && h("small", {}, note));
   const group = (title, links) => h("section", { class: "test-group" }, h("h2", { class: "recap-title" }, title), links);
+  const outings = passportPages(AVENTURES)
+    .flatMap((page) => page.ids || [])
+    .map((id) => AVENTURES.find((a) => a.id === id)); // in passport order, as their intros number them
   const el = h(
     "section",
     { class: "screen screen-report" },
@@ -26,10 +31,14 @@ export function testScreen() {
       group("Nos aventures", [
         link("Le passeport", "./#/aventures", "la vraie progression"),
         link("Le passeport complet", "?demo#/aventures", "tout tamponné"),
+        link("L'accueil de Mini Cycy", "?demo&accueil#/aventures", "la première visite"),
         link("Le moment du tampon", "?demo&tampon=bivouac-1#/aventures", "le tampon encreur sur Premier bivouac"),
-        link("Une intro", "?demo#/aventures/roadtrip", "le Roadtrip catalan"),
         link("Passeport à zéro", "?reset#/aventures", "remet le passeport à zéro, le swap et le débrief aussi"),
       ]),
+      group(
+        "Les intros",
+        outings.map((a, i) => link(`${i + 1}. ${a.name}`, `?demo#/aventures/${a.id}`, formatRange(a.from, a.to))),
+      ),
       group("Début", [link("Intro et choix des chips", "?demo&scene=intro")]),
       group(
         "Cadeaux",

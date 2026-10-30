@@ -16,7 +16,7 @@ const CHROMES = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** A headless Chrome page: { goto, reload, eval, waitFor, tap, tapAt, swipe, mouse, resize, beforeLoad, screenshot, errors, close }. */
+/** A headless Chrome page: { goto, reload, eval, waitFor, tap, tapAt, doubleTap, swipe, mouse, resize, lock, beforeLoad, screenshot, errors, close }. */
 export async function launch({ width = 393, height = 852, mobile = true } = {}) {
   const chrome = CHROMES.find((p) => p && existsSync(p));
   if (!chrome) throw new Error("Chrome introuvable : indiquer son chemin dans la variable CHROME");
@@ -163,6 +163,14 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
         for (const type of ["mousePressed", "mouseReleased"]) await cmd("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1 });
       }
     },
+    /** Two taps at x, y, every event sent at once, none waiting for the page to handle the one before: the second
+     *  comes before anything the first one started has finished (a quick double tap, or two taps on a busy page). */
+    async doubleTap(x, y) {
+      const touch = (type) => ["Input.dispatchTouchEvent", { type, touchPoints: type === "touchStart" ? [{ x, y }] : [] }];
+      const click = (type, clickCount) => ["Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount }];
+      const events = mobile ? [1, 2].flatMap(() => [touch("touchStart"), touch("touchEnd")]) : [1, 2].flatMap((n) => [click("mousePressed", n), click("mouseReleased", n)]);
+      await Promise.all(events.map(([method, params]) => cmd(method, params)));
+    },
     /** A finger sliding dx px sideways on the element (negative: towards the left, to see what is on the right); on a
      *  PC, a horizontal wheel turn of the same amount. */
     async swipe(selector, dx) {
@@ -182,6 +190,15 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
       const type = { down: "mousePressed", move: "mouseMoved", up: "mouseReleased" }[action];
       const button = action === "move" && !held ? "none" : "left";
       await cmd("Input.dispatchMouseEvent", { type, x, y, button, buttons: held ? 1 : 0, clickCount: action === "move" ? 0 : 1 });
+    },
+    /** The phone locked for `ms`, then unlocked: the page hidden and frozen (no timer, no frame), then running again,
+     *  its overdue timers at once. Chrome leaves it hidden once active: focus emulation (left on) shows it again. */
+    async lock(ms) {
+      await cmd("Page.setWebLifecycleState", { state: "frozen" });
+      await sleep(ms);
+      await cmd("Page.setWebLifecycleState", { state: "active" });
+      await cmd("Emulation.setFocusEmulationEnabled", { enabled: false }); // already on (a second lock): off, then on
+      await cmd("Emulation.setFocusEmulationEnabled", { enabled: true });
     },
     beforeLoad: (source) => cmd("Page.addScriptToEvaluateOnNewDocument", { source }),
     /** Makes requests to matching urls fail ("*aventures/screen.js*"), as on a flaky connection; [] lifts it. */

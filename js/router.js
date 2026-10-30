@@ -29,10 +29,11 @@ export function legacyRedirect(search) {
 
 /** onRoute(route, previous) runs at start (previous = null), on go(), replace(), and on the browser's back and forward.
  *  back() steps back in history when we came from inside the portal, or else goes to the hub without leaving the
- *  site (a link opened straight on a world). replace() rewrites the address in place (no new entry), and the entry
- *  stays one of the portal's or not. */
+ *  site (a link opened straight on a world); a second back() before the browser has stepped back (a double tap) is
+ *  ignored. replace() rewrites the address in place (no new entry), and the entry stays one of the portal's or not. */
 export function createRouter(onRoute) {
   let route = parseRoute(location.hash);
+  let stepping = 0; // a history.back() under way, until its popstate (or 1 s, if none ever comes)
   const arrive = (next) => {
     const previous = route;
     route = next;
@@ -49,13 +50,21 @@ export function createRouter(onRoute) {
       arrive(next);
     },
     back() {
-      if (history.state?.portail) return history.back();
+      if (history.state?.portail) {
+        if (stepping) return;
+        stepping = setTimeout(() => (stepping = 0), 1000);
+        return history.back();
+      }
       history.replaceState(null, "", routeHash(hub()));
       arrive(hub());
     },
     start() {
       route = parseRoute(location.hash); // the address may have been rewritten since (?musee → #/ubb)
-      addEventListener("popstate", () => arrive(parseRoute(location.hash)));
+      addEventListener("popstate", () => {
+        clearTimeout(stepping);
+        stepping = 0;
+        arrive(parseRoute(location.hash));
+      });
       onRoute(route, null);
     },
   };

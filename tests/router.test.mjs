@@ -72,3 +72,34 @@ test("router: replace rewrites the address in place, keeps whether it is one of 
     Object.assign(globalThis, saved);
   }
 });
+
+test("router: a second back() before the first one's popstate is ignored (a double tap), until it lands or 1 s has gone by", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const saved = { location: globalThis.location, history: globalThis.history };
+  const popstate = []; // the router's popstate listeners
+  let backs = 0; // history.back() calls; the browser steps back later (popstate)
+  globalThis.location = { hash: "#/aventures" };
+  globalThis.history = { state: { portail: true }, back: () => backs++ };
+  globalThis.addEventListener = (type, fn) => type === "popstate" && popstate.push(fn);
+  try {
+    const router = createRouter(() => {});
+    router.start();
+    router.back();
+    router.back(); // the same button touched twice: the browser has not stepped back yet
+    assert.equal(backs, 1);
+    location.hash = "#/";
+    popstate.forEach((fn) => fn()); // it has
+    router.back();
+    assert.equal(backs, 2);
+    router.back(); // no popstate this time (nothing before the first entry): after 1 s, back() works again
+    t.mock.timers.tick(999);
+    router.back();
+    assert.equal(backs, 2);
+    t.mock.timers.tick(1);
+    router.back();
+    assert.equal(backs, 3);
+  } finally {
+    Object.assign(globalThis, saved);
+    delete globalThis.addEventListener;
+  }
+});

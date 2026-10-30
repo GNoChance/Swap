@@ -78,6 +78,14 @@ test("aventures: ?demo stamps every outing, or those before ?tampon, whose stamp
   assert.deepEqual([unknown.stamped, unknown.pending], [["a", "b", "c"], []]);
 });
 
+test("aventures: ?demo&accueil is a first visit: nothing stamped, Mini Cycy's welcome to come (a ?tampon changes nothing)", () => {
+  assert.deepEqual(demoProgress([a, b, c], null, true), initialProgress());
+  assert.deepEqual(demoProgress([a, b, c], "b", true), initialProgress());
+  const first = demoProgress(AVENTURES, null, true);
+  assert.equal(statuses(AVENTURES, first)["bivouac-1"], "open");
+  assert.deepEqual(addedSince(AVENTURES, first), []); // no « nouveau tampon » before the welcome
+});
+
 test("aventures: a damaged or old save is cleaned up, a good one is kept as it is", () => {
   assert.deepEqual(sanitizeProgress({ stamped: ["a", "a", "zzz"], pending: ["a", "b"], welcomed: "oui", page: -3, known: 4 }, ["a", "b", "c"]),
     { stamped: ["a"], pending: ["b"], welcomed: false, known: [], page: 0 });

@@ -1064,8 +1064,9 @@ const homeButton = h(
 );
 document.body.append(homeButton);
 
-// Any first touch wakes the audio up (a reload lands straight on the timeline, without the welcome button).
-for (const type of ["pointerdown", "keydown"]) document.addEventListener(type, unlockAudio, { once: true, capture: true });
+// Any first touch wakes the audio up (a reload lands straight on the timeline, without the welcome button). iOS lets it
+// wake only at the end of a touch (pointerup, touchend); unlockAudio can run several times.
+for (const type of ["pointerdown", "pointerup", "touchend", "keydown"]) document.addEventListener(type, unlockAudio, { once: true, capture: true });
 
 // iOS keeps the layout viewport under the keyboard: expose the visible height so the sheet stays above it.
 const vv = window.visualViewport;

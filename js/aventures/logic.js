@@ -88,8 +88,10 @@ export function addedSince(aventures, progress) {
     .filter((id) => !seen.has(id));
 }
 
-/** ?demo: every outing stamped; with ?tampon=<id>, those before it stamped and its stamp waiting (unknown id: all stamped). */
-export function demoProgress(aventures, tamponId = null) {
+/** ?demo: every outing stamped; with ?tampon=<id>, those before it stamped and its stamp waiting (unknown id: all stamped);
+ *  with &accueil (welcome), a first visit, whatever the ?tampon. */
+export function demoProgress(aventures, tamponId = null, welcome = false) {
+  if (welcome) return initialProgress();
   const ids = ordered(aventures).map((x) => x.id);
   const at = ids.indexOf(tamponId);
   return {

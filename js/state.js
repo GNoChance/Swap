@@ -10,6 +10,7 @@ const AVENTURES_KEY = "swap-cyrielle:aventures";
 const params = new URLSearchParams(location.search);
 export const isDemo = params.has("demo");
 const demoTampon = params.get("tampon"); // ?demo&tampon=<id>: the passport at the moment of that stamp
+const demoWelcome = params.has("accueil"); // ?demo&accueil: a first visit, Mini Cycy's welcome
 // ?rejouer (« Tout rejouer depuis le début » on the home page): the swap from the start, gifts unlocking one by one
 // as the first time, but nothing is saved: her progress and her debrief answers stay as they were.
 export const isReplay = params.has("rejouer");
@@ -24,12 +25,14 @@ function read(key) {
   }
 }
 
+/** Whether it was written. */
 function write(key, value) {
   try {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
+    return true;
   } catch {
-    /* private mode or blocked storage: progress just won't survive a reload */
+    return false; /* private mode or blocked storage: progress just won't survive a reload */
   }
 }
 
@@ -55,10 +58,15 @@ export function saveProgress(progress) {
   if (!transient) write(KEY, JSON.stringify(progress));
 }
 
-/** The passport's progress. ?demo → every outing stamped, or those before ?tampon=<id> whose stamp waits. */
+// The passport's progress when it is not stored (?demo, blocked or full storage): kept as long as the page lives
+let memo = null;
+
+/** The passport's progress. ?demo → every outing stamped, or those before ?tampon=<id> whose stamp waits, or (with
+ *  &accueil) a first visit; then what the visit has done since. */
 export function loadAventures(aventures) {
-  if (isDemo) return demoProgress(aventures, demoTampon);
   const ids = aventures.map((a) => a.id);
+  if (memo) return sanitizeProgress(memo, ids);
+  if (isDemo) return demoProgress(aventures, demoTampon, demoWelcome);
   try {
     return sanitizeProgress(JSON.parse(read(AVENTURES_KEY)), ids);
   } catch {
@@ -66,9 +74,9 @@ export function loadAventures(aventures) {
   }
 }
 
-/** Nothing is saved in ?demo. */
+/** Nothing is saved in ?demo; there, or when storage fails, the page keeps it (a reload starts over). */
 export function saveAventures(progress) {
-  if (!isDemo) write(AVENTURES_KEY, JSON.stringify(progress));
+  memo = isDemo || !write(AVENTURES_KEY, JSON.stringify(progress)) ? progress : null;
 }
 
 const HUB_KEY = "swap-cyrielle:hub";
