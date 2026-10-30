@@ -166,7 +166,7 @@
 }
 
 .af-title {
-  top: 42px;
+  top: 52px; /* under the sound button's corner on a phone (56 px from the top, 50 units on the tallest) */
   font: 600 26px / 1 var(--serif);
   letter-spacing: 0.13em;
   text-indent: 0.13em; /* the spacing after its last letter, put back before the first: centred */
@@ -178,7 +178,7 @@
 }
 
 .af-line {
-  top: 80px;
+  top: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,4 +195,106 @@
   width: 14px;
   height: 1px;
   background: currentColor;
+}
+
+/* ── The actors (actors.js): a sticker stands on its point (left, top: the middle of its feet or wheels), centred over
+   it by a flex box of no size; GSAP moves the actor, turns its turn box and hops, sways or leans its pose, the box
+   drawn apart. Each look is an image stacked in the pose; one shows at a time ── */
+.st-actor {
+  position: absolute;
+  display: flex;
+  justify-content: center; /* the turn box overflows it evenly: centred on its x */
+  align-items: flex-end; /* and stands on its y */
+  width: 0;
+  height: 0;
+}
+
+.st-actor__turn {
+  position: relative;
+  flex: none;
+  transform-origin: 50% 100%;
+}
+
+/* a vehicle facing right (its stickers face left); GSAP never moves a vehicle's turn box */
+.st-actor__turn.is-flipped {
+  transform: scaleX(-1);
+}
+
+.st-actor__pose {
+  display: grid;
+  transform-origin: 50% 100%;
+  will-change: transform; /* drawn once with its shadow, then only moved */
+}
+
+/* the sticker keeps its white edge; its shadow is the paper's (soft, below, warm brown), set once, never animated */
+.st-actor__img {
+  display: block;
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: end;
+  max-width: none;
+  filter: drop-shadow(0 3px 4.8px rgba(59, 42, 24, 0.38));
+  pointer-events: none;
+  user-select: none;
+}
+
+/* a sign over a person (emote()): a bubble of words, or a drawing by her head or in her back */
+.st-emote {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  translate: -50% 0; /* GSAP scales it: its transform stays free */
+  display: block;
+  white-space: nowrap;
+}
+
+.st-emote--bubble {
+  padding: 3px 10px 4px;
+  border-radius: 999px;
+  font: 700 17px / 1 var(--serif);
+  color: #3b2a18;
+  background: #fffaf0;
+  box-shadow: 0 2px 3px rgba(59, 42, 24, 0.3);
+}
+
+.st-emote--sweat {
+  bottom: 78%;
+  left: 74%;
+}
+
+.st-emote--zap {
+  bottom: 52%;
+  left: 16%;
+}
+
+.st-emote svg,
+.st-puff svg {
+  display: block;
+  overflow: visible;
+}
+
+/* a puff of paper smoke from a vehicle's back (smoke()) */
+.st-puff {
+  position: absolute;
+  display: block;
+}
+
+/* ── The map (recipes.carte): its names in ink on the paper, haloed so the land under them never muddles them; the
+   arrival's pin, its tip on its point ── */
+.st-name {
+  font: 600 16px var(--serif);
+  letter-spacing: 0.02em;
+  fill: #3b2a18;
+  stroke: #fbf3df;
+  stroke-width: 3.4px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+.st-pin {
+  position: absolute;
+  width: 28px;
+  height: 42px;
+  transform-origin: 14px 38px; /* its tip */
+  will-change: transform;
 }

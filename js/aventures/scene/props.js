@@ -3,98 +3,24 @@
 // evening's colours, each piece cut with its shadow and light edge) or "poster" (the same shapes in the poster's flat
 // colours). Pure: markup only, the same for the same arguments.
 import { AFFICHE as A, cutPiece, cutSheet } from "./decor.js";
+import { blob, curve, dot, edgeAt, lens, mirror, n, path, poly, random, sheet, speck, topEdge, tuft } from "./geom.js";
 
 const L = -605; // a 1600-wide layer's edges
 const R = 995;
 const SKY_FOOT = 440; // the sky and the lake stop where the meadows cover them: less to blend on each frame
 const LAKE_FOOT = 560;
-const n = (v) => Math.round(v * 10) / 10;
-const xy = ([x, y]) => `${n(x)} ${n(y)}`;
-const paper = (skin) => skin === "paper";
-const path = (d, fill) => `<path d="${d}" fill="${fill}"/>`;
-/** A closed polygon. */
-const poly = (list) => `M${list.map(xy).join("L")}Z`;
+export const paper = (skin) => skin === "paper";
 
-/** A smooth line through the points (Catmull-Rom), as path data from its first point. */
-function curve(list) {
-  let d = `M${xy(list[0])}`;
-  for (let i = 0; i < list.length - 1; i++) {
-    const [p0, p1, p2, p3] = [list[i - 1] ?? list[i], list[i], list[i + 1], list[i + 2] ?? list[i + 1]];
-    d += `C${xy([p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6])} ${xy([p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6])} ${xy(p2)}`;
-  }
-  return d;
-}
-/** A sheet's outline: a smooth top edge through the points, down to `bottom`. */
-const sheet = (list, bottom = 790) => `${curve(list)}V${bottom}H${n(list[0][0])}Z`;
-/** A closed smooth blob through the points. */
-function blob(list) {
-  const k = list.length;
-  let d = `M${xy(list[0])}`;
-  for (let i = 0; i < k; i++) {
-    const [p0, p1, p2, p3] = [list[(i - 1 + k) % k], list[i], list[(i + 1) % k], list[(i + 2) % k]];
-    d += `C${xy([p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6])} ${xy([p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6])} ${xy(p2)}`;
-  }
-  return `${d}Z`;
-}
-/** The edges of a polygon that face up, moved half a light edge inside it (path data for its light edge). */
-function topEdge(list, w = 1.3) {
-  let area = 0;
-  list.forEach((a, i) => {
-    const b = list[(i + 1) % list.length];
-    area += a[0] * b[1] - b[0] * a[1];
-  });
-  const s = Math.sign(area);
-  let d = "";
-  let open = false;
-  list.forEach((a, i) => {
-    const b = list[(i + 1) % list.length];
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-    const [nx, ny] = [((b[1] - a[1]) / len) * s, (-(b[0] - a[0]) / len) * s]; // outward
-    const inside = ([x, y]) => [x - (nx * w) / 2, y - (ny * w) / 2];
-    if (ny < -0.3) d += open ? `L${xy(inside(b))}` : `M${xy(inside(a))}L${xy(inside(b))}`;
-    open = ny < -0.3;
-  });
-  return d;
-}
-/** The y of a line of points (sorted by x) at x. */
-function edgeAt(list, x) {
-  for (let i = 1; i < list.length; i++)
-    if (x <= list[i][0]) {
-      const [a, b] = [list[i - 1], list[i]];
-      return a[1] + ((x - a[0]) / (b[0] - a[0])) * (b[1] - a[1]);
-    }
-  return list.at(-1)[1];
-}
-/** A seeded random in [0, 1): the same scatter every time. */
-function random(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(s ^ (s >>> 15), s | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-/** Points mirrored in the water line `y0`, squashed by `k` (a reflection seen from the shore). */
-const mirror = (list, y0, k) => list.map(([x, y]) => [x, y0 + Math.max(0, y0 - y) * k]);
-const dot = (x, y, r) => `M${n(x - r)} ${n(y)}a${n(r)} ${n(r)} 0 1 0 ${n(2 * r)} 0a${n(r)} ${n(r)} 0 1 0 ${n(-2 * r)} 0`;
-/** A speck (a flower far off): four points, cheaper to draw than a disc. */
-const speck = (x, y, r) => poly([[x, y - r], [x + r, y], [x, y + r], [x - r, y]]);
-/** A thin lens (a ripple, a glint, a wisp), `w` long from x, y. */
-const lens = (x, y, w, h = 1.2) => blob([[x, y], [x + w * 0.5, y - h], [x + w, y], [x + w * 0.5, y + h * 0.7]]);
-/** A tuft of grass, its base at x, y. */
-const tuft = (x, y, s) =>
-  poly([[x - s, y], [x - 0.7 * s, y - 1.1 * s], [x - 0.4 * s, y - 0.3 * s], [x - 0.1 * s, y - 1.6 * s], [x + 0.15 * s, y - 0.35 * s], [x + 0.45 * s, y - 1.25 * s], [x + 0.6 * s, y - 0.25 * s], [x + s, y - 0.8 * s], [x + 0.9 * s, y]]);
-
+// the paper pieces, shared with the other props files (props-carte.js, props-vallee.js)
 /** A piece of paper (paper: its shadow and light edge; poster: flat). */
-const piece = (skin, silhouette, markup, edge = "", lift = 1) => (paper(skin) ? cutPiece({ silhouette, markup, edge, lift }) : markup);
+export const piece = (skin, silhouette, markup, edge = "", lift = 1) => (paper(skin) ? cutPiece({ silhouette, markup, edge, lift }) : markup);
 /** A sheet down to the bottom, its top edge through the points, `extra` drawn on it. */
-function sheetOf(skin, edge, fill, extra = "", bottom = 790) {
+export function sheetOf(skin, edge, fill, extra = "", bottom = 790) {
   const markup = path(sheet(edge, bottom), fill) + extra;
   return paper(skin) ? cutSheet({ edge: curve(edge), markup }) : markup;
 }
 /** A polygon cut out of paper, its top edges lit. */
-const slab = (skin, list, fill, lift = 1) => piece(skin, poly(list), path(poly(list), fill), topEdge(list), lift);
+export const slab = (skin, list, fill, lift = 1) => piece(skin, poly(list), path(poly(list), fill), topEdge(list), lift);
 
 // ── The sky ─────────────────────────────────────────────────
 
@@ -240,7 +166,7 @@ export function ridge(skin) {
 
 // the Pic du Midi d'Ossau as seen from Ayous: a massive pyramid crowned by two blunt horns (the higher on the left),
 // the deep notch of the Fourche between them
-const OSSAU = [[96, 372], [118, 358], [136, 348], [150, 338], [162, 326], [172, 312], [180, 298], [186, 284], [192, 268], [196, 252], [200, 236], [204, 220], [208, 204], [211, 190], [214, 178], [217, 166], [220, 152], [223, 140], [226, 130], [229, 123], [233, 118], [237, 119], [241, 124], [243, 131], [245, 142], [247, 154], [249, 164], [251, 170], [253, 165], [255, 155], [257, 145], [260, 137], [263, 131], [267, 127], [271, 128], [274, 133], [277, 142], [280, 154], [283, 166], [287, 176], [293, 184], [300, 190], [308, 194], [316, 196], [322, 202], [329, 214], [337, 228], [346, 242], [356, 256], [367, 268], [380, 281], [394, 293], [412, 306], [434, 320], [460, 336], [494, 353], [540, 372]];
+export const OSSAU = [[96, 372], [118, 358], [136, 348], [150, 338], [162, 326], [172, 312], [180, 298], [186, 284], [192, 268], [196, 252], [200, 236], [204, 220], [208, 204], [211, 190], [214, 178], [217, 166], [220, 152], [223, 140], [226, 130], [229, 123], [233, 118], [237, 119], [241, 124], [243, 131], [245, 142], [247, 154], [249, 164], [251, 170], [253, 165], [255, 155], [257, 145], [260, 137], [263, 131], [267, 127], [271, 128], [274, 133], [277, 142], [280, 154], [283, 166], [287, 176], [293, 184], [300, 190], [308, 194], [316, 196], [322, 202], [329, 214], [337, 228], [346, 242], [356, 256], [367, 268], [380, 281], [394, 293], [412, 306], [434, 320], [460, 336], [494, 353], [540, 372]];
 const OSSAU_LIT = [
   [[233, 118], [229, 123], [226, 130], [223, 140], [220, 152], [217, 166], [214, 178], [211, 190], [222, 196], [226, 176], [229, 156], [232, 138]], // the higher horn's west face
   [[267, 127], [263, 131], [260, 137], [257, 145], [255, 155], [253, 165], [251, 170], [256, 182], [261, 162], [265, 146], [268, 136]], // the lower horn's, over the notch
@@ -313,7 +239,7 @@ export function pine(x, y, size, skin) {
   return forest([[x, y, size]], skin);
 }
 /** Pines at once ([[x, y, size]]), cut together: their shadows fall on the slope. */
-function forest(list, skin, tint) {
+export function forest(list, skin, tint) {
   const parts = list.map(([x, y, size]) => pineParts(x, y, size));
   const c = { ...PINE[skin], ...tint };
   const all = (k) => parts.map((part) => part[k]).join("");
@@ -321,7 +247,7 @@ function forest(list, skin, tint) {
   return piece(skin, all("dark"), markup, "", 0.45);
 }
 /** A row of pines along an edge, from x0 to x1 about `step` apart, sunk `sink` under it. */
-function row(edge, x0, x1, step, [s0, s1], sink, seed) {
+export function row(edge, x0, x1, step, [s0, s1], sink, seed) {
   const r = random(seed);
   const list = [];
   for (let x = x0; x < x1; x += step * (0.6 + r() * 0.8)) list.push([x, edgeAt(edge, x) + sink + r() * sink, s0 + r() * (s1 - s0)]);

@@ -5,6 +5,7 @@
 export const W = 390;
 export const H = 760;
 export const SAFE = { x0: 25, x1: 365 }; // what matters (people, vehicle, lettering) stays between these x
+export const ENTER = 0.6; // s the screen takes to fade in (main.js, show()): the camera and the grain wait for it
 const TALL = 560; // px: from this height up, the whole stage in the height
 const BAND = { y0: 250, y1: 730 }; // the action band, for a short screen
 
@@ -65,16 +66,17 @@ export function createStage(host) {
       layers.push({ el: layer, depth });
       return layer;
     },
-    /** The camera at `at` s: each layer moves by −x × depth (and −y), and zooms around the centre by zoom^depth. From
-     *  then on each layer is drawn apart; until then the decor is a single layer, cheap while its screen fades in
-     *  (main.js, 0.6 s): a first move after that keeps it so. */
-    pan(tl, at, { x = 0, y = 0, zoom = 1, duration = 1, ease = "sine.inOut" } = {}) {
+    /** The camera at `at` s: each layer moves by −x × depth (and −y), and zooms around the centre by zoom^depth; only
+     *  the layers in `only` (their elements) if given, a scene of its own. From then on each layer is drawn apart; until
+     *  then the decor is a single layer, cheap while its screen fades in (ENTER): a first move after that keeps it so. */
+    pan(tl, at, { x = 0, y = 0, zoom = 1, duration = 1, ease = "sine.inOut", only } = {}) {
+      const moved = only ? layers.filter((layer) => only.includes(layer.el)) : layers;
       tl.set(
-        layers.map((layer) => layer.el),
+        moved.map((layer) => layer.el),
         { willChange: "transform" },
         at,
       );
-      for (const layer of layers)
+      for (const layer of moved)
         tl.to(layer.el, { x: -x * layer.depth, y: -y * layer.depth, scale: zoom ** layer.depth, duration, ease }, at);
     },
     /** The camera's frame at `at` s: whole (the whole stage in the height, as the poster needs on a phone held

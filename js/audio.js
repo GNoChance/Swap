@@ -136,6 +136,43 @@ const sounds = {
     for (let i = 0; i < 6; i++) noise({ at: i * 0.034 + Math.random() * 0.018, dur: 0.06, gain: 0.06 + Math.random() * 0.05, filter: 2000 + Math.random() * 2600, q: 0.7 });
     noise({ at: 0.03, dur: 0.24, gain: 0.05, filter: 850, q: 0.45 });
   },
+  /** A small engine purring along (~3.2 s): the car on the intro's map, then into the parking. */
+  engine() {
+    const t = ctx.currentTime;
+    const dur = 3.2;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(56, t);
+    osc.frequency.linearRampToValueAtTime(72, t + 1.1);
+    osc.frequency.linearRampToValueAtTime(64, t + dur);
+    const putt = ctx.createOscillator(); // the cylinders: the sound throbs
+    putt.frequency.value = 21;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.35;
+    const throb = ctx.createGain();
+    throb.gain.value = 0.6; // 0.6 ± 0.35
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 420;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + 0.25);
+    g.gain.setValueAtTime(0.07, t + dur - 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    putt.connect(depth).connect(throb.gain);
+    osc.connect(throb).connect(lp).connect(g).connect(master);
+    for (const o of [osc, putt]) {
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+  },
+  /** Brakes: a short squeal of tyres, then a soft thump. */
+  brake() {
+    tone({ freq: 1250, glideTo: 900, type: "triangle", dur: 0.28, gain: 0.035, attack: 0.02 });
+    tone({ freq: 1870, glideTo: 1350, dur: 0.24, gain: 0.02, attack: 0.02 });
+    noise({ dur: 0.22, gain: 0.08, filter: 2600, q: 1.5 });
+    tone({ freq: 90, glideTo: 55, at: 0.2, dur: 0.15, gain: 0.08 });
+  },
   /** A crisp packet tears open. */
   rip() {
     for (let i = 0; i < 7; i++) noise({ at: i * 0.028, dur: 0.05, gain: 0.22 - i * 0.015, filter: 2600 + i * 250, q: 1.1 });

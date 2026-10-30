@@ -6,8 +6,10 @@ export const SCENARIOS = {
   "bivouac-1": {
     load: () => import("./bivouac-1.js"),
     beats: [
-      { name: "En haut", at: 0 },
-      { name: "L'affiche", at: 2.5 },
+      { name: "La carte", at: 0 },
+      { name: "Le parking", at: 3.3 },
+      { name: "En haut", at: 4.3 },
+      { name: "L'affiche", at: 5.8 },
     ],
   },
 };

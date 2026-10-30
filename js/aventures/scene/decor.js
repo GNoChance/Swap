@@ -36,7 +36,7 @@ export function cutSheet({ edge, markup }) {
 }
 
 /** An <svg> over a whole layer, in stage units (x from −(width − 390)/2). */
-function sheet(cls, width, markup) {
+export function sheet(cls, width, markup) {
   const el = document.createElementNS(NS, "svg");
   el.setAttribute("class", cls);
   el.setAttribute("viewBox", `${-(width - 390) / 2} 0 ${width} 760`);
@@ -47,13 +47,15 @@ function sheet(cls, width, markup) {
 
 /** paperLayer({ stage, name, depth, width, paper, poster }): a layer of the stage holding its paper version (`paper`,
  *  SVG markup in stage units, its pieces cut with cutPiece() and cutSheet(): their shadows and light edges) and its
- *  poster version (`poster`, hidden). */
+ *  poster version (`poster`, hidden; none for a scene that never becomes the poster). */
 export function paperLayer({ stage, name, depth = 1, width = 1600, paper, poster }) {
   const el = stage.layer(name, { depth, width });
   const flat = sheet("st-paper", width, paper);
+  el.append(flat);
+  if (poster === undefined) return { el, paper: flat, poster: null };
   const print = sheet("st-poster", width, poster);
   Object.assign(print.style, { opacity: "0", visibility: "hidden" }); // as autoAlpha 0, without reading the page's styles
-  el.append(flat, print);
+  el.append(print);
   return { el, paper: flat, poster: print };
 }
 
@@ -66,15 +68,14 @@ export function grain(stage) {
   return el;
 }
 
-/** posterize(tl, at, layers): from `at` s, each layer (back to front, `stagger` s apart) fades into its poster version,
- *  and the grain fades away. → when the last one is done (s). */
-export function posterize(tl, at, layers, { stagger = 0.12 } = {}) {
+/** posterize(tl, at, layers, { stagger, grain }): from `at` s, each layer (back to front, `stagger` s apart) fades into
+ *  its poster version, and the grain (grain()) fades away. → when the last one is done (s). */
+export function posterize(tl, at, layers, { stagger = 0.12, grain } = {}) {
   const fade = 0.4;
   layers.forEach((layer, k) => {
     const when = at + k * stagger;
     tl.to(layer.poster, { autoAlpha: 1, duration: fade, ease: "power1.inOut" }, when).set(layer.paper, { autoAlpha: 0 }, when + fade);
   });
-  const grained = layers[0]?.el.closest(".st-stage")?.querySelector(".st-grain");
-  if (grained) tl.to(grained, { autoAlpha: 0, duration: 0.6, ease: "power1.out" }, at);
+  if (grain) tl.to(grain, { autoAlpha: 0, duration: 0.6, ease: "power1.out" }, at);
   return at + Math.max(0, layers.length - 1) * stagger + fade;
 }

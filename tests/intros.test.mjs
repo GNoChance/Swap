@@ -1,13 +1,22 @@
 // The outings' data for the intros (spec § 9): their transports and guests, and the place of each outing that has its
-// own scenario (intros/index.js, read under Node: it imports nothing); the stage's scale and the poster's words.
+// own scenario (intros/index.js, read under Node: it imports nothing); the stickers each scenario shows and their
+// stand-ins; the stage's scale, the map's projection and the poster's words.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { AVENTURES, PEOPLE, TRANSPORTS } from "../js/aventures/data.js";
 import { SCENARIOS } from "../js/aventures/intros/index.js";
 import { fit } from "../js/aventures/scene/stage.js";
-import { posterLine, posterTitle } from "../js/aventures/scene/poster-text.js";
+import { fitTitle, posterLine, posterTitle, TITLE_FIT, titleWidth } from "../js/aventures/scene/poster-text.js";
+import { fallbackUrl, stickerUrl, vehicleUrl } from "../js/aventures/scene/urls.js";
+import { projection } from "../js/aventures/scene/geo.js";
 
 const byId = (id) => AVENTURES.find((a) => a.id === id);
+const exists = (path) => existsSync(fileURLToPath(new URL(`../${path}`, import.meta.url)));
+const POSES = ["joie", "colere", "pleurs", "boude", "question", "sommeil", "bisou", "peace", "surprise", "pouces", "theme", "saut"];
+// the bivouac's map (bivouac-1.js): Bordeaux at (199, 161), 258 units a degree
+const BIVOUAC_MAP = { origin: [44.837, -0.579], at: { x: 199, y: 161 }, unitsPerDegree: 258 };
 
 test("intros: transports and people are known, in the spec's table", () => {
   for (const a of AVENTURES) {
@@ -53,4 +62,74 @@ test("intros: fit scales the stage to the screen", () => {
 test("intros: the poster says the lieu, then the stamp's name and dates", () => {
   assert.equal(posterTitle(byId("bivouac-1")), "LACS D'AYOUS");
   assert.equal(posterLine(byId("bivouac-1")), "Premier bivouac · 17–18 mai 2025");
+});
+
+// The poster's title stays in its picture, under the sound button's corner (the screen's top right 56 px; checked on
+// screen by tests/e2e/intros.mjs): a long lieu gets smaller.
+test("intros: a long lieu shrinks to fit the poster, « LACS D'AYOUS » keeps its size", () => {
+  assert.equal(fitTitle("LACS D'AYOUS", TITLE_FIT), TITLE_FIT.size);
+  const long = "PORT DE SAINT-JEAN-DE-LUZ"; // 20 letters
+  assert.equal(long.replace(/[^A-Z]/g, "").length, 20);
+  assert.ok(titleWidth(long, TITLE_FIT) > TITLE_FIT.width, "the long lieu would not need to shrink");
+  const size = fitTitle(long, TITLE_FIT);
+  assert.ok(size < TITLE_FIT.size && size > 8, `size ${size}`);
+  const width = titleWidth(long, { ...TITLE_FIT, size });
+  assert.ok(width <= TITLE_FIT.width + 1e-9, `${width} units wide, room for ${TITLE_FIT.width}`);
+  assert.ok(width > TITLE_FIT.width * 0.97, `${width} units wide: smaller than it needs`);
+});
+
+// The stickers (spec § 3 and § 7): only those a scenario names are loaded; each has a stand-in (the portal's spec, § 7).
+test("intros: every sticker a scenario names exists", async () => {
+  for (const id of Object.keys(SCENARIOS)) {
+    const { stickers } = await import(`../js/aventures/intros/${id}.stickers.js`);
+    assert.ok(Array.isArray(stickers) && stickers.length, `${id}: no stickers`);
+    for (const path of stickers) {
+      assert.ok(!path.endsWith(".webp"), `${id}: ${path} (without .webp)`);
+      assert.ok(exists(`assets/aventures/${path}.webp`), `${id}: assets/aventures/${path}.webp is missing`);
+      assert.ok(path.startsWith(`${id}/`) || path.startsWith("vehicules/"), `${id}: ${path} belongs to another outing`);
+    }
+  }
+});
+
+test("intros: every fallback sticker exists", () => {
+  for (const who of ["cycy", "kevin"])
+    for (const side of ["face", "dos"])
+      for (const pose of POSES) {
+        const url = fallbackUrl(who, side, pose);
+        assert.match(url, /^assets\/cyrielle\/[a-z0-9-]+\.webp$/, `${who} ${side} ${pose}: ${url}`);
+        assert.ok(exists(url), `${who} ${side} ${pose}: ${url} is missing`);
+      }
+  assert.equal(fallbackUrl("cycy", "face", "joie"), "assets/cyrielle/joy.webp");
+  assert.equal(fallbackUrl("kevin", "face", "pouces"), "assets/cyrielle/kevin-smug.webp");
+  assert.equal(fallbackUrl("cycy", "dos", "peace"), "assets/cyrielle/dos-cycy-cheer.webp");
+  assert.equal(fallbackUrl("kevin", "dos", "surprise"), "assets/cyrielle/dos-kevin-shock.webp");
+});
+
+test("intros: sticker urls", () => {
+  assert.equal(stickerUrl("bivouac-1", "kevin", "dos", "joie"), "assets/aventures/bivouac-1/kevin-dos-joie.webp");
+  assert.equal(vehicleUrl("seat", "roule"), "assets/aventures/vehicules/seat-roule.webp");
+});
+
+// The map (spec § 5, moment 1): the real coordinates, in a simple equirectangular projection.
+test("intros: the projection puts Bordeaux where the map wants it", () => {
+  const project = projection(BIVOUAC_MAP);
+  const near = (p, [x, y], tolerance, what) => assert.ok(Math.abs(p.x - x) <= tolerance && Math.abs(p.y - y) <= tolerance, `${what}: ${JSON.stringify(p)}, not (${x}, ${y})`);
+  near(project([44.837, -0.579]), [199, 161], 0.01, "Bordeaux");
+  near(project([43.295, -0.37]), [238, 559], 1.5, "Pau");
+  near(project([42.873, -0.466]), [220, 668], 1.5, "Bious-Artigues");
+  assert.ok(Math.abs(project([44.5, -1.2]).x - 84) < 2, "the Atlantic coast");
+  assert.ok(project([43.295, -0.37]).y > project([44.837, -0.579]).y, "further south, lower on the map");
+});
+
+test("intros: the bivouac trip stays on the map", () => {
+  const { trajet } = byId("bivouac-1");
+  assert.equal(trajet.depart, "Bordeaux");
+  assert.ok(trajet.etapes.includes("Pau"), `etapes ${trajet.etapes}`);
+  assert.ok(trajet.points.length >= 6, `${trajet.points.length} points`);
+  const project = projection(BIVOUAC_MAP);
+  for (const point of trajet.points) {
+    const { x, y } = project(point);
+    assert.ok(x >= 25 && x <= 365 && y >= 120 && y <= 700, `${point} → (${x}, ${y})`);
+  }
+  assert.ok(trajet.points.at(-1)[0] < trajet.points[0][0], "the arrival is not south of the start");
 });

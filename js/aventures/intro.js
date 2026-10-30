@@ -21,6 +21,20 @@ export async function loadScenario(id) {
   }
 }
 
+/** GSAP drops the time of any frame over 0.5 s (its lag smoothing): on a slow device the intro would end late. While
+ *  an intro plays its timeline keeps the clock's time, all but the time the page is hidden (a locked phone): that
+ *  frame back is dropped as before, which holds the intro where it was. → the function that puts it back. */
+function keepTime() {
+  const { ticker } = gsap;
+  const seen = () => (document.hidden ? ticker.lagSmoothing(500, 33) : ticker.add(() => ticker.lagSmoothing(0), true)); // once the frame back has dropped it
+  ticker.lagSmoothing(0);
+  document.addEventListener("visibilitychange", seen);
+  return () => {
+    document.removeEventListener("visibilitychange", seen);
+    ticker.lagSmoothing(500, 33); // GSAP's own
+  };
+}
+
 /** Where its timeline starts (s): ?t=<s> in the demo, else its beginning. */
 function startAt() {
   const t = Number(new URLSearchParams(location.search).get("t"));
@@ -38,6 +52,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
   );
 
   let played = null; // the scenario on screen: { timeline, ready, dispose }
+  let release = null; // keepTime()'s undoing
   let finished = false;
   const stop = () => (finished = true);
   // The browser's back or forward can leave its address while it plays (it stays on screen until the next screen is
@@ -65,6 +80,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
     noHome: true,
     async enter() {
       addEventListener("popstate", left);
+      release = keepTime();
       played = scenario.mount(el, { aventure, ink }); // on screen: it can measure itself
       const { timeline, ready } = played;
       const end = timeline.duration(); // s
@@ -73,8 +89,8 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
         gsap.set(skip, { autoAlpha: 0, y: 12 });
         timeline.to(skip, { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.5);
       }
-      // it ends on its own timeline, not by the clock: a locked phone (a hidden page) holds it where it was, so the
-      // first time it is seen in full (GSAP's lag smoothing resumes it there; a frame under 0.5 s costs nothing)
+      // it ends on its own timeline, not by a timer: a locked phone (a hidden page) holds it where it was, so the
+      // first time it is seen in full (keepTime() drops the time it was hidden, and only that)
       timeline.call(finish, null, end);
       await Promise.resolve(ready).catch(() => {}); // it resolves; were it to reject, the intro plays all the same
       if (finished) return; // left (or skipped) while it was getting ready
@@ -85,6 +101,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
     leave() {
       stop();
       removeEventListener("popstate", left);
+      release?.();
       played?.dispose();
     },
   };
