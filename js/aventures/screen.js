@@ -14,7 +14,7 @@ import { createBuddy } from "./buddy.js";
 import { AVENTURES } from "./data.js";
 import { addedSince, isComplete, live, monthYear, nextToLive, pageOf, passportPages, stamp, statuses } from "./logic.js";
 import { createPassport } from "./passport.js";
-import { introScreen } from "./intro.js";
+import { introScreen, loadScenario } from "./intro.js";
 import { refused } from "./route.js";
 import { createStamper } from "./stamper.js";
 
@@ -69,10 +69,12 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   const stamps = await loadStamps();
   let progress = loadAventures(AVENTURES);
   if (id) {
+    const scenario = await loadScenario(id); // its own, or the provisional intro
     return introScreen({
       aventure: AVENTURES.find((a) => a.id === id),
       ink: stamps[id]?.ink,
       skippable: statuses(AVENTURES, progress)[id] === "stamped",
+      scenario,
       onDone() {
         // seen through the first time: its stamp waits, saved at once
         const now = loadAventures(AVENTURES);

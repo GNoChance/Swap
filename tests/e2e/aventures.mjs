@@ -10,6 +10,7 @@ import { check as checker } from "./check.mjs";
 import { content } from "../../js/content.js";
 import { fill } from "../../js/logic.js";
 import { AVENTURES } from "../../js/aventures/data.js";
+import { SCENARIOS } from "../../js/aventures/intros/index.js";
 import { monthYear, pageOf, passportPages, sanitizeProgress, statuses } from "../../js/aventures/logic.js";
 
 const BASE = process.env.BASE || "http://localhost:5173/";
@@ -25,7 +26,6 @@ const ids = AVENTURES.map((a) => a.id);
 let landscaped = false; // the phone-in-landscape check has run (once a run)
 const INKS = JSON.parse(readFileSync(new URL("../../assets/aventures/tampons/tampons.json", import.meta.url), "utf8"));
 const FALLBACK_INK = "#7A1F35"; // a stamp tampons.json does not give
-const LENGTH = 4500; // ms, an intro (js/aventures/intro.js)
 // The intros' clock, in the page from its first line: __introAt, when the last intro came on screen (just after its
 // enter()), in performance.now() ms; __introEnd, how long after that it ended (its address left, or its stamp began to
 // wait), null while it runs. Kept by the page itself, so a slow check (a screenshot) does not shift what it reads.
@@ -142,6 +142,7 @@ const saying = (text) => `JSON.stringify(${said}) === ${JSON.stringify(JSON.stri
 const onPage = (n) => `${book}?.dataset.page === "${n}"`;
 const slot = (id) => `.pp-slot[data-id="${id}"]`;
 const intro = (skippable) => `document.querySelector('.screen-intro[data-skippable="${skippable}"]')`;
+const introLength = `Number(window.__intro?.dataset.length)`; // ms, how long the last intro on screen lasts, as it says
 const atPassport = `location.hash === "#/aventures" && document.querySelector(".screen-passport")`;
 const waiting = `document.querySelector('.pp-tool[data-state="waiting"]')`; // the rubber stamp down, floating, untouched
 const stampOn = (id) => `document.querySelector('.pp-stamp[data-id="${id}"]')`;
@@ -185,15 +186,15 @@ async function suite(page, vp) {
     if (at.open !== "true" || at.page !== String(n)) throw new Error(`passeport ${at.open === "true" ? "ouvert" : "fermé"} sur la page ${at.page}, pas déjà ouvert sur la ${n}`);
     if (!at.buddy || at.said.length) throw new Error(`retour d'une intro : Mini Cycy ${at.buddy ? "là" : "absente"}, bulles ${JSON.stringify(at.said)}`);
   }
-  /** A touch in the middle of a first-time intro that must change nothing. An intro that ended well before its 4.5 s
+  /** A touch in the middle of a first-time intro that must change nothing. An intro that ended well before its length
    *  was ended by the touch; one that ended at its time, by its clock (the page's clock says which). */
   async function untouchable(id) {
-    const before = await page.eval(`({ t: performance.now() - window.__introAt, end: window.__introEnd, id: window.__intro?.dataset.id })`);
-    if (before.id !== id || before.end !== null || before.t > LENGTH - 1000) throw new Error(`pas d'intro de ${id} à toucher : ${JSON.stringify(before)}`);
+    const before = await page.eval(`({ t: performance.now() - window.__introAt, end: window.__introEnd, id: window.__intro?.dataset.id, length: ${introLength} })`);
+    if (before.id !== id || before.end !== null || before.t > before.length - 1000) throw new Error(`pas d'intro de ${id} à toucher : ${JSON.stringify(before)}`);
     await page.tap(".screen-intro");
-    await page.waitFor(`performance.now() - window.__introAt > ${Math.min(before.t + 600, LENGTH - 300)}`, 5000);
+    await page.waitFor(`performance.now() - window.__introAt > ${Math.min(before.t + 600, before.length - 300)}`, 5000);
     const end = await page.eval(`window.__introEnd`);
-    if (end !== null && end < LENGTH - 300) throw new Error(`un toucher a passé l'intro (finie ${Math.round(end)} ms après son début)`);
+    if (end !== null && end < before.length - 300) throw new Error(`un toucher a passé l'intro (finie ${Math.round(end)} ms après son début)`);
   }
   /** The hub on screen (alone, its entrance over): a touch on the passport's card. */
   async function throughCard() {
@@ -699,7 +700,7 @@ async function suite(page, vp) {
       // its intro seen through, then its stamp: the page remembers both
       await page.tap(slot("bivouac-1"));
       await page.waitFor(intro(false), 4000);
-      await backOn(1, 9000);
+      await backOn(1, (await page.eval(introLength)) + 4500);
       await toolOn("bivouac-1");
       await page.tap(".pp-tool");
       await page.waitFor(`${stampOn("bivouac-1")} && document.querySelector('${slot("canoe")}[data-status="open"]')`, 4000).catch(async () => {
@@ -753,21 +754,24 @@ async function suite(page, vp) {
     await fresh();
     await page.tap(slot("bivouac-1"));
     await page.waitFor(intro(false), 4000);
+    const length = await page.eval(introLength);
     await sleep(1300);
     await page.eval(`history.back()`);
     await backOn(1, 4000);
     await page.waitFor(`document.querySelector('${slot("bivouac-1")}[data-status="open"]')`, 2000);
-    await page.waitFor(`performance.now() - window.__introAt > ${LENGTH + 1500}`, LENGTH + 3000); // past the end the intro would have had
+    await page.waitFor(`performance.now() - window.__introAt > ${length + 1500}`, length + 3000); // past the end the intro would have had
     if ((await statusOf("bivouac-1")) !== "open") throw new Error(`statut enregistré : ${await statusOf("bivouac-1")}`);
     if (!(await page.eval(`${atPassport} && document.querySelector('${slot("bivouac-1")}[data-status="open"]')`))) throw new Error("l'intro a fini quand même");
   });
 
-  await check("venu du hub, le retour du navigateur tout près de la fin de l'intro de la première fois (4,3 s, 4,45 s) : le passeport, pas le hub ; l'aventure reste à vivre", async () => {
-    for (const at of [4300, 4450]) {
+  await check("venu du hub, le retour du navigateur tout près de la fin de l'intro de la première fois (200 ms et 50 ms avant) : le passeport, pas le hub ; l'aventure reste à vivre", async () => {
+    for (const early of [200, 50]) {
       for (let attempt = 1; ; attempt++) {
         await viaHub();
         await page.tap(slot("bivouac-1"));
         await page.waitFor(intro(false), 6000);
+        const length = await page.eval(introLength);
+        const at = length - early;
         // the back, `at` ms into the intro by the page's clock; when it arrives, has the intro already ended by itself?
         const late = await page.eval(`new Promise((resolve) => {
           addEventListener("popstate", () => resolve(Boolean(JSON.parse(localStorage.getItem("${KEY}"))?.pending?.length)), { once: true, capture: true });
@@ -779,7 +783,7 @@ async function suite(page, vp) {
           console.log(`    (à ${at} ms : le retour est arrivé après la fin de l'intro, essai suivant)`);
           continue;
         }
-        await page.waitFor(`performance.now() - window.__introAt > ${LENGTH + 2000}`, 6000); // past its end, and a step back more
+        await page.waitFor(`performance.now() - window.__introAt > ${length + 2000}`, 6000); // past its end, and a step back more
         const now = await page.eval(`({ hash: location.hash, hub: Boolean(document.querySelector(".screen-hub")), screens: document.querySelectorAll("#app > .screen").length,
           passport: Boolean(document.querySelector(".screen-passport")), slot: document.querySelector('${slot("bivouac-1")}')?.dataset.status })`);
         if (now.hash !== "#/aventures" || now.hub || !now.passport || now.screens !== 1) throw new Error(`à ${at} ms : ${JSON.stringify(now)}`);
@@ -798,14 +802,15 @@ async function suite(page, vp) {
     await page.reload();
     await page.waitFor(intro(false), 6000);
     const begun = Date.now();
+    const length = await page.eval(introLength);
     if ((await page.eval(`location.hash`)) !== "#/aventures/bivouac-1") throw new Error(`adresse : ${await page.eval("location.hash")}`);
     if (await page.eval(`Boolean(document.querySelector(".intro-skip"))`)) throw new Error("un bouton « Passer »");
     if ((await statusOf("bivouac-1")) !== "open") throw new Error(`statut enregistré : ${await statusOf("bivouac-1")}`);
     await sleep(400);
     await untouchable("bivouac-1");
-    await backOn(1, 7000);
+    await backOn(1, length + 2500);
     const took = Date.now() - begun;
-    if (took < 4000) throw new Error(`l'intro n'a duré que ${took} ms`);
+    if (took < length - 500) throw new Error(`l'intro n'a duré que ${took} ms`);
     if (!(await saved()).pending.includes("bivouac-1")) throw new Error(`pending : ${JSON.stringify((await saved()).pending)}`);
     await page.waitFor(`document.querySelector('${slot("bivouac-1")}[data-status="pending"]')`, 1000);
     await page.reload();
@@ -813,38 +818,40 @@ async function suite(page, vp) {
   });
 
   await check(
-    "le téléphone verrouillé 4 s pendant l'intro de la première fois (la page cachée et gelée) : au retour, l'aventure est toujours à vivre ; l'intro reprend où elle en était et ne finit qu'après ses 4,5 s en page visible",
+    "le téléphone verrouillé 4 s pendant l'intro de la première fois (la page cachée et gelée) : au retour, l'aventure est toujours à vivre ; l'intro reprend où elle en était et ne finit qu'après toute sa durée en page visible",
     async () => {
       await fresh();
       await page.tap(slot("bivouac-1"));
       await page.waitFor(intro(false), 4000);
+      const length = await page.eval(introLength);
       await page.waitFor(`performance.now() - window.__introAt > 1500`, 4000);
       await page.eval(`window.__seen = []; document.addEventListener("visibilitychange", () => window.__seen.push(performance.now() - window.__introAt))`);
       await page.lock(4000);
       await page.waitFor(`document.visibilityState === "visible" && window.__seen.length === 2`, 3000);
       if ((await statusOf("bivouac-1")) !== "open") throw new Error(`marquée vécue dès le retour : ${await statusOf("bivouac-1")}`);
-      await page.waitFor(`window.__introEnd !== null`, LENGTH + 4000);
+      await page.waitFor(`window.__introEnd !== null`, length + 4000);
       const [hidden, back] = await page.eval(`window.__seen`);
       const end = await page.eval(`window.__introEnd`);
-      // visible from its start to `hidden`, then from `back` to its end: 4.5 s in all, give or take a frame
+      // visible from its start to `hidden`, then from `back` to its end: its length in all, give or take a frame
       console.log(`    (cachée de ${(hidden / 1000).toFixed(2)} s à ${(back / 1000).toFixed(2)} s, finie à ${(end / 1000).toFixed(2)} s)`);
       if (back - hidden < 3900) throw new Error(`la page n'a été cachée que ${Math.round(back - hidden)} ms`);
-      if (end - (back - hidden) < LENGTH - 250) throw new Error(`finie à ${Math.round(end)} ms : ${Math.round(end - (back - hidden))} ms en page visible, pas 4,5 s`);
+      if (end - (back - hidden) < length - 250) throw new Error(`finie à ${Math.round(end)} ms : ${Math.round(end - (back - hidden))} ms en page visible, pas ${length}`);
       await backOn(1, 4000);
       if ((await statusOf("bivouac-1")) !== "pending") throw new Error(`statut enregistré : ${await statusOf("bivouac-1")}`);
     },
   );
 
-  await check("profil neuf : toucher Premier bivouac ouvre son intro, impossible à passer ; en moins de 7 s, le passeport déjà ouvert sur sa page, son tampon attend", async () => {
+  await check("profil neuf : toucher Premier bivouac ouvre son intro, impossible à passer ; en moins de sa durée + 2,5 s, le passeport déjà ouvert sur sa page, son tampon attend", async () => {
     await fresh();
     const begun = Date.now();
     await page.tap(slot("bivouac-1"));
     await page.waitFor(`location.hash === "#/aventures/bivouac-1" && ${intro(false)}`, 4000);
     if ((await page.eval(`document.querySelector(".screen-intro").dataset.id`)) !== "bivouac-1") throw new Error("data-id");
     if (await page.eval(`Boolean(document.querySelector(".intro-skip"))`)) throw new Error("un bouton « Passer »");
+    const length = await page.eval(introLength);
     await sleep(1800);
     await untouchable("bivouac-1");
-    await backOn(1, Math.max(0, 7000 - (Date.now() - begun)));
+    await backOn(1, Math.max(0, length + 2500 - (Date.now() - begun)));
     console.log(`    (retour en ${((Date.now() - begun) / 1000).toFixed(2)} s)`);
     if (!(await saved()).pending.includes("bivouac-1")) throw new Error(`pending : ${JSON.stringify((await saved()).pending)}`);
     await page.waitFor(`document.querySelector('${slot("bivouac-1")}[data-status="pending"]')`, 1000);
@@ -934,6 +941,15 @@ async function suite(page, vp) {
       await page.waitFor(atPassport, 4000);
       await page.waitFor(`${opened} && ${onPage(1)}`, 8000);
       if (await page.eval(`Boolean(document.querySelector(".screen-intro"))`)) throw new Error(`${id} : une intro s'est ouverte`);
+    }
+  });
+
+  await check("?demo#/aventures/<id> : l'intro de chaque sortie sans scénario à elle (intros/index.js) dure 4500 ms, comme l'écrit son data-length", async () => {
+    for (const id of ids.filter((id) => !Object.hasOwn(SCENARIOS, id))) {
+      await page.goto(`${BASE}?demo#/aventures/${id}`);
+      await page.waitFor(`document.querySelector('#app > .screen-intro[data-id="${id}"]')`, 6000);
+      const now = await page.eval(`({ id: window.__intro?.dataset.id, length: ${introLength} })`);
+      if (now.id !== id || now.length !== 4500) throw new Error(`${id} : ${JSON.stringify(now)}`);
     }
   });
 
@@ -1049,7 +1065,7 @@ async function suite(page, vp) {
     });
     const entries = await page.eval(`window.__entries`);
     if (entries.push !== 1 || entries.replace !== 0) throw new Error(`historique : ${JSON.stringify(entries)} (une entrée ajoutée, aucune réécrite)`);
-    await backOn(1, 9000);
+    await backOn(1, (await page.eval(introLength)) + 4500);
     await toolOn("canoe");
     if ((await page.eval(`localStorage.getItem("${KEY}")`)) !== kept) throw new Error(`la sauvegarde a changé : ${await page.eval(`localStorage.getItem("${KEY}")`)}`);
   });
