@@ -2,22 +2,24 @@
 
 Validé par Kevin le 2026-10-30, morceau par morceau : découpage, style, affiche, clin d'œil, durée, moteur, contenu de la tranche, boîte à outils, stickers, scénario, vérifications. Ce document complète la spec du portail (`docs/specs/2026-10-29-portail-cycy-et-kevin-design.md`, § 5 et § 7). Là où il décide autrement (durée, panneau-titre remplacé par l'affiche), c'est lui qui fait foi.
 
+**Mis à jour le 2026-10-30 vers 16h, à la demande de Kevin :** la route du début devient une **carte**. La Seat part de Bordeaux et suit un pointillé jusqu'aux Lacs d'Ayous, puis la caméra plonge sur l'épingle et on arrive au parking. La carte est en papier découpé et l'intro dure environ 17,5 s. Kevin a choisi ces trois points.
+
 ## 0. Vue d'ensemble
 - **Le sous-projet 3 se fait en trois tranches**, chacune avec sa spec courte et son plan :
-  - **3a**, ce document : l'outil de découpe, le moteur des intros, le décor papier, les recettes route, marche et affiche, et une sortie complète, le **Premier bivouac** ;
+  - **3a**, ce document : l'outil de découpe, le moteur des intros, le décor papier, les recettes carte, route, marche et affiche, et une sortie complète, le **Premier bivouac** ;
   - **3b** : les recettes envol, vélo, train et canoë, la photo de groupe, et l'usage des 11 planches de scènes (Kevin aide à le décider le moment venu) ;
   - **3c** : les scénarios des 14 autres sorties, chacune avec son décor, son lieu et son anecdote.
 - **Les décisions de Kevin :**
   - le décor est en **papier découpé** : des couches de papier aux couleurs franches, une ombre sous chacune, du grain, comme un livre animé ;
   - chaque intro se termine par une **affiche de voyage** : le décor passe en aplats et le lieu s'écrit en gros ;
   - **un clin d'œil par sortie** : chaque intro raconte une anecdote vraie de la sortie ;
-  - **la durée suit l'histoire**, entre 10 et 18 s (au lieu de 8 à 12 s). Le bivouac dure environ 16 s ;
+  - **la durée suit l'histoire**, entre 10 et 18 s (au lieu de 8 à 12 s). Le bivouac dure environ 17,5 s ;
   - **un scénario par sortie** : un petit fichier par sortie, qui pioche dans une boîte à outils commune.
 
 ## 1. Ce que contient la tranche 3a
 - L'outil de découpe des planches (`tools/decoupe/`), passé sur les 4 planches du bivouac et sur la Seat : 60 stickers.
 - La boîte à outils des intros : la scène, le décor papier qui sait passer en affiche, les accessoires dessinés en code, les stickers acteurs, les recettes.
-- Le scénario complet du Premier bivouac, en 6 temps, d'environ 16 s.
+- Le scénario complet du Premier bivouac, en 7 temps, d'environ 17,5 s.
 - Les nouveaux sons, en WebAudio.
 - Les données des 15 sorties : transports et invités. Le lieu n'est rempli que pour le bivouac.
 - **Ce qui ne change pas :**
@@ -61,15 +63,16 @@ Validé par Kevin le 2026-10-30, morceau par morceau : découpage, style, affich
   - `js/aventures/intros/bivouac-1.js` : le scénario du bivouac. Il exporte la liste des stickers qu'il utilise, et une fonction qui construit sa timeline GSAP sur une scène ;
   - `js/aventures/scene/stage.js` : la scène de 390 × 760 unités, sa mise à l'échelle (§ 6), ses couches avec leur profondeur, et la caméra (déplacement, rapprochement, parallaxe) ;
   - `js/aventures/scene/decor.js` : les couches de papier, avec leur ombre, leur liseré et le grain. Chaque couche a sa version affiche, cachée jusqu'à la recette de l'affiche ;
-  - `js/aventures/scene/props.js` : les accessoires en SVG, en unités de scène. Pour la tranche 3a, il y a le pic du Midi d'Ossau, les sapins, les rochers, les névés, le refuge, la tente qui se déplie, la vache (couchée, debout, qui s'en va), le border collie (qui trotte, qui aboie), l'escargot, les nuages, les étoiles, le soleil (papier ou rayé) et les bouffées de fumée ;
+  - `js/aventures/scene/props.js` : les accessoires en SVG, en unités de scène. Pour la tranche 3a, il y a le pic du Midi d'Ossau, les sapins, les rochers, les névés, le refuge, la tente qui se déplie, la vache (couchée, debout, qui s'en va), le border collie (qui trotte, qui aboie), l'escargot, les nuages, les étoiles, le soleil (papier ou rayé) et les bouffées de fumée. Il y a aussi les pièces de la carte : l'océan, les terres, les pins des Landes, les Pyrénées, les villes, l'épingle et le pointillé ;
   - `js/aventures/scene/actors.js` : les acteurs.
     - Une personne a des stickers de face et de dos par pose. Elle peut changer de pose, se retourner (face ↔ dos), marcher (petit balancement), sautiller, sauter, se pencher, et porter un signe au-dessus d'elle : « … », gouttes de sueur, éclair, « Meuh ! ».
     - Un véhicule a ses vues. Il peut rouler (vue « roule »), rebondir, lâcher de la fumée, freiner (passage en « trois-quarts ») et changer de vue (« trois-quarts-pleurs », « coeurs »…).
     - Un sticker où plusieurs personnes sont dessinées ensemble peut jouer comme un seul acteur ; les planches de scènes de la tranche 3b en auront besoin.
   - `js/aventures/scene/recipes.js` : les recettes réutilisables. Chacune rend un morceau de timeline :
-    - `route` : le véhicule traverse, rebondit, fume, freine, et les personnes descendent ;
+    - `carte` : le trajet sur une carte en papier découpé. Le véhicule part du point de départ, le pointillé se dessine derrière lui, la caméra le suit, et l'épingle de l'arrivée fait « plop ». Les autres sorties en voiture la réutiliseront avec leur propre trajet ;
+    - `route` : le véhicule arrive, rebondit, fume, freine, et les personnes descendent ;
     - `marche` : les personnes avancent de dos et le décor glisse vers elles ;
-    - `affiche` : le cadre, le passage en aplats et le lettrage (§ 5, temps 6) ;
+    - `affiche` : le cadre, le passage en aplats et le lettrage (§ 5, temps 7) ;
   - `css/intros.css` : les styles des intros, dans une feuille à part, chargée par `index.html` ;
   - `js/audio.js` gagne les nouveaux sons (§ 8).
 - **Les règles :**
@@ -80,19 +83,31 @@ Validé par Kevin le 2026-10-30, morceau par morceau : découpage, style, affich
   - commentaires courts, en anglais.
 - **La fluidité :** chaque couche de décor est un élément à part, que le navigateur dessine une fois (avec son ombre et son grain) et qu'on ne fait que déplacer (`transform`). On n'anime jamais les paramètres d'un filtre SVG.
 
-## 5. Le scénario du Premier bivouac (environ 16 s)
-D'après les photos de Kevin (`planches/voyages/bivouac-1/photos/`, hors git) et ses anecdotes. Les temps sont indicatifs : l'ensemble dure entre 15 et 17 s.
+## 5. Le scénario du Premier bivouac (environ 17,5 s)
+D'après les photos de Kevin (`planches/voyages/bivouac-1/photos/`, hors git) et ses anecdotes. Les temps sont indicatifs : l'ensemble dure entre 17 et 18,5 s.
 
-1. **La route (0 → 2,6 s).**
-   - Le décor : la vallée en V, avec de grandes pentes vertes et rocheuses, des sapins, le chemin dallé dans la prairie et le ciel bleu de mai.
-   - La Seat (vue « roule ») traverse de droite à gauche en rebondissant, avec des bouffées de fumée en papier et le son du moteur.
-   - Elle freine et passe en « trois-quarts ».
+1. **La carte (0 → 3,3 s).** C'est le choix de Kevin : la Seat part de Bordeaux et suit un pointillé jusqu'aux Lacs d'Ayous.
+   - **Le décor :** une carte du Sud-Ouest en papier découpé, dans le même papier que le reste, qui tient dans le portrait.
+     - En haut, Bordeaux et l'estuaire de la Gironde.
+     - À gauche, l'Atlantique avec ses vagues et le bassin d'Arcachon.
+     - Au milieu, la forêt des Landes en petits pins, et Pau.
+     - En bas, la chaîne des Pyrénées en pics de papier, avec le pic du Midi d'Ossau en petit (ses deux cornes) et l'épingle de l'arrivée.
+     - Les places sont celles des vraies coordonnées, dans une projection simple. Sur un écran large, les terres continuent à droite sans noms, et la côte espagnole tourne vers l'ouest sous les Pyrénées.
+   - **Les noms sur la carte :** « Bordeaux », « Pau » et le lieu, « Lacs d'Ayous ». Ils viennent des données (§ 9).
+   - **Le trajet :** la Seat, en petit (vue « roule »), part de Bordeaux et suit à peu près la vraie route : l'A65 par Langon jusqu'à Pau, puis la vallée d'Ossau par Laruns et Gabas.
+     - Le pointillé se dessine derrière elle au fur et à mesure.
+     - On entend le moteur.
+     - La caméra la suit vers le sud : sur un téléphone en paysage, la voiture reste dans l'écran du départ à l'arrivée.
+   - **L'arrivée :** l'épingle fait « plop » (`pop`).
+2. **Le parking (3,3 → 4,3 s).**
+   - La caméra plonge sur l'épingle, et la carte laisse place à la vallée en papier : la vallée en V, avec de grandes pentes vertes et rocheuses, des sapins, le chemin dallé dans la prairie et le ciel bleu de mai.
+   - La Seat finit sa course en rebondissant. Elle freine et passe en « trois-quarts ».
    - Cycy et Kevin sortent en sautillant, de face, en pose « joie ».
-2. **La montée (2,6 → 5,6 s).**
+3. **La montée (4,3 → 7,1 s).**
    - Cycy et Kevin, de dos avec leurs sacs, marchent vers le fond. Le chemin monte et le décor glisse vers eux.
    - Les grands sapins défilent sur les côtés, puis les pierriers et les névés. Bruit de pas.
    - Le border collie traverse le sentier en trottinant.
-3. **En haut (5,6 → 8,6 s).**
+4. **En haut (7,1 → 10,1 s).**
    - Le lac d'Ayous et le pic du Midi d'Ossau, avec son reflet dans le lac.
    - La tente beige se déplie comme dans un livre animé, avec un bruit de papier.
    - Cycy et Kevin se retournent, de face, en « joie », puis font un « saut ».
@@ -100,14 +115,14 @@ D'après les photos de Kevin (`planches/voyages/bivouac-1/photos/`, hors git) et
      - le soleil se couche ;
      - les étoiles s'allument, avec des grillons ;
      - le soleil se lève, avec un oiseau.
-4. **La descente (8,6 → 11,6 s).** C'est l'anecdote : Kevin avait le dos bloqué et Cycy n'arrêtait pas de l'attendre.
+5. **La descente (10,1 → 13,1 s).** C'est l'anecdote : Kevin avait le dos bloqué et Cycy n'arrêtait pas de l'attendre.
    - Cycy arrive au premier plan en sautillant, se retourne vers la pente et attend, avec un « … » et en tapant du pied.
    - Kevin, petit là-haut, descend penché, à tout petits pas, avec des gouttes de sueur (pose « pleurs » ou la plus proche) et un éclair dessiné dans le dos.
    - L'escargot le double.
-5. **La voiture (11,6 → 14 s).** La deuxième anecdote : au retour, la voiture était encerclée de vaches.
+6. **La voiture (13,1 → 15,4 s).** La deuxième anecdote : au retour, la voiture était encerclée de vaches.
    - Retour dans la vallée. La Seat, en « trois-quarts-pleurs », est entourée de vaches couchées. « Meuh ! »
    - Le border collie arrive en aboyant. Les vaches se lèvent et s'en vont, et la Seat passe en « coeurs ».
-6. **L'affiche (14 → 16,5 s).**
+7. **L'affiche (15,4 → 17,8 s).**
    - On revient sur la vue du lac et du pic, avec Cycy et Kevin.
    - Un cadre crème se dessine autour de la scène. Les couches passent une à une en aplats, du fond vers l'avant, et le soleil devient rayé.
    - Le lettrage arrive : **LACS D'AYOUS** lettre par lettre, puis « Premier bivouac · 17–18 mai 2025 ».
@@ -145,14 +160,14 @@ Les poses exactes se choisissent sur la planche de contrôle de l'outil (§ 7). 
 
 ## 8. Les sons
 - **Nouveaux, en WebAudio** comme les autres, sans fichier :
-  - `engine` : le moteur qui ronronne pendant la traversée ;
+  - `engine` : le moteur qui ronronne pendant le trajet sur la carte et l'arrivée au parking ;
   - `brake` : le freinage ;
   - `moo` : « Meuh » ;
   - `bark` : l'aboiement ;
   - `paper` : la tente qui se déplie, le cadre de l'affiche ;
   - `crickets` : les grillons ;
   - `bird` : l'oiseau du matin.
-- **Réutilisés :** `step` pour les pas, `letter` pour le lettrage, `pop` et `whoosh`.
+- **Réutilisés :** `step` pour les pas, `letter` pour le lettrage, `pop` (dont l'épingle de la carte) et `whoosh`.
 - Le son se réveille au premier toucher, comme partout sur le site.
 
 ## 9. Les données (`js/aventures/data.js`)
@@ -160,6 +175,12 @@ Les poses exactes se choisissent sur la planche de contrôle de l'outil (§ 7). 
   - `transports` : la liste, dans l'ordre, parmi `seat, c3, 308, kangoo, flixbus, camping-car, avion, bus, pied, velo, canoe, train` ;
   - `people` : ses invités, parmi `nini, dede, caro, marius, manon, noe, fabus, doumi, elodie, paolo, paolina, pierre, paul, jeanne, jennifer` (Cycy et Kevin sont toujours là) ;
   - `lieu` : facultatif, rempli quand la sortie a un scénario. Pour bivouac-1, c'est « Lacs d'Ayous ».
+  - `trajet` : facultatif, rempli quand le scénario ouvre sur la carte. Il contient :
+    - `depart`, le nom écrit au départ ;
+    - `etapes`, les noms écrits en route ;
+    - `points`, les coordonnées réelles `[latitude, longitude]` de la route, du départ à l'arrivée.
+
+    Pour bivouac-1 : départ « Bordeaux », étape « Pau », et la route par Langon, l'A65, Pau, Laruns et Gabas jusqu'au parking de Bious-Artigues. L'arrivée porte le `lieu`.
 - **Les valeurs**, d'après le tableau de la spec du portail :
 
 | id | transports | people |
@@ -186,7 +207,7 @@ Les poses exactes se choisissent sur la planche de contrôle de l'outil (§ 7). 
 ## 10. Les adresses de test
 - `?demo#/aventures/bivouac-1` : la nouvelle intro.
 - **Nouveau :** `?demo&t=<secondes>#/aventures/bivouac-1` démarre l'intro à ce moment. Ça marche seulement avec `?demo`, et l'intro reste passable comme en démo.
-- **La page `?test`** : dans « Les intros », le lien du bivouac est marqué « nouvelle », et 6 liens mènent à chacun des temps du § 5.
+- **La page `?test`** : dans « Les intros », le lien du bivouac est marqué « nouvelle », et 7 liens mènent à chacun des temps du § 5.
 
 ## 11. Les vérifications
 - **Tests unitaires (Node) :**
@@ -197,7 +218,7 @@ Les poses exactes se choisissent sur la planche de contrôle de l'outil (§ 7). 
     - il s'arrête quand une planche standard ne donne pas 12 stickers ;
   - les noms : poses, vues, véhicules, dossiers renommés.
 - **De bout en bout, en Chrome automatisé** (393 × 852, 375 × 667, 1440 × 900, plus 852 × 393 en paysage) :
-  - l'intro du bivouac joue jusqu'au bout, entre 15 et 17 s ;
+  - l'intro du bivouac joue jusqu'au bout, entre 17 et 18,5 s ;
   - seuls les stickers du scénario sont chargés, et aucun d'une autre sortie ;
   - un sticker bloqué est remplacé par son provisoire, et l'intro se termine quand même ;
   - la première fois, un toucher ne la passe pas ; une fois la sortie tamponnée, « Passer ▸ » et un toucher la terminent ;
@@ -206,6 +227,7 @@ Les poses exactes se choisissent sur la planche de contrôle de l'outil (§ 7). 
   - une autre sortie joue toujours l'intro provisoire ;
   - le lettrage de l'affiche dit « LACS D'AYOUS » et « Premier bivouac · 17–18 mai 2025 » ;
   - à chaque temps (avec `?t=`), les personnes, le véhicule et le lettrage sont entièrement dans l'écran ;
+  - sur la carte, la Seat, le départ et l'épingle de l'arrivée sont dans l'écran quand ils comptent, sur les 5 écrans, paysage compris ;
   - aucune erreur dans la console ;
   - les scripts existants (hub, passeport) passent tels quels.
 - **À l'œil :** des captures de chaque temps sur chaque écran, montrées à Kevin.
@@ -214,7 +236,7 @@ Les poses exactes se choisissent sur la planche de contrôle de l'outil (§ 7). 
 ## 12. Risques et parades
 - **La fluidité sous Safari.** Le Chrome de test n'a pas de carte graphique, donc seul l'iPhone dira la vérité. Si ça saccade, chaque couche de décor sera transformée en image au chargement, puis seulement déplacée. Le rendu reste le même.
 - **Des stickers collés sur une planche** pourraient former une seule île. L'outil s'arrête au lieu de deviner, et on règle la planche à la main.
-- **16 s à regarder la première fois.** C'est le choix de Kevin (« on voit ce que ça donne ») ; la durée se règle dans le scénario.
+- **17,5 s à regarder la première fois.** C'est le choix de Kevin (« on voit ce que ça donne ») ; la durée se règle dans le scénario.
 
 ## 13. Hors de cette tranche
 - Les recettes envol, vélo, train et canoë, la photo de groupe, les planches de scènes : tranche 3b.
