@@ -16,7 +16,7 @@ const CHROMES = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** A headless Chrome page: { goto, reload, eval, waitFor, tap, swipe, mouse, resize, beforeLoad, screenshot, errors, close }. */
+/** A headless Chrome page: { goto, reload, eval, waitFor, tap, tapAt, swipe, mouse, resize, beforeLoad, screenshot, errors, close }. */
 export async function launch({ width = 393, height = 852, mobile = true } = {}) {
   const chrome = CHROMES.find((p) => p && existsSync(p));
   if (!chrome) throw new Error("Chrome introuvable : indiquer son chemin dans la variable CHROME");
@@ -152,6 +152,10 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
     /** A tap (a touch on a phone, a click on a PC) in the middle of the element. */
     async tap(selector) {
       const { x, y } = await page.center(selector);
+      await page.tapAt(x, y);
+    },
+    /** A tap at x, y (CSS px from the top left of the screen). */
+    async tapAt(x, y) {
       if (mobile) {
         await cmd("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
         await cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });

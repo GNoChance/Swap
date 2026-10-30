@@ -206,8 +206,7 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     buddy.avatar.react(variant("joy"), 2400);
     buddy.avatar.jump();
     later(250, () => {
-      // « Validé ! Prochaine destination : {next} » only with an outing left to live
-      cheer = pick(next ? t.stamped : t.stamped.filter((_, k) => k !== 1), cheer);
+      cheer = pick(t.stamped, cheer); // an outing is left to live: the last stamp is complete()'s
       buddy.say(typeset(fill(cheer, { next: nameOf(next) })));
     });
     later(LIT, () => light(next));
@@ -225,12 +224,13 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     gsap.fromTo(parts, { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: "power2.out", stagger: 0.08, clearProps: "opacity,visibility,transform" });
   }
 
-  /** The last stamp: gold dust out of it, fireworks, her two lines in turn (a touch hurries them, as in the welcome);
-   *  as she asks for the next one, the passport turns to its « Prochaine destination ? » page. */
+  /** The last stamp: gold dust out of it, fireworks in the stamps' inks (the swap's pale ones would not show on the
+   *  page), her two lines in turn (a touch hurries them, as in the welcome); as she asks for the next one, the passport
+   *  turns to its « Prochaine destination ? » page. */
   async function complete(print) {
     goldDust(centerOf(print));
     later(250, () => {
-      fireworks(5);
+      fireworks(5, [...new Set(Object.values(stamps).map((s) => s.ink))]);
       sfx("final");
     });
     const [first, second] = t.complete.map(typeset);
@@ -292,12 +292,13 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     });
   }
 
-  // leaving before the passport has landed, it goes at once: its first raster would only slow the way out. An address
-  // that keeps it on screen is not leaving.
+  // leaving before the passport has landed, it goes at once: its first raster would only slow the way out. A rubber
+  // stamp touched but not yet down goes at once too (leave() comes after the 0.3 s fade-out, past its contact): its
+  // stamp still waits. An address that keeps the passport on screen is not leaving.
   const away = () => {
     if (keepsPassport(location.hash)) return;
     buddy.stop();
-    clearTimeout(quiet);
+    withdraw();
     cancelAnimationFrame(frame);
     if (arrived) return;
     passport.dispose();

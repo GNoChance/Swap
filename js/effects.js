@@ -523,10 +523,32 @@ export function hearts(n = 24, delayMax = 1.4) {
 
 const FIRE = ["#F3DFB0", "#C9A15B", "#E7A0B0", "#FFFFFF", "#F28AA5"];
 
-function rocket(delay) {
+/** "#rrggbb" → "rgba(r,g,b,ALPHA)" for glow() (another colour: the wine's). */
+const rgbaOf = (hex) => (/^#[0-9a-f]{6}$/i.test(hex) ? `rgba(${[1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16)).join(",")},ALPHA)` : "rgba(122,31,53,ALPHA)");
+
+/** A spark that reads on a light page: a streak of its ink behind it (its speed, 7 radii at most), a halo of it, then
+ *  the ink itself. */
+function inkSpark(c, p) {
+  const trail = Math.min(0.045, (p.r * 7) / (Math.hypot(p.vx, p.vy) || 1));
+  glow(c, p.r * 3.4, rgbaOf(p.color), 0.26);
+  c.strokeStyle = p.color;
+  c.lineWidth = p.r * 1.1;
+  c.lineCap = "round";
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.lineTo(-p.vx * trail, -p.vy * trail);
+  c.stroke();
+  c.fillStyle = p.color;
+  c.beginPath();
+  c.arc(0, 0, p.r, 0, Math.PI * 2);
+  c.fill();
+}
+
+function rocket(delay, inks) {
   const tx = rand(W * 0.15, W * 0.85);
   const ty = rand(H * 0.12, H * 0.42);
   const x0 = tx + rand(-40, 40);
+  const ink = inks && pickOne(inks); // its burst's, already on its way up
   add({
     x: x0, x0, y: H + 10, life: rand(0.7, 1), delay, fadeIn: 0.01, fadeOut: 0.01,
     tick(p) {
@@ -534,8 +556,12 @@ function rocket(delay) {
       p.x = p.x0 + (tx - p.x0) * ease;
       p.y = H + 10 + (ty - H - 10) * ease;
     },
-    onEnd: () => explode(tx, ty),
-    draw(c) {
+    onEnd: () => explode(tx, ty, ink),
+    draw(c, p) {
+      if (ink) {
+        const speed = (3 * Math.pow(1 - p.age / p.life, 2)) / p.life; // its ease's, per px of its way
+        return inkSpark(c, { r: 2.4, color: ink, vx: (tx - p.x0) * speed, vy: (ty - H - 10) * speed });
+      }
       glow(c, 10, "rgba(243,223,176,ALPHA)", 0.8);
       c.fillStyle = "#fff";
       c.beginPath();
@@ -545,8 +571,8 @@ function rocket(delay) {
   });
 }
 
-function explode(x, y) {
-  const color = pickOne(FIRE);
+function explode(x, y, ink) {
+  const color = ink || pickOne(FIRE);
   const heartShaped = Math.random() < 0.35;
   const n = count(56);
   for (let i = 0; i < n; i++) {
@@ -564,9 +590,10 @@ function explode(x, y) {
       vy = Math.sin(a) * s;
     }
     add({
-      x, y, vx, vy, g: 120, drag: 0.94, life: rand(1.3, 2), r: rand(1.4, 2.6),
-      color: Math.random() < 0.2 ? "#FFFFFF" : color, fadeIn: 0.01, fadeOut: 0.5,
+      x, y, vx, vy, g: 120, drag: 0.94, life: rand(1.3, 2), r: rand(1.4, 2.6) * (ink ? 1.3 : 1),
+      color: Math.random() < 0.2 ? (ink ? "#C9A15B" : "#FFFFFF") : color, fadeIn: 0.01, fadeOut: 0.5, // a glint of gold among the ink
       draw(c, p) {
+        if (ink) return inkSpark(c, p);
         glow(c, p.r * 4, "rgba(243,223,176,ALPHA)", 0.3);
         c.fillStyle = p.color;
         c.beginPath();
@@ -577,8 +604,10 @@ function explode(x, y) {
   }
 }
 
-export function fireworks(rounds = 7) {
-  for (let i = 0; i < (reduced ? 2 : rounds); i++) rocket(i * 0.45 + rand(0, 0.2));
+/** fireworks(rounds, inks): rockets that burst, then hearts rising. inks (a light page: the passport complete): each
+ *  burst in one of those colours, its sparks streaked; without, the swap's own pale gold and pink. */
+export function fireworks(rounds = 7, inks) {
+  for (let i = 0; i < (reduced ? 2 : rounds); i++) rocket(i * 0.45 + rand(0, 0.2), inks);
   hearts(30, 3);
 }
 

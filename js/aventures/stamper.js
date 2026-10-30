@@ -110,9 +110,11 @@ export function createStamper({ slot, ink, onPress }) {
   }
 
   // a touch that began before it came is not its own, though its pointerdown may reach it: the touch that landed the
-  // book had it made at once (screen.js), within that very pointerdown's dispatch
-  const born = performance.now();
-  const arm = (e) => e.timeStamp >= born && (armed = true);
+  // book had it made at once (screen.js), within that very pointerdown's dispatch. A task later, that dispatch is over
+  // (no clock involved: Safari's event times and timers need not agree with Chrome's)
+  let ready = false;
+  const wake = setTimeout(() => (ready = true));
+  const arm = () => ready && (armed = true);
   const tap = () => armed && press();
   const targets = [el, hint, slot];
   for (const target of targets) {
@@ -183,6 +185,7 @@ export function createStamper({ slot, ink, onPress }) {
     dispose() {
       if (disposed) return;
       disposed = true;
+      clearTimeout(wake);
       off();
       for (const anim of [descent, strike, splash, ...floats]) anim?.kill();
       air.remove();

@@ -4739,9 +4739,28 @@ html.is-museum {
 }
 
 @media (min-width: 760px) {
+  /* past the book's left edge if need be, as on a phone: up to 12 px from the screen's (a tiny book, on a short screen) */
+  .pp-head .bubble {
+    max-width: min(var(--say-max), calc(100% - 92px + var(--bx) - var(--pw) - var(--rim)));
+  }
+
   .pp-head .bubble::before,
   .pp-head .bubble-text {
     font-size: 1.28rem;
+  }
+}
+
+/* a phone on its side: a tiny book on a short screen. Her bubble, in a short screen's type and wide (a line or two),
+   stands above the book again, clear of the rubber stamp over a top slot */
+@media (max-height: 500px) {
+  .screen-passport {
+    --say-gap: 8px;
+    --tail: 18px;
+  }
+
+  .pp-head .bubble::before,
+  .pp-head .bubble-text {
+    font-size: 1rem;
   }
 }
 
@@ -6038,7 +6057,8 @@ html.is-museum {
   will-change: transform, opacity;
 }
 
-/* « Touche pour tamponner », on the slot's bottom edge (GSAP centres it on that point) */
+/* « Touche pour tamponner », on the slot's bottom edge (GSAP centres it on that point), within its page's width (it
+   wraps on a tiny page) */
 .pp-tool-hint {
   position: absolute;
   left: 50%;
@@ -6046,11 +6066,13 @@ html.is-museum {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: max-content;
+  max-width: calc(var(--u) * 96);
   padding: 6px 13px 6px 9px;
   border: 1px solid rgba(184, 147, 90, 0.75);
   border-radius: 999px;
   font: 600 max(12px, calc(var(--u) * 3.3)) / 1 var(--sans);
-  white-space: nowrap;
+  text-align: center;
   color: var(--wine);
   background: var(--ivory);
   box-shadow: 0 8px 16px -10px rgba(43, 20, 26, 0.55);
@@ -6064,6 +6086,18 @@ html.is-museum {
   height: 1.35em;
   overflow: visible;
   color: var(--gold);
+}
+
+/* a phone on its side: a page 90 to 130 px wide. Its words on two lines, in type that grows with the page; under a
+   bottom slot, raised as needed to stay inside the page (half its height, 1.1em + 3px, above the page's bottom) */
+@media (max-height: 500px) {
+  .pp-tool-hint {
+    top: min(100%, calc(var(--ph) - var(--u) * var(--sy) - 1.1em - 4px));
+    gap: 3px;
+    padding: 2px 6px 2px 4px;
+    font-size: max(9px, calc(var(--u) * 9.4));
+    line-height: 1.1;
+  }
 }
 
 /* the drops of ink thrown out at the contact, on the paper: over the slots and the route */
