@@ -40,12 +40,15 @@ const RIVER = [
   ["riviere-rives", 0.6, riviere.banks],
   ["riviere-arbres", 1.15, riviere.trees], // the near ones pass by on the sides
 ];
+// the start's signpost on Carsac's beach (its post's foot), and the middle of its plank: the camera keeps it whole
+const SIGN = { x: 78, y: 666 };
+const SIGN_PLANK = { x: 80, y: 585 };
 // the launch at Carsac, back to front (paper only)
 const LAUNCH = [
   ["depart-ciel", 0.04, riviere.sky],
   ["depart-rive", 0.12, riviere.rive],
   ["depart-eau", 0.3, () => riviere.water("paper", riviere.RIVE)],
-  ["depart-plage", 0.6, () => riviere.plage() + riviere.panneau(74, 666, content.aventures.intros.canoe.depart)],
+  ["depart-plage", 0.6, () => riviere.plage() + riviere.panneau(SIGN.x, SIGN.y, content.aventures.intros.canoe.depart)],
 ];
 // the descent from Carsac, back to front, behind the canoe (paper only)
 const DESCENT = [
@@ -54,15 +57,15 @@ const DESCENT = [
   ["descente-eau", 0.35, riviere.fuyante],
   ["descente-rives", 0.6, riviere.berges],
 ];
-const LAUNCH_SPOT = { x: 205, y: 664 }; // where the canoe spins round, on the water off the beach
+const LAUNCH_SPOT = { x: 215, y: 640 }; // where the canoe spins round, on the water off the beach
 const CANOE = 170; // units: the canoe's height there
-// the two of them on the beach: [view, offset from that spot (units), scale]; the dive comes close on their feet
-const ON_BEACH = [["pagaies", 20, 58, 1.15], ["monte", 45, 48, 1.1]];
-const FEET = { x: 225, y: 640 };
+// the two of them on the beach: [view, offset from that spot (units), scale]
+const ON_BEACH = [["pagaies", 10, 82, 1.15], ["monte", 35, 72, 1.1]];
+const CLOSE_ON = { x: 110, y: 640 }; // the dive comes close on the beach there: the sign whole all along on a phone
 // the heads in bubbles over the canoe from the front: Cycy's over its bow (on the left), Kevin's over its stern
 const BUBBLES = [
-  ["bulle-cycy", { x: 126, y: 428 }, { x: 173, y: 508 }],
-  ["bulle-kevin", { x: 290, y: 424 }, { x: 241, y: 504 }],
+  ["bulle-cycy", { x: 136, y: 404 }, { x: 183, y: 484 }],
+  ["bulle-kevin", { x: 300, y: 400 }, { x: 251, y: 480 }],
 ];
 const BRIDGE = { from: 0.5, to: 7 }; // the zoom of Vitrac's bridge, far off at the start of the descent, passing over at its end
 
@@ -101,14 +104,14 @@ export function mount(host, { aventure }) {
   launchDecor.push(paperLayer({ stage, name: "depart-arbres", paper: riviere.trees("paper") }).el); // leaning over them, in front
   const launchScene = [...launchDecor, launchCrowd];
 
-  // 3. the descent: the river going away to its bend, the canoe from the back; in front of it, the trees leaning over
-  // the river (passing by on the sides) and Vitrac's bridge
+  // 3. the descent: the river going away to its bend, the canoe from the back; in front of it Vitrac's bridge, and in
+  // front of all the trees leaning over the river (passing by on the sides)
   const descentDecor = draw(DESCENT).map((layer) => layer.el);
   const descentCrowd = stage.layer("descente-gens", { depth: 0 });
   const away = sceneActor({ layer: descentCrowd, who: "duo", looks: { dos: scene("cycy-et-kevin-en-canoe", 5) }, look: "dos", x: 195, y: 706, height: 150 });
-  const trees = paperLayer({ stage, name: "descente-arbres", depth: 1.5, paper: riviere.penches() }).el;
   const bridge = paperLayer({ stage, name: "descente-pont", width: 3200, paper: riviere.pont() }).el; // still wide once far off
-  const descentScene = [...descentDecor, descentCrowd, trees, bridge];
+  const trees = paperLayer({ stage, name: "descente-arbres", depth: 1.5, paper: riviere.penches() }).el;
+  const descentScene = [...descentDecor, descentCrowd, bridge, trees];
 
   // 4. the valley's map from Port d'Enveaux to Carsac, its road for the bus
   const valley = [
@@ -152,33 +155,28 @@ export function mount(host, { aventure }) {
   // 2. the launch: the camera dives onto Carsac's pin and comes close on the beach, framed on the action band; the two
   // of them with their paddles by the sign, then Kevin helps Cycy in
   const [px, py] = perigord.VALLEY_ROUTE.at(-1);
-  recipes.plonge(timeline, launch, { stage, from: { layers: valley, x: px, y: py }, layers: launchScene, to: FEET });
+  recipes.plonge(timeline, launch, { stage, from: { layers: valley, x: px, y: py }, layers: launchScene, to: CLOSE_ON });
   stage.frame(timeline, launch, { whole: false, duration: 0.45 });
-  /** The canoe into its view `key` at `at` s: squeezed to nothing and back, a sticker turned over. */
-  const flip = (at, key) => {
-    timeline.to(canoe.turn, { scaleX: 0, duration: 0.08, ease: "power1.in" }, at);
-    canoe.show(timeline, at + 0.08, key);
-    timeline.to(canoe.turn, { scaleX: 1, duration: 0.1, ease: "power1.out" }, at + 0.08);
-  };
   const [[, dx, dy, scale], [aboard, ...where]] = ON_BEACH;
   timeline.set(canoe.el, { x: dx, y: dy, scale }, launch);
   const getIn = launch + 1.1; // the beach settled, the two of them standing still in the middle of the moment
-  flip(getIn, aboard);
+  canoe.flip(timeline, getIn, aboard);
   timeline.to(canoe.el, { x: where[0], y: where[1], scale: where[2], duration: 0.3, ease: "power2.out" }, getIn);
   stage.sound(timeline, getIn + 0.12, "paddle");
 
   // 3. the rounds: the canoe paddles off from the front onto the water and spins round twice, eddies under it, dizzy
-  // over it; it stops, Cycy puzzled then cross over its bow, Kevin in tears over its stern; a last half-turn, and it
-  // goes off straight to the right in its drops
+  // over it; it stops, Cycy puzzled (« ? ») then cross over its bow, Kevin in tears over its stern; a last half-turn,
+  // and it goes off straight to the right in its drops. The camera only closes in a little round the sign: it stays whole
   const rounds = beat("Les ronds dans l'eau");
   const descent = beat("La descente");
-  flip(rounds, "face");
+  canoe.flip(timeline, rounds, "face");
   timeline.to(canoe.el, { x: 0, y: 0, scale: 1, duration: 0.7, ease: "power2.inOut" }, rounds);
-  stage.pan(timeline, rounds, { x: 50, duration: 0.9, ease: "power2.inOut", only: launchDecor });
+  stage.pan(timeline, rounds, { zoom: 1.05, focus: SIGN_PLANK, duration: descent - rounds, ease: "sine.inOut", only: launchDecor });
   const views = ["face", "dos"];
   const stop = eau.tourne(timeline, rounds + 0.2, { actor: canoe, layer: launchCrowd, faces: views, turns: 2, duration: 1.7 });
   eau.flotte(timeline, rounds, { actor: canoe, duration: stop - rounds });
   cycy.pop(timeline, stop);
+  cycy.emote(timeline, stop + 0.08, "question", 0.42);
   kevin.pop(timeline, stop + 0.05);
   cycy.show(timeline, stop + 0.55, "colere");
   kevin.leave(timeline, stop + 0.92);
@@ -187,7 +185,6 @@ export function mount(host, { aventure }) {
   const straight = eau.tourne(timeline, gone, { actor: canoe, layer: launchCrowd, faces: views, turns: 0.5, duration: 0.36 });
   eau.flotte(timeline, gone, { actor: canoe, duration: descent - gone });
   timeline.to(canoe.el, { x: 150, y: -28, scale: 0.84, duration: descent - straight, ease: "power1.in" }, straight);
-  stage.pan(timeline, straight, { x: 70, duration: descent - straight, ease: "power1.in", only: launchDecor });
 
   // 4. the descent: the canoe from the back paddles down the river as it glides towards it, the leaning trees passing by
   // on the sides, Domme and Montfort far off; Vitrac's bridge comes from the bend and passes over the canoe

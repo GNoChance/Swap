@@ -48,22 +48,31 @@ const SHOWS = `(el) => {
   for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
   return true;
 }`;
-// the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it)
+// the words on the wooden signs that show (the start's « Carsac · 28 km »)
+const SIGNS = `[...document.querySelectorAll(".st-sign")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; })`;
+// the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it); the signs' words
 const castBoxes = `(() => {
   const seen = ${sceneBoxes};
   const discs = Object.fromEntries([...document.querySelectorAll(".st-bubble__disc")].map((el) => {
     const r = el.getBoundingClientRect();
     return [el.closest(".st-actor").dataset.who, { left: r.left, top: r.top, right: r.right, bottom: r.bottom }];
   }));
-  return { ...seen, actors: seen.actors.map((b) => (discs[b.what] ? { what: b.what, ...discs[b.what] } : b)) };
+  return { ...seen, actors: seen.actors.map((b) => (discs[b.what] ? { what: b.what, ...discs[b.what] } : b)), signs: ${SIGNS} };
 })()`;
-// the canoe's looks that show (one at a time: never two views, never none) and its turn box's scaleX (its width)
+// the canoe's looks that show (one at a time: never two views, never none) and its turn box's scaleX (its width); the
+// signs' words, with the screen's size
 const canoeSeen = `(() => {
   const shows = ${SHOWS};
   const looks = [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].filter(shows);
   const turn = looks[0]?.closest(".st-actor__turn");
   const transform = turn && getComputedStyle(turn).transform;
-  return { looks: looks.length, scaleX: !turn ? null : transform === "none" ? 1 : new DOMMatrix(transform).a };
+  return { looks: looks.length, scaleX: !turn ? null : transform === "none" ? 1 : new DOMMatrix(transform).a, signs: ${SIGNS}, screen: { width: innerWidth, height: innerHeight } };
+})()`;
+const BRIDGE_PASSING = 13.8; // s: Vitrac's bridge near, the leaning trees over the canoe (Review Focus 5's screen)
+// the descent's layers, in paint order (the world's children, none with a z-index), with whether each shows
+const descentOrder = `(() => {
+  const shows = ${SHOWS};
+  return [...document.querySelector(".st-world").children].filter((el) => el.dataset.layer?.startsWith("descente-")).map((el) => ({ name: el.dataset.layer, shows: shows(el), z: getComputedStyle(el).zIndex }));
 })()`;
 
 // the requests for the canoe's scenario file
@@ -201,14 +210,15 @@ async function suite(page, vp) {
     }
   }
 
-  /** In the middle of each moment after the map, held there: exactly those it shows (CAST), each entirely on screen. */
+  /** In the middle of each moment after the map, held there: exactly those it shows (CAST), each entirely on screen;
+   *  the words of a sign that shows, whole (never cut by the screen's edge). */
   async function scenes(where) {
     for (const [name, needs] of Object.entries(CAST)) {
       const t = beat[name].mid;
       const now = await heldAt(t, castBoxes);
       const who = now.actors.map((b) => b.what).sort();
       if (JSON.stringify(who) !== JSON.stringify([...needs].sort())) throw new Error(`${where}, « ${name} » à ${t} s : à l'écran ${JSON.stringify(who)}`);
-      const off = outside(now.screen, now.actors);
+      const off = outside(now.screen, [...now.actors, ...now.signs]);
       if (off.length) throw new Error(`${where}, « ${name} » à ${t} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
     }
   }
@@ -221,9 +231,17 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, et le panneau du départ entier quand il se montre`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
+
+  if (vp.width === 1920)
+    await check(`1920 × 1080 (point 5) : à ?t= ${String(BRIDGE_PASSING).replace(".", ",")}, dans la descente, le pont de Vitrac peint devant le canoë et les arbres qui penchent peints devant le pont (au premier plan), tous à l'écran`, async () => {
+      const layers = await heldAt(BRIDGE_PASSING, descentOrder);
+      const order = ["descente-gens", "descente-pont", "descente-arbres"].map((name) => layers.findIndex((l) => l.name === name));
+      const wrong = order.some((k, i) => k < 0 || !layers[k].shows || layers[k].z !== "auto" || (i && k < order[i - 1]));
+      if (wrong) throw new Error(`l'ordre des couches de la descente ${JSON.stringify(layers)}`);
+    });
 
   if (vp.turned)
     await check("852 × 393 (le téléphone tourné) : la carte en deux étapes et chacun des temps comme sur les autres écrans, puis l'affiche jouée en entier, son lettrage dans l'écran ; puis le passeport", async () => {
@@ -256,7 +274,7 @@ async function suite(page, vp) {
         if (!(now.t >= rounds.at && now.t < descent.at)) throw new Error(`${width} × ${height} : arrêt à ${now.t?.toFixed(2)} s, pas pendant les ronds dans l'eau`);
         const who = now.seen.actors.map((b) => b.what);
         if (who.filter((w) => w === "duo").length !== 1 || who.some((w) => !CAST["Les ronds dans l'eau"].includes(w))) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : à l'écran ${JSON.stringify(who)}`);
-        const off = outside(now.seen.screen, now.seen.actors);
+        const off = outside(now.seen.screen, [...now.seen.actors, ...now.seen.signs]);
         if (off.length) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
         return now;
       };
@@ -274,18 +292,20 @@ async function suite(page, vp) {
     });
 
   if (vp === VIEWPORTS[0]) {
-    await check(`point 2 : à ?demo&t= ${SPIN.join(", ").replaceAll(".", ",")} (au milieu des demi-tours du canoë, puis reparti), le canoë montre exactement une vue ; à ${String(OFF_AGAIN).replace(".", ",")} s, sa boîte turn a un scaleX de 1 ou de −1 (à 0,01 près) ; et tout au long des ronds dans l'eau (de 0,1 en 0,1 s, en avant puis en arrière), jamais deux vues ni aucune`, async () => {
+    await check(`point 2 : à ?demo&t= ${SPIN.join(", ").replaceAll(".", ",")} (au milieu des demi-tours du canoë, puis reparti), le canoë montre exactement une vue ; à ${String(OFF_AGAIN).replace(".", ",")} s, sa boîte turn a un scaleX de 1 ou de −1 (à 0,01 près) ; et de 0,1 en 0,1 s, en avant puis en arrière, de la mise à l'eau à la descente : jamais deux vues ni aucune pendant les ronds dans l'eau, et le panneau du départ jamais coupé par le bord`, async () => {
       for (const t of SPIN) {
         const now = await heldAt(t, canoeSeen);
         if (now.looks !== 1) throw new Error(`à ${t} s : ${now.looks} vue(s) du canoë`);
         if (t === OFF_AGAIN && !(Math.abs(Math.abs(now.scaleX) - 1) <= 0.01)) throw new Error(`à ${t} s : scaleX ${now.scaleX}, pas ±1`);
       }
-      const { at, mid } = beat["Les ronds dans l'eau"];
-      const times = Array.from({ length: Math.round((2 * (mid - at)) / 0.1) }, (_, k) => +(at + k * 0.1).toFixed(2));
+      const [launch, rounds, descent] = ["La mise à l'eau", "Les ronds dans l'eau", "La descente"].map((name) => beat[name].at);
+      const times = Array.from({ length: Math.round((descent - launch) / 0.1) - 1 }, (_, k) => +(launch + 0.1 + k * 0.1).toFixed(2));
       for (const t of [...times, ...[...times].reverse()]) {
         await page.eval(holdAt(t));
         const now = await page.eval(canoeSeen);
-        if (now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${OFF_AGAIN} s) : ${now.looks} vue(s) du canoë`);
+        if (t >= rounds && now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${OFF_AGAIN} s) : ${now.looks} vue(s) du canoë`);
+        const cut = outside(now.screen, now.signs);
+        if (cut.length) throw new Error(`à ${t} s : le panneau coupé par le bord ${JSON.stringify(cut.map(round))}`);
       }
     });
 

@@ -67,17 +67,27 @@ export function actor({ layer, src, fallback, x, y, height }) {
   return self;
 }
 
+/** An actor (`self`) into its look `key` at `at` s, `box` squeezed to nothing and back meanwhile, as a sticker turned
+ *  over (0.18 s). */
+function turnOver(tl, self, box, at, key) {
+  tl.to(box, { scaleX: 0, duration: 0.08, ease: "power1.in" }, at);
+  self.wearAt(tl, at + 0.08, key);
+  tl.to(box, { scaleX: 1, duration: 0.1, ease: "power1.out" }, at + 0.08);
+}
+
 /** sceneActor({ layer, who, looks, look, x, y, height }): a scene sticker (the two of them drawn together, or one of
  *  them in a scene of its own), `height` units tall, with its views: looks = { [key]: { src, fallback } } (sceneUrl(),
  *  and the stand-in of its main person in the nearest pose, fallbackUrl()); it shows `look` first. SceneActor = Actor +
- *  { show }. */
+ *  { show, flip } (its `turn` stays its turn box). */
 export function sceneActor({ layer, who, looks, look, x, y, height }) {
   const self = cast({ layer, x, y, size: height });
   self.el.dataset.who = who;
   for (const [key, { src, fallback }] of Object.entries(looks)) self.look(key, src, fallback);
   self.wear(look);
-  /** Into the view `key` at `at` s. */
+  /** Into the view `key` at `at` s, at once. */
   self.show = (tl, at, key) => self.wearAt(tl, at, key);
+  /** Into the view `key` at `at` s, turned over: squeezed to nothing and back (0.18 s). */
+  self.flip = (tl, at, key) => turnOver(tl, self, self.turn, at, key);
   return self;
 }
 
@@ -110,6 +120,8 @@ export function faceBubble({ layer, who, looks, look, x, y, size, tail }) {
   self.wear(look);
   Object.assign(self.el.style, HIDDEN);
   return Object.assign(self, {
+    /** A sign by the bubble for `duration` s (emoteOf()): "question" (« ? »)… */
+    emote: emoteOf(self),
     /** Pops out at `at` s, bouncing, with a pop. */
     pop(tl, at) {
       tl.call(() => sfx("pop"), null, at);
@@ -138,18 +150,37 @@ function hopOf(tl, target, at, height, rise = 0.16) {
   return at + 2 * rise + 0.14;
 }
 
-// the signs a person carries over her (emote()): a bubble with words, or a drawing
+// the signs an actor carries (emote()): a bubble with words, or a drawing (a « ? » is a symbol, not a text)
 const SIGNS = {
   dots: () => bubble(content.aventures.intros.dots),
   moo: () => bubble(content.aventures.intros.moo),
   sweat: () => drawing("st-emote--sweat", `<path d="M6 2C3 7 2 9 2 11a4 4 0 0 0 8 0c0-2-1-4-4-9zM18 8c-2 4-3 5-3 7a3 3 0 0 0 6 0c0-2-1-3-3-7z" fill="#8fc3e6" stroke="#fff" stroke-width="1.6"/>`),
   zap: () => drawing("st-emote--zap", `<path d="M13 1L3 14h7l-3 11 11-14h-7z" fill="#f6c453" stroke="#3b2a18" stroke-width="1.4" stroke-linejoin="round"/>`),
+  question: () => drawing("st-emote--question", `<path d="M6.5 8.2C6.5 4.4 9.3 1.6 13 1.6s6.6 2.6 6.6 6c0 3-2.1 4.4-3.6 5.5-1.2.9-1.7 1.6-1.7 3.2v.9h-4.2v-1.2c0-2.6 1-3.9 2.7-5.2 1.3-1 2.3-1.7 2.3-3.1 0-1.5-1-2.5-2.3-2.5-1.5 0-2.4 1.1-2.4 3zM12 19.6a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z" fill="#f6c453" stroke="#3b2a18" stroke-width="1.4" stroke-linejoin="round"/>`),
 };
 const bubble = (text) => Object.assign(box("span", "st-emote st-emote--bubble"), { textContent: text });
 function drawing(cls, markup) {
   const el = box("span", `st-emote ${cls}`);
   el.innerHTML = `<svg viewBox="0 0 24 26" width="24" height="26">${markup}</svg>`;
   return el;
+}
+
+/** An actor's emote (`self`'s pose carries the signs, each made once): emote(tl, at, kind, duration = 1), a sign
+ *  (SIGNS) popping in at `at` s and out `duration` s later. */
+function emoteOf(self) {
+  const signs = new Map();
+  return (tl, at, kind, duration = 1) => {
+    if (!signs.has(kind)) {
+      const sign = SIGNS[kind]();
+      Object.assign(sign.style, HIDDEN);
+      self.pose.append(sign);
+      signs.set(kind, sign);
+    }
+    const sign = signs.get(kind);
+    tl.fromTo(sign, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, duration: 0.22, ease: "back.out(2.4)", immediateRender: false }, at);
+    if (kind === "sweat") tl.fromTo(sign, { y: 0 }, { y: 5, duration: 0.3, repeat: Math.max(1, Math.round(duration / 0.3) - 1), ease: "power1.in", immediateRender: false }, at + 0.2);
+    tl.to(sign, { autoAlpha: 0, scale: 0.6, duration: 0.18, ease: "power1.in" }, at + duration);
+  };
 }
 
 /** person({ stage, layer, outing, who, x, y, height, side, pose }): Cycy or Kevin (`who`), `height` units tall, from the
@@ -159,7 +190,6 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
   const self = cast({ layer, x, y, size: height });
   self.el.dataset.who = who;
   const look = (s, p) => self.look(`${s}-${p}`, stickerUrl(outing, who, s, p), fallbackUrl(who, s, p));
-  const signs = new Map();
   Object.assign(self, {
     /** From the front or the back, in a pose, now (before the timeline plays). */
     set(s, p) {
@@ -171,12 +201,12 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
       look(s, p);
       self.wearAt(tl, at, `${s}-${p}`);
     },
-    /** Turns round at `at` s (face ↔ dos), into `p`: squeezed to nothing and back. */
+    /** Turns round at `at` s (face ↔ dos), into `p`, as a sticker turned over (turnOver()). By now `self.turn` is this
+     *  method, not the turn box (this Object.assign): the squeeze moves nothing and the look swaps at once, as the
+     *  bivouac plays and was validated; passing the box would show the squeeze. */
     turn(tl, at, s, p) {
       look(s, p);
-      tl.to(self.turn, { scaleX: 0, duration: 0.08, ease: "power1.in" }, at);
-      self.wearAt(tl, at + 0.08, `${s}-${p}`);
-      tl.to(self.turn, { scaleX: 1, duration: 0.1, ease: "power1.out" }, at + 0.08);
+      turnOver(tl, self, self.turn, at, `${s}-${p}`);
     },
     /** A hop on the spot, `height` units; → when it has landed. */
     hop: (tl, at, height = 14) => hopOf(tl, self.pose, at, height),
@@ -208,18 +238,7 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
       tl.to(self.pose, { rotation: degrees, duration, ease: "power2.out" }, at);
     },
     /** A sign over her for `duration` s: "dots" (« … »), "sweat" (drops), "zap" (a flash in her back) or "moo". */
-    emote(tl, at, kind, duration = 1) {
-      if (!signs.has(kind)) {
-        const sign = SIGNS[kind]();
-        Object.assign(sign.style, HIDDEN);
-        self.pose.append(sign);
-        signs.set(kind, sign);
-      }
-      const sign = signs.get(kind);
-      tl.fromTo(sign, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, duration: 0.22, ease: "back.out(2.4)", immediateRender: false }, at);
-      if (kind === "sweat") tl.fromTo(sign, { y: 0 }, { y: 5, duration: 0.3, repeat: Math.max(1, Math.round(duration / 0.3) - 1), ease: "power1.in", immediateRender: false }, at + 0.2);
-      tl.to(sign, { autoAlpha: 0, scale: 0.6, duration: 0.18, ease: "power1.in" }, at + duration);
-    },
+    emote: emoteOf(self),
   });
   self.set(side, pose);
   return self;

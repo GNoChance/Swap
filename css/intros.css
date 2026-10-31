@@ -267,6 +267,17 @@
   left: 16%;
 }
 
+/* a « ? » by a bubble's upper left (faceBubble()) */
+.st-emote--question {
+  bottom: 56%;
+  left: -6%;
+}
+
+.st-emote--question svg {
+  width: 34px;
+  height: 37px;
+}
+
 .st-emote svg,
 .st-puff svg {
   display: block;
