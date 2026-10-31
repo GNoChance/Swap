@@ -547,11 +547,16 @@ async function suite(page, vp) {
     let previous = null;
     for (let k = 0; k < 4; k++) {
       await page.tap(slot("canoe"));
-      // a line written out in full, one of the three, not the one before
-      await page.waitFor(`${said}.length === 1 && ${JSON.stringify(LOCKED)}.includes(${said}[0]) && ${said}[0] !== ${JSON.stringify(previous)}`, 3000).catch(async () => {
-        throw new Error(`bulle : ${JSON.stringify(await page.eval(said))} (avant : ${JSON.stringify(previous)})`);
-      });
-      await page.waitFor(`${buddy}.querySelector(".avatar-img").src.endsWith("/pout.webp")`, 1000);
+      // both from the touch: her pout (2.6 s) at once, while the line is written out in full (the longest takes up to
+      // 3 s), one of the three, not the one before
+      await Promise.all([
+        page.waitFor(`${buddy}.querySelector(".avatar-img").src.endsWith("/pout.webp")`, 1000).catch(async () => {
+          throw new Error(`pas de bouderie après le toucher : ${await page.eval(`${buddy}.querySelector(".avatar-img").src`)}`);
+        }),
+        page.waitFor(`${said}.length === 1 && ${JSON.stringify(LOCKED)}.includes(${said}[0]) && ${said}[0] !== ${JSON.stringify(previous)}`, 3000).catch(async () => {
+          throw new Error(`bulle : ${JSON.stringify(await page.eval(said))} (avant : ${JSON.stringify(previous)})`);
+        }),
+      ]);
       previous = (await page.eval(said))[0];
     }
   });
@@ -1288,7 +1293,10 @@ async function suite(page, vp) {
     const beats = SCENARIOS["bivouac-1"].beats.map((b) => b.name);
     if (first < 0 || !/nouvelle/i.test(links[first].note)) throw new Error(`pas de mention « nouvelle » sur le Premier bivouac : ${JSON.stringify(links[first])}`);
     if (links.slice(first + 1, first + 1 + beats.length).map((l) => l.label).join("|") !== beats.join("|")) throw new Error(`les temps : ${JSON.stringify(links.slice(first + 1, first + 1 + beats.length))}`);
-    if (links.filter((l) => /nouvelle/i.test(l.note)).length !== 1) throw new Error("« nouvelle » ailleurs que sur le Premier bivouac");
+    // each beat's moment written the French way (« à 3,3 s »)
+    const notes = SCENARIOS["bivouac-1"].beats.map(({ at }) => `à ${String(at).replace(".", ",")} s`);
+    if (links.slice(first + 1, first + 1 + beats.length).map((l) => l.note).join("|") !== notes.join("|")) throw new Error(`les moments : ${JSON.stringify(links.slice(first + 1, first + 1 + beats.length).map((l) => l.note))}`);
+    if (links.filter((l) => /nouvelle/i.test(l.note)).length !== Object.keys(SCENARIOS).length) throw new Error("« nouvelle » ailleurs que sur les sorties qui ont leur scénario");
     const elsewhere = groups.filter((g) => !["Nos aventures", "Les intros"].includes(g.title)).flatMap((g) => g.hrefs).filter((href) => href.includes("#/aventures"));
     if (elsewhere.length) throw new Error(`ailleurs sur la page : ${elsewhere.join(", ")}`);
   });

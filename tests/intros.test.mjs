@@ -9,7 +9,7 @@ import { AVENTURES, PEOPLE, TRANSPORTS } from "../js/aventures/data.js";
 import { SCENARIOS } from "../js/aventures/intros/index.js";
 import { fit } from "../js/aventures/scene/stage.js";
 import { fitTitle, posterLine, posterTitle, TITLE_FIT, titleWidth } from "../js/aventures/scene/poster-text.js";
-import { fallbackUrl, stickerUrl, vehicleUrl } from "../js/aventures/scene/urls.js";
+import { fallbackUrl, stickerUrl, vehicleFallback, vehicleUrl } from "../js/aventures/scene/urls.js";
 import { projection } from "../js/aventures/scene/geo.js";
 import { stops } from "../js/aventures/scene/props-carte.js";
 
@@ -109,6 +109,15 @@ test("intros: every fallback sticker exists", () => {
 test("intros: sticker urls", () => {
   assert.equal(stickerUrl("bivouac-1", "kevin", "dos", "joie"), "assets/aventures/bivouac-1/kevin-dos-joie.webp");
   assert.equal(vehicleUrl("seat", "roule"), "assets/aventures/vehicules/seat-roule.webp");
+});
+
+test("intros: a vehicle's stand-in is a car drawn in SVG, 300 × 150 like its stickers' box", () => {
+  const url = vehicleFallback();
+  assert.ok(url.startsWith("data:image/svg+xml,"), url.slice(0, 40));
+  const svg = decodeURIComponent(url.slice("data:image/svg+xml,".length));
+  assert.match(svg, /^<svg /);
+  assert.match(svg, /viewBox="0 0 300 150"/);
+  assert.match(svg, /<\/svg>$/);
 });
 
 // The map (spec § 5, moment 1): the real coordinates, in a simple equirectangular projection.

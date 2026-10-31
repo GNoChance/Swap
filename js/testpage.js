@@ -41,7 +41,7 @@ export function testScreen() {
         // an outing with its own scenario: marked new, then a link to each of its beats
         outings.flatMap((a, i) => [
           link(`${i + 1}. ${a.name}`, `?demo#/aventures/${a.id}`, SCENARIOS[a.id] ? `nouvelle · ${formatRange(a.from, a.to)}` : formatRange(a.from, a.to)),
-          ...(SCENARIOS[a.id]?.beats ?? []).map(({ name, at }) => link(name, `?demo&t=${at}#/aventures/${a.id}`, `à ${at} s`)),
+          ...(SCENARIOS[a.id]?.beats ?? []).map(({ name, at }) => link(name, `?demo&t=${at}#/aventures/${a.id}`, `à ${String(at).replace(".", ",")} s`)),
         ]),
       ),
       group("Début", [link("Intro et choix des chips", "?demo&scene=intro")]),
