@@ -442,7 +442,7 @@ export function mount(host, { aventure }) {
     const at = twinkle + (k % 5) * 0.06 + (k >= 5 ? 0.7 : 0); // two flurries
     timeline.fromTo(el, { autoAlpha: 1, scale: 0, rotation: -45 }, { scale: 1, rotation: 0, duration: 0.3, ease: "back.out(2.6)", immediateRender: false }, at);
     // twinkling till the end, an even count of halves (whole again then); none without room (a repeat of −1 is endless)
-    const blinks = Math.floor((night - at - 0.35) / 0.2) & ~1;
+    const blinks = Math.max(0, Math.floor((night - at - 0.35) / 0.2)) & ~1;
     if (blinks) timeline.fromTo(el, { scale: 1 }, { scale: 0.45, duration: 0.2, ease: "sine.inOut", yoyo: true, repeat: blinks - 1, immediateRender: false }, at + 0.32);
   });
   stage.sound(timeline, twinkle, "twinkle");

@@ -510,3 +510,8 @@
   transform-origin: 14px 38px; /* its tip */
   will-change: transform;
 }
+
+/* the knight's sticker fell back to a stand-in: no lantern halo over it */
+.st-actor__img[data-fell] ~ .st-halo {
+  display: none;
+}

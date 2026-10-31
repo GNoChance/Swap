@@ -97,11 +97,11 @@ function settable(set) {
   return (next) => (next === undefined ? value : set((value = next)));
 }
 
-/** roadOf({ layer, mover, points, short }) → { progress, tail, length }: the dotted road through `points` ([x, y], stage
+/** roadOf({ layer, mover, points, short }) → { progress, tail, measured }: the dotted road through `points` ([x, y], stage
  *  units), drawn in `layer` under `mover` (an actor standing on its first point, its sticker facing left: a vehicle()
  *  or a paperVehicle()). progress(p) puts the mover p (0 → 1) of the way to `short` units before the end, facing where
  *  it heads (else the trip's heading), the dots revealed behind it; tail(q) reveals the last dots to the end (0 → 1);
- *  both are getter/setters the timeline tweens, so they hold under seek (an onUpdate would not). length(): the road's
+ *  both are getter/setters the timeline tweens, so they hold under seek (an onUpdate would not). measured(): the road's
  *  length (units). The road is measured on first use, once it is laid out. */
 export function roadOf({ layer, mover, points, short = SHORT }) {
   const gsap = window.gsap;
@@ -145,7 +145,7 @@ export function roadOf({ layer, mover, points, short = SHORT }) {
       if (!length) measure();
       reveal(length - short + q * short);
     }),
-    length() {
+    measured() {
       if (!length) measure();
       return length;
     },

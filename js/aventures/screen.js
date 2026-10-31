@@ -169,7 +169,13 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   function warm() {
     if (buddy.stopped) return; // left before the book landed
     const id = nextToLive(AVENTURES, progress);
-    if (id) SCENARIOS[id]?.load().catch(() => {});
+    // then its stickers, for the HTTP cache to serve the intro's images (its first viewing cannot be skipped)
+    if (id) {
+      SCENARIOS[id]?.load().then(({ stickers }) => {
+        if (buddy.stopped) return; // left meanwhile
+        for (const path of stickers ?? []) new Image().src = `assets/aventures/${path}.webp`;
+      }).catch(() => {});
+    }
   }
 
   /** The rubber stamp goes, untouched (its page turned, or leaving): it comes back with its page. */
