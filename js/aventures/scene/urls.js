@@ -7,6 +7,9 @@ export const stickerUrl = (outing, who, side, pose) => `assets/aventures/${outin
 /** vehicleUrl("seat", "roule") → "assets/aventures/vehicules/seat-roule.webp". */
 export const vehicleUrl = (name, view) => `assets/aventures/vehicules/${name}-${view}.webp`;
 
+/** sceneUrl("canoe", "sarlat-le-chevalier", 1) → "assets/aventures/canoe/scene-sarlat-le-chevalier-01.webp". */
+export const sceneUrl = (outing, board, k) => `assets/aventures/${outing}/scene-${board}-${String(k).padStart(2, "0")}.webp`;
+
 // each pose's stand-in in assets/cyrielle/: Cycy from the front, Kevin from the front, Cycy from the back, Kevin from the back
 const FALLBACK = {
   joie: ["joy", "kevin-joy", "dos-cycy-joy", "dos-kevin-joy"],

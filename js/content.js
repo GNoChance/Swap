@@ -657,7 +657,7 @@ export const content = {
     prev: "Page précédente",
     nextPage: "Page suivante",
     // Les bulles des intros (« … » quand on attend, « Meuh ! » d'une vache, « Ouaf ! » du border collie)
-    intros: { dots: "…", moo: "Meuh !", bark: "Ouaf !" },
+    intros: { dots: "…", moo: "Meuh !", bark: "Ouaf !", canoe: { depart: "Carsac · 28 km", arrivee: "28 km !", gabare: "Norbert" } },
   },
 
   // L'accueil du swap (#/swap) : le parcours à revoir

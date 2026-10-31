@@ -2,7 +2,8 @@
 // Each says how it was travelled (transports, in order) and who came along (people: Cycy and Kevin are always there);
 // an outing with its own intro (intros/index.js) also has its place, written large on the intro's poster (lieu), and if
 // its intro opens on a map, its trip (trajet): the names written at the start and on the way (each at its point of the
-// road, etapesAt), and the road's real points [lat, lon] from the start to the arrival (the lieu).
+// road, etapesAt), and the road's real points [lat, lon] from the start to the arrival (the lieu, or arrivee when the
+// map names another place); relais, if the trip goes on by another transport: where it drops them off, and the names seen on the way.
 export const TRANSPORTS = ["seat", "c3", "308", "kangoo", "flixbus", "camping-car", "avion", "bus", "pied", "velo", "canoe", "train"];
 export const PEOPLE = ["nini", "dede", "caro", "marius", "manon", "noe", "fabus", "doumi", "elodie", "paolo", "paolina", "pierre", "paul", "jeanne", "jennifer"];
 
@@ -24,7 +25,24 @@ export const AVENTURES = [
         [43.231, -0.387], [43.158, -0.396], [43.087, -0.420], [42.988, -0.426], [42.889, -0.429], [42.873, -0.466]],
     },
   },
-  { id: "canoe", name: "Premier canoë · Dordogne", from: "2025-08-11", to: "2025-08-11", transports: ["c3", "canoe"], people: [] },
+  {
+    id: "canoe",
+    name: "Premier canoë · Dordogne",
+    from: "2025-08-11",
+    to: "2025-08-11",
+    transports: ["c3", "bus", "canoe"],
+    people: [],
+    lieu: "La Dordogne",
+    trajet: {
+      depart: "Bordeaux",
+      etapes: ["Bergerac"],
+      etapesAt: [4],
+      arrivee: "Port d'Enveaux",
+      // [lat, lon]: Bordeaux, Libourne, Castillon-la-Bataille, Sainte-Foy-la-Grande, Bergerac, Lalinde, Le Buisson-de-Cadouin, Siorac-en-Périgord, Saint-Cyprien, Port d'Enveaux
+      points: [[44.837, -0.579], [44.915, -0.244], [44.854, -0.042], [44.838, 0.220], [44.853, 0.483], [44.838, 0.742], [44.822, 0.910], [44.822, 0.983], [44.869, 1.042], [44.836, 1.110]],
+      relais: { transport: "bus", arrivee: "Carsac", noms: ["Beynac", "Castelnaud", "La Roque-Gageac", "Domme", "Sarlat"] },
+    },
+  },
   { id: "ile-de-re", name: "Île de Ré", from: "2025-08-17", to: "2025-08-18", transports: ["c3", "velo"], people: [] },
   { id: "marqueze", name: "Marquèze", from: "2025-08-22", to: "2025-08-22", transports: ["c3", "train"], people: [] },
   { id: "airbnb", name: "Premier Airbnb", from: "2025-09-21", to: "2025-09-21", transports: ["c3"], people: [] },

@@ -201,7 +201,7 @@ const escape = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`
 
 /** stops({ trajet, lieu }, project): where names are written, [{ name, x, y, kind, side, box }]: the start
  *  (trajet.depart, its first point), each stage (trajet.etapes, at the point of index trajet.etapesAt[k], the nearest
- *  to its town) and the arrival (lieu, its last point); each name on the side the road does not take. A stage without
+ *  to its town) and the arrival (trajet.arrivee, else lieu; its last point); each name on the side the road does not take. A stage without
  *  its point throws, naming it. */
 export function stops({ trajet, lieu }, project) {
   const road = pts(project, trajet.points);
@@ -211,7 +211,7 @@ export function stops({ trajet, lieu }, project) {
     if (!Number.isInteger(at) || !road[at]) throw new Error(`trajet: no point for the stage « ${name} » (etapesAt[${k}] = ${at})`);
     return { name, at, kind: "etape" };
   });
-  const list = [{ name: trajet.depart, at: 0, kind: "start" }, ...etapes, { name: lieu, at: last, kind: "end" }];
+  const list = [{ name: trajet.depart, at: 0, kind: "start" }, ...etapes, { name: trajet.arrivee ?? lieu, at: last, kind: "end" }];
   return list.map(({ name, at, kind }) => {
     const [x, y] = road[at];
     const near = [road[at - 1], road[at + 1]].filter(Boolean);

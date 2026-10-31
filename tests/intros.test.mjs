@@ -9,7 +9,7 @@ import { AVENTURES, PEOPLE, TRANSPORTS } from "../js/aventures/data.js";
 import { SCENARIOS } from "../js/aventures/intros/index.js";
 import { fit } from "../js/aventures/scene/stage.js";
 import { fitTitle, posterLine, posterTitle, TITLE_FIT, titleWidth } from "../js/aventures/scene/poster-text.js";
-import { fallbackUrl, stickerUrl, vehicleFallback, vehicleUrl } from "../js/aventures/scene/urls.js";
+import { fallbackUrl, sceneUrl, stickerUrl, vehicleFallback, vehicleUrl } from "../js/aventures/scene/urls.js";
 import { projection } from "../js/aventures/scene/geo.js";
 import { stops } from "../js/aventures/scene/props-carte.js";
 
@@ -158,4 +158,41 @@ test("intros: every stage of a trip has its point on the road", () => {
   // a stage without its point: a clear error that names it
   assert.throws(() => stops({ trajet: { ...trajet, etapesAt: [] }, lieu }, project), /« Pau »/);
   assert.throws(() => stops({ trajet: { ...trajet, etapesAt: [99] }, lieu }, project), /« Pau »/);
+});
+
+// The Premier canoë (spec § 5): C3 to the bus stop, bus to the river, then the canoe down the Dordogne.
+const CANOE_MAP = { origin: [44.837, -0.579], at: { x: 50, y: 330 }, unitsPerDegree: 230 };
+
+test("intros: the canoe goes by C3, bus and canoe to La Dordogne", () => {
+  assert.deepEqual(byId("canoe").transports, ["c3", "bus", "canoe"]);
+  assert.equal(byId("canoe").lieu, "La Dordogne");
+  const project = projection(CANOE_MAP);
+  const { points } = byId("canoe").trajet;
+  for (const point of points) {
+    const { x, y } = project(point);
+    assert.ok(x >= 25 && x <= 365 && y >= 120 && y <= 700, `${point} → (${x}, ${y})`);
+  }
+  assert.ok(points.at(-1)[1] > points[0][1], "the arrival is east of the start");
+});
+
+test("intros: a trip's relay is known", () => {
+  for (const a of AVENTURES.filter((x) => x.trajet?.relais)) {
+    const { transport, arrivee, noms } = a.trajet.relais;
+    assert.ok(TRANSPORTS.includes(transport) && a.transports.includes(transport), `${a.id}: relay by ${transport}`);
+    assert.ok(typeof arrivee === "string" && arrivee, `${a.id}: relay arrival`);
+    assert.ok(Array.isArray(noms) && noms.every((s) => typeof s === "string" && s), `${a.id}: relay names`);
+  }
+  assert.equal(byId("canoe").trajet.relais.arrivee, "Carsac");
+});
+
+test("intros: a trip names its own arrival, else the lieu", () => {
+  const { trajet, lieu } = byId("canoe");
+  assert.deepEqual(stops({ trajet, lieu }, projection(CANOE_MAP)).map((s) => s.name), ["Bordeaux", "Bergerac", "Port d'Enveaux"]);
+  const bivouac = byId("bivouac-1");
+  assert.deepEqual(stops(bivouac, projection(BIVOUAC_MAP)).map((s) => s.name), ["Bordeaux", "Pau", "Lacs d'Ayous"]);
+});
+
+test("intros: scene sticker urls", () => {
+  assert.equal(sceneUrl("canoe", "cycy-et-kevin-en-canoe", 2), "assets/aventures/canoe/scene-cycy-et-kevin-en-canoe-02.webp");
+  assert.equal(sceneUrl("canoe", "sarlat-le-chevalier", 1), "assets/aventures/canoe/scene-sarlat-le-chevalier-01.webp");
 });
