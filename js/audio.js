@@ -375,6 +375,11 @@ const sounds = {
       tone({ freq: freq * 1.5, type: "triangle", at, dur: 0.14, gain: 0.03, attack: 0.012 });
     });
   },
+  /** A paddle's « plic » in the river: a short filtered splash and a little high drop (~0.12 s). */
+  paddle() {
+    noise({ dur: 0.08, gain: 0.1, filter: 1200 + Math.random() * 500, q: 1.1 });
+    tone({ freq: 1300 + Math.random() * 300, glideTo: 2200, at: 0.03, dur: 0.09, gain: 0.04 });
+  },
   /** A crowd roaring in the stands. */
   crowd() {
     for (let i = 0; i < 8; i++) noise({ at: i * 0.16, dur: 0.9, gain: 0.07, filter: 600 + Math.random() * 900, q: 0.35 });

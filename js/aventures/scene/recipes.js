@@ -1,6 +1,7 @@
 // The intros' recipes (spec § 4): reusable pieces of timeline, each → the moment it ends (s): the trip on a paper map
-// and its relay on a map of its own (the canoe's spec, § 4), the vehicle arriving with its people, the walk up a path,
-// and the closing poster (spec § 5, moments 1, 2, 3 and 7). Both maps drive their vehicle along the same road (roadOf).
+// and its relay on a map of its own after the camera's dive (the canoe's spec, § 4), the vehicle arriving with its
+// people, the walk up a path, and the closing poster (spec § 5, moments 1, 2, 3 and 7). Both maps drive their vehicle
+// along the same road (roadOf).
 import { sfx } from "../../audio.js";
 import { h } from "../../dom.js";
 import { posterize, sheet } from "./decor.js";
@@ -208,25 +209,34 @@ export function carte(tl, at, { stage, layers, car, trajet, lieu, project, durat
 }
 
 const RELAY_SHORT = 30; // units: the relay's vehicle pulls up this short of its arrival
-const DIVE = 4; // the zoom the camera dives to, onto the relay's start
-const CLOSE = 1.3; // the zoom the next map shows at first, on its own start
+const DIVE = 4; // the zoom the camera dives to, onto a point of a map (plonge())
+const CLOSE = 1.3; // the zoom the next scene shows at first, on its own point
+
+/** plonge(tl, at, { stage, from, layers, to }): from `at` s, the camera dives onto a point of a map (from = { layers, x,
+ *  y }: its layers' elements and that point, stage units) as it fades; the next scene (`layers`, its elements, hidden
+ *  until then) shows through close on its own point `to` ({ x, y }), then settles. → when it has settled (s). */
+export function plonge(tl, at, { stage, from, layers, to }) {
+  stage.pan(tl, at, { x: DIVE * (from.x - W / 2), y: DIVE * (from.y - H / 2), zoom: DIVE, duration: 0.45, ease: "power2.in", only: from.layers });
+  stage.pan(tl, at, { x: CLOSE * (to.x - W / 2), y: CLOSE * (to.y - H / 2), zoom: CLOSE, duration: 0, only: layers });
+  tl.set(layers, { autoAlpha: 1 }, at + 0.05).to(from.layers, { autoAlpha: 0, duration: 0.25, ease: "power1.in" }, at + 0.1);
+  stage.pan(tl, at + 0.3, { duration: 0.8, ease: "power2.inOut", only: layers });
+  return at + 1.1;
+}
 
 /** relais(tl, at, { stage, from, layers, vehicle, route, duration }): from `at` s, the trip goes on by another vehicle
  *  on a map of its own. The camera dives onto the relay's start on the map before (from = { layers, x, y }: its layers'
  *  elements and that point, stage units) as it fades; the next map (`layers`, its elements, hidden until then: the
- *  last holds `vehicle`) shows through close on its own start (route[0]), then settles. The vehicle (a paperVehicle()
- *  standing on route[0]) honks and drives along `route` ([x, y], stage units) with a bounce, its dotted line drawn
- *  behind it (roadOf()); it pulls up by the arrival, the last dots run to it and its pin plops. → its end (s). */
+ *  last holds `vehicle`) shows through close on its own start (route[0]), then settles (plonge()). The vehicle (a
+ *  paperVehicle() standing on route[0]) honks and drives along `route` ([x, y], stage units) with a bounce, its dotted
+ *  line drawn behind it (roadOf()); it pulls up by the arrival, the last dots run to it and its pin plops. → its end
+ *  (s). */
 export function relais(tl, at, { stage, from, layers, vehicle, route, duration }) {
   const road = roadOf({ layer: vehicle.layer, mover: vehicle, points: route, short: RELAY_SHORT });
   const [ex, ey] = route.at(-1);
   const pin = pinAt(vehicle.layer, { x: ex, y: ey });
   // the dive, the map before fading as the next one shows through, close on the same place
-  stage.pan(tl, at, { x: DIVE * (from.x - W / 2), y: DIVE * (from.y - H / 2), zoom: DIVE, duration: 0.45, ease: "power2.in", only: from.layers });
   const [sx, sy] = route[0];
-  stage.pan(tl, at, { x: CLOSE * (sx - W / 2), y: CLOSE * (sy - H / 2), zoom: CLOSE, duration: 0, only: layers });
-  tl.set(layers, { autoAlpha: 1 }, at + 0.05).to(from.layers, { autoAlpha: 0, duration: 0.25, ease: "power1.in" }, at + 0.1);
-  stage.pan(tl, at + 0.3, { duration: 0.8, ease: "power2.inOut", only: layers });
+  plonge(tl, at, { stage, from, layers, to: { x: sx, y: sy } });
   // the vehicle honks and drives off, its pin plops
   const leave = at + 0.5;
   const arrive = at + duration - 0.62;

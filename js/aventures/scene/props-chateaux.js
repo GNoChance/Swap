@@ -1,9 +1,9 @@
-// The Dordogne's castles (the canoe's spec, § 4), in paper: for now Beynac, its keep high on its cliff over the river and
-// its village stepping down to the water. Each takes its skin, "paper" or "poster" (props.js). Pure: markup only, the
-// same for the same arguments.
+// The Dordogne's castles (the canoe's spec, § 4), in paper: Beynac, its keep high on its cliff over the river and its
+// village stepping down to the water (it takes its skin, "paper" or "poster": props.js); downstream from Carsac,
+// Montfort on its rock and Domme high on its cliff (paper only). Pure: markup only, the same for the same arguments.
 import { AFFICHE as A } from "./decor.js";
-import { blob, lens, path, poly, random } from "./geom.js";
-import { paper, piece, roundTrees, slab } from "./props.js";
+import { edgeAt, path, poly, random } from "./geom.js";
+import { paper, piece, roundTrees, slab, strata } from "./props.js";
 
 const R = 995; // a 1600-wide layer's right edge
 const FOOT = 452; // the water line (props-riviere.js: WATER_LINE)
@@ -42,25 +42,7 @@ export function beynac(skin) {
   const face = [...CLIFF, [R, FOOT + 6], [184, FOOT + 6]];
   const r = random(211);
   // the strata: long lenses across the face, a band of shade under some (an overhang), grey streaks running down
-  let bands = "";
-  let lit = "";
-  let overhangs = "";
-  let streaks = "";
-  let tufts = "";
-  for (let y = 312; y < FOOT - 6; y += 13 + r() * 9)
-    for (let x = 196 + r() * 40; x < R; x += 70 + r() * 90) {
-      if (y < topAt(x) + 8 || y < topAt(x + 60) + 8) continue;
-      const w = 40 + r() * 80;
-      bands += lens(x, y, w, 2.6 + r() * 2);
-      if (r() < 0.45) overhangs += lens(x + 4, y + 4, w * 0.8, 1.6);
-      else lit += lens(x + 6, y - 2.6, w * 0.6, 1);
-      if (r() < 0.3) tufts += blob([[x + w * 0.3, y - 1], [x + w * 0.36, y - 5], [x + w * 0.44, y - 6], [x + w * 0.5, y - 2]]);
-    }
-  for (let x = 210; x < R; x += 22 + r() * 34) {
-    const y = topAt(x) + 14 + r() * 20;
-    const [w, h, lean] = [1.6 + r() * 2.4, 26 + r() * 70, (r() - 0.5) * 6];
-    streaks += poly([[x, y], [x + w, y + 2], [x + w * 0.5 + lean, Math.min(FOOT, y + h)]]); // a trickle, tapering down
-  }
+  const { bands, lit, overhangs, streaks, tufts } = strata({ edge: CLIFF, x0: 196, x1: R, y0: 312, foot: FOOT, r });
   const topWoods = [];
   for (let x = 196; x < R; x += 15 + r() * 10) if (x < 230 || x > 378) topWoods.push([x, topAt(x) + 7, 9 + r() * 6]);
 
@@ -92,5 +74,87 @@ export function beynac(skin) {
     slab(skin, slope, c.slope, 0.6),
     piece(skin, castle + cone + lodgingRoof, path(castle, c.castle) + path(shade, c.castleShade) + path(lodgingRoof + cone, c.roof) + path(windows, c.window), "", 0.9),
     piece(skin, village.map((h) => h.outline).join(""), village.map((h) => h.markup).join(""), "", 0.5),
+  ].join("");
+}
+
+// ── Downstream from Carsac: Montfort and Domme, round the river's bend (props-riviere.js, BEND; paper only) ──
+
+const L = -605; // a 1600-wide layer's left edge
+// the descent's paper: the limestone, the castles' stone and slate, the woods
+const C = { cliff: "#e6dbc2", band: "#ddd0b2", lit: "#f2ead8", overhang: "#c9b995", streak: "#d0c5ad", tuft: "#7f9c5c", face: "#d3c4a3", stone: "#dcc391", shade: "#bba06c", slate: "#5f6674", slateLit: "#7a8291", tile: "#9a5236", window: "#4c3b2c" };
+
+/** A limestone face under its top `edge` down to the water (its strata: props.js), cut as one piece. */
+function face(edge, x0, y0, seed) {
+  const r = random(seed);
+  const outline = poly([...edge, [edge.at(-1)[0], FOOT + 6], [edge[0][0], FOOT + 6]]);
+  const { bands, lit, overhangs, tufts, streaks } = strata({ edge, x0, x1: edge.at(-1)[0], y0, foot: FOOT, r });
+  return { r, markup: piece("paper", outline, path(outline, C.cliff) + path(bands, C.band) + path(lit, C.lit) + path(overhangs, C.overhang) + path(streaks, C.streak) + path(tufts, C.tuft), "", 0.8) };
+}
+
+/** A rectangle from x0 to x1, from its foot y0 up to y1. */
+const block = (x0, x1, y0, y1) => poly([[x0, y0], [x0, y1], [x1, y1], [x1, y0]]);
+/** Merlons along a wall's top, from x0 to x1 at y. */
+const battlements = (x0, x1, y, step = 8) => Array.from({ length: Math.floor((x1 - x0) / step) }, (_, k) => block(x0 + k * step, x0 + k * step + step / 2, y, y - 4)).join("");
+
+// Domme's cliff on the left, from the layer's edge to its foot by the bend, the town on its top
+const DOMME = [[L, 384], [-470, 370], [-340, 352], [-220, 336], [-120, 324], [-40, 318], [10, 316], [70, 316], [118, 318], [136, 328], [150, 354], [160, 392], [168, 428], [174, FOOT]];
+
+/** Domme high on its cliff (the descent): the pale face over the river, its shaded east side above the bend, woods along
+ *  its top, and the bastide at its edge: its rampart with the two round towers of its gate, its houses' brown roofs,
+ *  the church and its bell tower. */
+export function domme() {
+  const { r, markup } = face(DOMME, -600, 322, 401);
+  const east = poly([[118, 318], [136, 328], [150, 354], [160, 392], [168, 428], [174, FOOT], [150, FOOT], [142, 400], [130, 352]]);
+  const woods = [];
+  for (let x = -596; x < -16; x += 13 + r() * 9) woods.push([x, edgeAt(DOMME, x) + 6, 9 + r() * 6]);
+  const houses = [[28, 306, 14], [42, 304, 15], [88, 305, 14], [102, 306, 13], [54, 308, 12]].map(([x, y, w], k) => house(x, y, w, { stone: C.stone, shade: C.shade, roof: k % 2 ? C.tile : "#b5653f", window: C.window }));
+  const nave = block(62, 88, 308, 290);
+  const naveRoof = poly([[60, 290], [75, 280], [90, 290]]);
+  const belfry = block(64, 75, 308, 272);
+  const spire = poly([[63, 272], [69.5, 264], [76, 272]]);
+  const towers = block(-6, 8, 318, 290) + block(12, 26, 318, 290);
+  const towersLit = block(-6, 0, 318, 290) + block(12, 18, 318, 290);
+  const wall = block(-6, 124, 320, 308) + battlements(-6, 124, 308, 9) + battlements(-6, 8, 290, 4.6) + battlements(12, 26, 290, 4.6);
+  const windows = [block(68, 71, 284, 279), block(32, 35, 300, 296), block(92, 95, 300, 296), block(-1, 2, 304, 299), block(17, 20, 304, 299)].join("");
+  const church = nave + naveRoof + belfry + spire;
+  return [
+    markup,
+    path(east, C.face),
+    roundTrees(woods, { smooth: false }),
+    piece("paper", houses.map((h) => h.outline).join(""), houses.map((h) => h.markup).join(""), "", 0.5),
+    piece("paper", church, path(nave + belfry, C.stone) + path(block(80, 88, 308, 290), C.shade) + path(naveRoof + spire, C.tile), "", 0.6),
+    piece("paper", wall + towers, path(wall + towers, C.stone) + path(towersLit, "#e8d4a6") + path(windows, C.window), "", 0.7),
+  ].join("");
+}
+
+// Montfort's rock on the right, from its foot by the bend to the layer's edge, the castle on its top
+const MONTFORT = [[224, FOOT], [230, 432], [238, 410], [250, 390], [266, 374], [292, 366], [336, 364], [366, 368], [388, 380], [410, 398], [446, 410], [520, 414], [640, 408], [780, 414], [R, 410]];
+
+/** Montfort on its rock over the river (the descent): the pale rock with its strata, woods down its slopes, and the
+ *  castle on top: its curtain wall, its lodging under a steep slate roof, its round tower and its turret under cones,
+ *  its square keep. */
+export function montfort() {
+  const { r, markup } = face(MONTFORT, 228, 370, 411);
+  const woods = [];
+  for (let x = 396; x < R; x += 12 + r() * 9) woods.push([x, edgeAt(MONTFORT, x) + 7, 9 + r() * 6]);
+  for (let x = 232; x < 262; x += 9) woods.push([x, edgeAt(MONTFORT, x) + 10, 6 + r() * 3]);
+  const wall = poly([[268, 376], [268, 360], [392, 362], [392, 384]]);
+  const lodging = block(298, 352, 366, 326);
+  const lodgingRoof = poly([[294, 326], [306, 300], [344, 300], [356, 326]]);
+  const tower = block(278, 296, 370, 318);
+  const cone = poly([[275, 318], [287, 286], [299, 318]]);
+  const keep = block(350, 366, 366, 312);
+  const keepRoof = poly([[348, 312], [358, 294], [368, 312]]);
+  const turret = block(370, 378, 374, 344);
+  const turretCone = poly([[368, 344], [374, 330], [380, 344]]);
+  const shade = block(288, 296, 370, 318) + block(340, 352, 366, 326) + block(360, 366, 366, 312) + block(375, 378, 374, 344);
+  const roofsLit = poly([[294, 326], [306, 300], [318, 300], [310, 326]]) + poly([[275, 318], [287, 286], [285, 318]]);
+  const windows = [block(306, 310, 350, 343), block(318, 322, 350, 343), block(330, 334, 350, 343), block(284, 287, 344, 338), block(355, 358, 340, 334), block(355, 358, 326, 320)].join("");
+  const stone = wall + lodging + tower + keep + turret;
+  const roofs = lodgingRoof + cone + keepRoof + turretCone;
+  return [
+    markup,
+    roundTrees(woods, { smooth: false }),
+    piece("paper", stone + roofs, path(stone, C.stone) + path(shade, C.shade) + path(roofs, C.slate) + path(roofsLit, C.slateLit) + path(windows, C.window), "", 0.8),
   ].join("");
 }

@@ -41,6 +41,34 @@ export function roundTrees(list, { skin = "paper", tint = {}, lift = 0.45, smoot
   return piece(skin, crowns, path(trunks, c.trunk) + path(crowns, c.crown) + path(lit, c.lit), "", lift);
 }
 
+/** The strata of a limestone face under its top `edge` ([[x, y]] sorted by x), from x0 to x1, from y0 down to `foot`,
+ *  scattered by `r` (a random()): long lenses across it (bands), a lit lip over some, the shade of an overhang under
+ *  others, grass tufts on their ledges, grey trickles running down from its top. → path data { bands, lit, overhangs,
+ *  tufts, streaks } (the Dordogne's cliffs). */
+export function strata({ edge, x0, x1, y0, foot, r }) {
+  const top = (x) => edgeAt(edge, x);
+  let bands = "";
+  let lit = "";
+  let overhangs = "";
+  let tufts = "";
+  let streaks = "";
+  for (let y = y0; y < foot - 6; y += 13 + r() * 9)
+    for (let x = x0 + r() * 40; x < x1; x += 70 + r() * 90) {
+      if (y < top(x) + 8 || y < top(x + 60) + 8) continue;
+      const w = 40 + r() * 80;
+      bands += lens(x, y, w, 2.6 + r() * 2);
+      if (r() < 0.45) overhangs += lens(x + 4, y + 4, w * 0.8, 1.6);
+      else lit += lens(x + 6, y - 2.6, w * 0.6, 1);
+      if (r() < 0.3) tufts += blob([[x + w * 0.3, y - 1], [x + w * 0.36, y - 5], [x + w * 0.44, y - 6], [x + w * 0.5, y - 2]]);
+    }
+  for (let x = x0 + 14; x < x1; x += 22 + r() * 34) {
+    const y = top(x) + 14 + r() * 20;
+    const [w, h, lean] = [1.6 + r() * 2.4, 26 + r() * 70, (r() - 0.5) * 6];
+    streaks += poly([[x, y], [x + w, y + 2], [x + w * 0.5 + lean, Math.min(foot, y + h)]]); // a trickle, tapering down
+  }
+  return { bands, lit, overhangs, tufts, streaks };
+}
+
 // ── The sky ─────────────────────────────────────────────────
 
 // its paper strips, top to bottom, each a gently waving edge (the poster's bands)

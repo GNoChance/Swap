@@ -14,7 +14,7 @@ const SHOWN = { opacity: "", visibility: "" };
 const box = (tag, cls) => Object.assign(document.createElement(tag), { className: cls });
 
 /** The base of every actor: its boxes in `layer` at x, y, and its looks (one <img> each, `size`: its height, or its
- *  width with `wide`). Actor = { el, layer, x, y, imgs, look(key, src, fallback), wear(key), wearAt(tl, at, key) }. */
+ *  width with `wide`). Actor = { el, layer, x, y, size, imgs, look(key, src, fallback), wear(key), wearAt(tl, at, key) }. */
 function cast({ layer, x, y, size, wide = false }) {
   const el = box("div", "st-actor");
   const turn = box("div", "st-actor__turn");
@@ -32,6 +32,7 @@ function cast({ layer, x, y, size, wide = false }) {
     layer,
     x,
     y,
+    size,
     get imgs() {
       return [...looks.values()];
     },
@@ -78,6 +79,54 @@ export function sceneActor({ layer, who, looks, look, x, y, height }) {
   /** Into the view `key` at `at` s. */
   self.show = (tl, at, key) => self.wearAt(tl, at, key);
   return self;
+}
+
+const CROP = 1.42; // a bubble's look is this many times its disc's width: its head and shoulders fill the disc
+// a bubble's tail: a little curved wedge from its disc's edge, pointing along +x (turned towards what it points to)
+const TAIL = `<svg viewBox="0 -14 34 28" width="34" height="28"><path d="M0-12C10-9 22-4 33 1C21 2 10 6 0 12Z" fill="#fff"/></svg>`;
+
+/** faceBubble({ layer, who, looks, look, x, y, size, tail }): a head in a bubble over the scene (`who`: « bulle-cycy »,
+ *  « bulle-kevin »): a paper disc `size` units wide centred on x, y, its white edge and the layers' shadow, a little
+ *  tail pointing to `tail` ({ x, y }, stage units). Its looks (looks = { [key]: { src, fallback } }, as sceneActor())
+ *  are cropped on the head and shoulders (the sticker's top); it shows `look` first, hidden until it pops.
+ *  FaceBubble = Actor + { pop, show, leave }. */
+export function faceBubble({ layer, who, looks, look, x, y, size, tail }) {
+  const self = cast({ layer, x, y: y + size / 2, size }); // the disc stands on its bottom: its centre on x, y
+  self.el.dataset.who = who;
+  const angle = Math.atan2(tail.y - y, tail.x - x);
+  const point = box("span", "st-bubble__tail");
+  point.innerHTML = TAIL;
+  point.style.transform = `rotate(${Math.round((angle * 180) / Math.PI)}deg) translateX(${size / 2 - 6}px)`;
+  const disc = box("span", "st-bubble__disc");
+  self.pose.classList.add("st-bubble");
+  // it pops out of its tail
+  Object.assign(self.pose.style, { width: `${size}px`, height: `${size}px`, transformOrigin: `${50 + 50 * Math.cos(angle)}% ${50 + 50 * Math.sin(angle)}%` });
+  self.pose.append(point, disc);
+  for (const [key, { src, fallback }] of Object.entries(looks)) {
+    const img = self.look(key, src, fallback);
+    Object.assign(img.style, { width: `${size * CROP}px`, height: "auto" });
+    disc.append(img);
+  }
+  self.wear(look);
+  Object.assign(self.el.style, HIDDEN);
+  return Object.assign(self, {
+    /** Pops out at `at` s, bouncing, with a pop. */
+    pop(tl, at) {
+      tl.call(() => sfx("pop"), null, at);
+      tl.fromTo(self.el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.05, immediateRender: false }, at);
+      tl.fromTo(self.pose, { scale: 0.2 }, { scale: 1, duration: 0.42, ease: "back.out(2.6)", immediateRender: false }, at);
+    },
+    /** Into the face `key` at `at` s, the bubble squashed by it. */
+    show(tl, at, key) {
+      self.wearAt(tl, at, key);
+      tl.fromTo(self.pose, { scaleX: 1.12, scaleY: 0.9 }, { scaleX: 1, scaleY: 1, duration: 0.32, ease: "elastic.out(1.1, 0.5)", immediateRender: false }, at);
+    },
+    /** Goes at `at` s, shrinking away. → when it has gone. */
+    leave(tl, at) {
+      tl.to(self.pose, { scale: 0.3, duration: 0.22, ease: "back.in(2)" }, at).to(self.el, { autoAlpha: 0, duration: 0.06 }, at + 0.18);
+      return at + 0.24;
+    },
+  });
 }
 
 /** A small hop of `target` (y), `height` units, landing with a squash, from `at` s; → when it has landed. */

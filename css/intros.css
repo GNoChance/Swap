@@ -273,6 +273,73 @@
   overflow: visible;
 }
 
+/* a head in a bubble (faceBubble()): a paper disc, its white edge, the layers' shadow under it and its tail, the look
+   cropped on the head and shoulders; GSAP pops and squashes the pose, and fades the actor */
+.st-bubble {
+  position: relative;
+  display: block;
+  filter: drop-shadow(0 3px 4px rgba(59, 42, 24, 0.34)); /* set once, never animated */
+}
+
+.st-bubble__disc {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #fbf3df;
+  box-shadow: 0 0 0 3.5px #fff;
+}
+
+.st-bubble__disc .st-actor__img {
+  position: absolute;
+  left: 50%;
+  top: -3%;
+  translate: -50% 0; /* its transform stays free */
+  filter: none;
+}
+
+.st-bubble__tail {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-top: -14px;
+  transform-origin: 0 50%; /* turned round the disc's centre (actors.js) */
+}
+
+.st-bubble__tail svg,
+.st-swirl svg,
+.st-dizzy svg,
+.st-drops svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ── On the water (recipes-eau.js): the eddies spiralling under a boat, laid flat on the river (GSAP turns their inner
+   box), the dizzy spiral over it, the drops of its paddle ── */
+.st-swirl,
+.st-dizzy,
+.st-drops {
+  position: absolute;
+  display: block;
+}
+
+.st-swirl {
+  transform: scaleY(0.34); /* seen from the bank; GSAP only fades it */
+}
+
+.st-swirl__spin,
+.st-dizzy__spin {
+  display: block;
+  will-change: transform; /* drawn once, then only turned */
+}
+
+/* the words on a wooden sign (props-riviere.js), in ink */
+.st-sign {
+  font: 600 13px var(--serif);
+  letter-spacing: 0.03em;
+  fill: #3b2a18;
+}
+
 /* a puff of paper smoke from a vehicle's back (smoke()) */
 .st-puff {
   position: absolute;
