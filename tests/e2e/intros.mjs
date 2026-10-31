@@ -8,28 +8,21 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
+import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
-import { SCENARIOS } from "../../js/aventures/intros/index.js";
 import { stickers } from "../../js/aventures/intros/bivouac-1.stickers.js";
 
 const BASE = process.env.BASE || "http://localhost:5173/";
 const SHOTS = process.env.SHOTS;
-const VIEWPORTS = [
-  { name: "iPhone 393 × 852 (puis tourné en 852 × 393)", width: 393, height: 852, mobile: true, turned: true },
-  { name: "petit iPhone 375 × 667", width: 375, height: 667, mobile: true },
-  { name: "PC 1440 × 900", width: 1440, height: 900, mobile: false, wide: true },
-  { name: "PC 1920 × 1080", width: 1920, height: 1080, mobile: false, wide: true },
-];
 const TITLE = "LACS D'AYOUS";
 const LINE = "Premier bivouac · 17–18 mai 2025";
 const PROVISIONAL = 4500; // ms, the provisional intro
 const BIVOUAC = `${BASE}?demo#/aventures/bivouac-1`;
-const KEY = "swap-cyrielle:aventures";
 const bivouac = AVENTURES.find((a) => a.id === "bivouac-1");
 const NAMES = [bivouac.trajet.depart, ...bivouac.trajet.etapes, bivouac.lieu]; // written on the map, from the data
 const LENGTH = { min: 17000, max: 18500 }; // ms, the bivouac's intro (spec § 5)
 // each moment of the intro (intros/index.js): its start, and its middle (s)
-const beat = Object.fromEntries(SCENARIOS["bivouac-1"].beats.map(({ name, at }, k, all) => [name, { at, mid: (at + (all[k + 1]?.at ?? at + 2)) / 2 }]));
+const beat = beatsOf("bivouac-1");
 // who shows in the middle of each moment after the map (spec § 5): all of them entirely on screen
 const CAST = {
   "Le parking": ["cycy", "kevin", "seat"],
@@ -39,51 +32,10 @@ const CAST = {
   "La voiture": ["seat"],
   "L'affiche": ["cycy", "kevin"],
 };
-// ?graine=<save> (JSON) starts the page on that save, then drops itself from the address (as in aventures.mjs)
-const SEED = `{
-  const seed = new URLSearchParams(location.search).get("graine");
-  if (seed !== null) {
-    localStorage.clear();
-    if (seed) localStorage.setItem("${KEY}", seed);
-    history.replaceState(null, "", location.pathname + location.hash);
-  }
-}`;
-// ?decodage-rejete: decode() rejects on Cycy's front sticker in joy once it has arrived (as WebKit can, for another
-// reason than a missing file); __rejected, how many times
-const REJECT = `if (location.search.includes("decodage-rejete")) {
-  const decode = HTMLImageElement.prototype.decode;
-  HTMLImageElement.prototype.decode = function () {
-    return decode.call(this).then(() => {
-      if (!this.src.includes("/cycy-face-joie.webp")) return;
-      window.__rejected = (window.__rejected || 0) + 1;
-      throw new DOMException("The source image cannot be decoded.", "EncodingError");
-    });
-  };
-}`;
-// __landedAt: when the passport's book first rests open, its arrival over (performance.now() ms)
-const LANDING = `new MutationObserver((_, watch) => {
-  if (!document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]')) return;
-  window.__landedAt = performance.now();
-  watch.disconnect();
-}).observe(document, { subtree: true, attributes: true, attributeFilter: ["class", "data-open"] });`;
 const WELCOMED = { welcomed: true, known: AVENTURES.map((a) => a.id) }; // a save whose welcome is seen, nothing lived
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const length = `Number(document.querySelector(".screen-intro")?.dataset.length)`; // ms, as the intro says
-const atPassport = `location.hash === "#/aventures" && document.querySelector(".screen-passport")`;
-/** The passport open on page `n`, landed, its screen fully in: a touch counts. */
-const settled = (n) => `document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"][data-page="${n}"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
-/** « Passer ▸ » fully shown, or gone (hidden). */
-const skipIs = (state) => `(() => {
-  const el = document.querySelector(".screen-intro .intro-skip");
-  const style = el && getComputedStyle(el);
-  return Boolean(style) && (${state === "shown" ? `style.visibility === "visible" && style.opacity === "1"` : `style.visibility === "hidden"`});
-})()`;
 // the requests for the bivouac's scenario file
 const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => new URL(e.name).pathname === "/js/aventures/intros/bivouac-1.js")`;
-// the intro mounted, each of its stickers loaded or failed (img.complete); its timeline may still wait for them to be
-// decoded (playing)
-const loaded =`document.querySelector(".screen-intro .st-stage") && ${length} > 0 && [...document.querySelectorAll(".st-actor__img")].every((img) => img.complete)`;
 // the poster in place: its line and every letter of its title fully shown
 const built = `(() => {
   const parts = [...document.querySelectorAll(".af-title .af-letter, .af-line")];
@@ -99,62 +51,6 @@ const posterBoxes = `(() => {
     boxes: [".af-frame", ".af-title", ".af-line", ".af-title .af-letter"].flatMap((s) => [...document.querySelectorAll(s)].map((el) => ({ what: s, ...box(el) }))),
   };
 })()`;
-// the intro's timeline (found by its length)
-const timeline = `(() => {
-  const length = Number(document.querySelector(".screen-intro")?.dataset.length) / 1000;
-  return gsap.globalTimeline.getChildren(false, false, true).find((child) => Math.abs(child.duration() - length) < 0.02);
-})()`;
-// its timeline playing: its stickers decoded (ready), not only arrived; a hold before that would be undone by its play()
-const playing = `${loaded} && ${timeline}?.paused() === false`;
-// the intro's timeline, held still at exactly `t` s: what is on screen then can be measured
-const holdAt = (t) => `(() => {
-  ${timeline}.pause().seek(${t});
-  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-})()`;
-// GSAP's lag smoothing, by its effect: after a frame of 0.8 s, how far a tween went (s). GSAP's own (500, 33) drops
-// that time (a few hundredths); turned off, it keeps it all
-const lagged = `(async () => {
-  const frames = (n) => new Promise((resolve) => (function next(k) { k ? requestAnimationFrame(() => next(k - 1)) : resolve(); })(n));
-  const probe = gsap.to({}, { duration: 60, ease: "none" });
-  await frames(2);
-  const t0 = probe.time();
-  const until = performance.now() + 800;
-  while (performance.now() < until);
-  await frames(2);
-  const went = probe.time() - t0;
-  probe.kill();
-  return went;
-})()`;
-// the boxes (px) of what shows (visible, and not see-through: opacity > 0 up its tree): the actors (the look each
-// wears), the map's names and its pin, with the screen's size
-const sceneBoxes = `(() => {
-  const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-  const shows = (el) => {
-    if (getComputedStyle(el).visibility !== "visible") return false;
-    for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
-    return true;
-  };
-  const actors = [...document.querySelectorAll(".st-actor")].filter(shows).map((el) => {
-    const img = [...el.querySelectorAll(".st-actor__img")].find(shows);
-    return img && box(img, el.dataset.who || el.dataset.vehicle);
-  }).filter(Boolean);
-  return {
-    screen: { width: innerWidth, height: innerHeight },
-    actors,
-    names: [...document.querySelectorAll(".st-name")].map((el) => box(el, el.textContent)),
-    pin: [...document.querySelectorAll(".st-pin")].map((el) => box(el, "épingle"))[0],
-  };
-})()`;
-const round = (b) => ({ ...b, left: Math.round(b.left), top: Math.round(b.top), right: Math.round(b.right), bottom: Math.round(b.bottom) });
-/** The boxes not entirely inside the screen (half a px of rounding allowed). */
-const outside = (screen, boxes) => boxes.filter((b) => !b || b.left < -0.5 || b.top < -0.5 || b.right > screen.width + 0.5 || b.bottom > screen.height + 0.5);
-
-/** Every box entirely inside the screen (half a px of rounding allowed). */
-function inside({ screen, boxes }, where) {
-  const out = outside(screen, boxes);
-  if (!boxes.length) throw new Error(`${where} : pas de cadre ni de lettrage`);
-  if (out.length) throw new Error(`${where} : hors de l'écran ${JSON.stringify(out.slice(0, 3).map(round))}`);
-}
 
 async function suite(page, vp) {
   const check = checker(page);
