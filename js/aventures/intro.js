@@ -26,10 +26,14 @@ export async function loadScenario(id) {
  *  frame back is dropped as before, which holds the intro where it was. → the function that puts it back. */
 function keepTime() {
   const { ticker } = gsap;
-  const seen = () => (document.hidden ? ticker.lagSmoothing(500, 33) : ticker.add(() => ticker.lagSmoothing(0), true)); // once the frame back has dropped it
+  let live = true;
+  const again = () => live && ticker.lagSmoothing(0);
+  const seen = () => (document.hidden ? ticker.lagSmoothing(500, 33) : ticker.add(again, true)); // once the frame back has dropped it
   ticker.lagSmoothing(0);
   document.addEventListener("visibilitychange", seen);
   return () => {
+    live = false; // a frame back still to come must not turn it off again
+    ticker.remove(again);
     document.removeEventListener("visibilitychange", seen);
     ticker.lagSmoothing(500, 33); // GSAP's own
   };
@@ -80,7 +84,6 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
     noHome: true,
     async enter() {
       addEventListener("popstate", left);
-      release = keepTime();
       played = scenario.mount(el, { aventure, ink }); // on screen: it can measure itself
       const { timeline, ready } = played;
       const end = timeline.duration(); // s
@@ -96,6 +99,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
       if (finished) return; // left (or skipped) while it was getting ready
       const start = startAt();
       if (start >= end) return finish(); // ?t= past its end: over at once, not frozen on its last frame
+      release = keepTime(); // only now: the heavy frames after its mount kept GSAP's smoothing for the screen's fade-in
       timeline.seek(start).play(); // a seek fires none of the callbacks it passes
     },
     leave() {

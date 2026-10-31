@@ -74,6 +74,22 @@ function noise({ at = 0, dur = 0.12, gain = 0.25, filter = 1800, q = 0.8 }) {
   src.start(t);
 }
 
+/** The stop of a long sound (gain `g`, its `sources`): it falls silent in a few hundredths of a second. */
+function hush(g, sources) {
+  return () => {
+    try {
+      const t = ctx.currentTime;
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      for (const source of sources) source.stop(t + 0.08);
+    } catch {
+      /* already over */
+    }
+  };
+}
+
+// a long sound returns its stop (hush()); a short one, nothing
 const sounds = {
   tap() {
     tone({ freq: 1400, dur: 0.06, gain: 0.05 });
@@ -136,7 +152,7 @@ const sounds = {
     for (let i = 0; i < 6; i++) noise({ at: i * 0.034 + Math.random() * 0.018, dur: 0.06, gain: 0.06 + Math.random() * 0.05, filter: 2000 + Math.random() * 2600, q: 0.7 });
     noise({ at: 0.03, dur: 0.24, gain: 0.05, filter: 850, q: 0.45 });
   },
-  /** A small engine purring along (~3.2 s): the car on the intro's map, then into the parking. */
+  /** A small engine purring along (~3.2 s): the car on the intro's map, then into the parking. → its stop. */
   engine() {
     const t = ctx.currentTime;
     const dur = 3.2;
@@ -165,6 +181,81 @@ const sounds = {
       o.start(t);
       o.stop(t + dur + 0.05);
     }
+    return hush(g, [osc, putt]);
+  },
+  /** « Meuh » (~0.8 s): a low voice gliding down, nasal, with a little wobble. */
+  moo() {
+    const t = ctx.currentTime;
+    const dur = 0.8;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(128, t);
+    osc.frequency.linearRampToValueAtTime(142, t + 0.18);
+    osc.frequency.exponentialRampToValueAtTime(96, t + dur);
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 5.5;
+    const wide = ctx.createGain();
+    wide.gain.value = 3;
+    wobble.connect(wide).connect(osc.frequency);
+    const mouth = ctx.createBiquadFilter(); // the « ou » of the moo, opening into « eu »
+    mouth.type = "bandpass";
+    mouth.Q.value = 2.2;
+    mouth.frequency.setValueAtTime(420, t);
+    mouth.frequency.linearRampToValueAtTime(680, t + 0.3);
+    mouth.frequency.linearRampToValueAtTime(520, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.08);
+    g.gain.setValueAtTime(0.16, t + dur - 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(mouth).connect(g).connect(master);
+    for (const o of [osc, wobble]) {
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+  },
+  /** « Ouaf ! »: a short bark, a yelp falling with a puff of breath. */
+  bark() {
+    tone({ freq: 620, glideTo: 330, type: "square", dur: 0.13, gain: 0.05, attack: 0.008 });
+    tone({ freq: 310, glideTo: 180, type: "triangle", dur: 0.14, gain: 0.08, attack: 0.008 });
+    noise({ dur: 0.09, gain: 0.12, filter: 1300, q: 0.9 });
+  },
+  /** Crickets (~1.2 s): chirps of three pulses, high and quick, two of them out of step. → its stop. */
+  crickets() {
+    const t = ctx.currentTime;
+    const dur = 1.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(1, t + 0.15);
+    g.gain.setValueAtTime(1, t + dur - 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.connect(master);
+    const voices = [];
+    for (const [freq, from, every] of [
+      [4400, 0, 0.32],
+      [4700, 0.14, 0.38],
+    ]) {
+      const osc = ctx.createOscillator();
+      osc.frequency.value = freq;
+      const pulse = ctx.createGain();
+      pulse.gain.setValueAtTime(0, t);
+      for (let at = from; at < dur - 0.1; at += every)
+        for (let k = 0; k < 3; k++) {
+          const p = t + at + k * 0.035;
+          pulse.gain.setValueAtTime(0.018, p);
+          pulse.gain.setValueAtTime(0, p + 0.02);
+        }
+      osc.connect(pulse).connect(g);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+      voices.push(osc);
+    }
+    return hush(g, voices);
+  },
+  /** A morning bird: three quick chirps whistling up, a trill. */
+  bird() {
+    [0, 0.13, 0.24].forEach((at, k) => tone({ freq: 2300 + k * 250, glideTo: 3600 + k * 200, at, dur: 0.09, gain: 0.035 }));
+    tone({ freq: 3200, glideTo: 2600, at: 0.38, dur: 0.18, gain: 0.03 });
   },
   /** Brakes: a short squeal of tyres, then a soft thump. */
   brake() {
@@ -330,6 +421,9 @@ export function stopMusic(fade = 2) {
   setTimeout(() => bus.disconnect(), fade * 1000 + 200);
 }
 
+const SILENT = { stop() {} };
+
+/** Plays the sound `name` (and its vibration). → { stop }: stop() cuts a long sound short (engine, crickets). */
 export function sfx(name) {
   // before any touch the browser refuses a vibration (and logs it): an intro's timeline can play a sound by then
   if (!muted && haptics[name] && navigator.vibrate && navigator.userActivation?.hasBeenActive !== false) {
@@ -339,10 +433,11 @@ export function sfx(name) {
       /* ignore */
     }
   }
-  if (!ready()) return;
+  if (!ready()) return SILENT;
   try {
-    sounds[name]?.();
+    const stop = sounds[name]?.();
+    return stop ? { stop } : SILENT;
   } catch {
-    /* never let audio break the game */
+    return SILENT; // never let audio break the game
   }
 }

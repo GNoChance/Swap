@@ -1,8 +1,8 @@
 // Our outings, in date order: one stamp each in the passport (assets/aventures/tampons/<id>.svg, same name).
 // Each says how it was travelled (transports, in order) and who came along (people: Cycy and Kevin are always there);
 // an outing with its own intro (intros/index.js) also has its place, written large on the intro's poster (lieu), and if
-// its intro opens on a map, its trip (trajet): the names written at the start and on the way, and the road's real
-// points [lat, lon] from the start to the arrival (the lieu).
+// its intro opens on a map, its trip (trajet): the names written at the start and on the way (each at its point of the
+// road, etapesAt), and the road's real points [lat, lon] from the start to the arrival (the lieu).
 export const TRANSPORTS = ["seat", "c3", "308", "kangoo", "flixbus", "camping-car", "avion", "bus", "pied", "velo", "canoe", "train"];
 export const PEOPLE = ["nini", "dede", "caro", "marius", "manon", "noe", "fabus", "doumi", "elodie", "paolo", "paolina", "pierre", "paul", "jeanne", "jennifer"];
 
@@ -18,6 +18,7 @@ export const AVENTURES = [
     trajet: {
       depart: "Bordeaux",
       etapes: ["Pau"],
+      etapesAt: [5], // the index in points where each stage's name is written: Pau, the 6th
       // [lat, lon]: Bordeaux, Langon, Captieux, Roquefort, Aire-sur-l'Adour, Pau, Gan, Rébénacq, Louvie-Juzon, Laruns, Gabas, Bious-Artigues
       points: [[44.837, -0.579], [44.553, -0.249], [44.291, -0.262], [44.034, -0.322], [43.701, -0.263], [43.295, -0.370],
         [43.231, -0.387], [43.158, -0.396], [43.087, -0.420], [42.988, -0.426], [42.889, -0.429], [42.873, -0.466]],

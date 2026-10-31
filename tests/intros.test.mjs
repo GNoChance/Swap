@@ -11,6 +11,7 @@ import { fit } from "../js/aventures/scene/stage.js";
 import { fitTitle, posterLine, posterTitle, TITLE_FIT, titleWidth } from "../js/aventures/scene/poster-text.js";
 import { fallbackUrl, stickerUrl, vehicleUrl } from "../js/aventures/scene/urls.js";
 import { projection } from "../js/aventures/scene/geo.js";
+import { stops } from "../js/aventures/scene/props-carte.js";
 
 const byId = (id) => AVENTURES.find((a) => a.id === id);
 const exists = (path) => existsSync(fileURLToPath(new URL(`../${path}`, import.meta.url)));
@@ -132,4 +133,20 @@ test("intros: the bivouac trip stays on the map", () => {
     assert.ok(x >= 25 && x <= 365 && y >= 120 && y <= 700, `${point} → (${x}, ${y})`);
   }
   assert.ok(trajet.points.at(-1)[0] < trajet.points[0][0], "the arrival is not south of the start");
+});
+
+// Each stage's name is written at its point of the road, given by the data (trajet.etapesAt).
+test("intros: every stage of a trip has its point on the road", () => {
+  for (const a of AVENTURES.filter((x) => x.trajet)) {
+    const { etapes, etapesAt, points } = a.trajet;
+    assert.equal(etapesAt?.length, etapes.length, `${a.id}: etapesAt ${etapesAt}`);
+    etapesAt.forEach((at, k) => assert.ok(Number.isInteger(at) && at > 0 && at < points.length - 1, `${a.id}: ${etapes[k]} at ${at}`));
+  }
+  assert.deepEqual(byId("bivouac-1").trajet.etapesAt, [5]);
+  const project = projection(BIVOUAC_MAP);
+  const { trajet, lieu } = byId("bivouac-1");
+  assert.deepEqual(stops({ trajet, lieu }, project).map((s) => s.name), ["Bordeaux", "Pau", "Lacs d'Ayous"]);
+  // a stage without its point: a clear error that names it
+  assert.throws(() => stops({ trajet: { ...trajet, etapesAt: [] }, lieu }, project), /« Pau »/);
+  assert.throws(() => stops({ trajet: { ...trajet, etapesAt: [99] }, lieu }, project), /« Pau »/);
 });

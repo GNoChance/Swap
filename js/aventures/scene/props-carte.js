@@ -199,17 +199,19 @@ export function pyrenees(project) {
 
 const escape = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** stops({ trajet, lieu, etapesAt }, project): where names are written, [{ name, x, y, kind, side, box }]: the start
- *  (trajet.depart, its first point), each stage (trajet.etapes, at the point of index etapesAt[k], the nearest to its
- *  town) and the arrival (lieu, its last point); each name on the side the road does not take. */
-export function stops({ trajet, lieu, etapesAt = [] }, project) {
+/** stops({ trajet, lieu }, project): where names are written, [{ name, x, y, kind, side, box }]: the start
+ *  (trajet.depart, its first point), each stage (trajet.etapes, at the point of index trajet.etapesAt[k], the nearest
+ *  to its town) and the arrival (lieu, its last point); each name on the side the road does not take. A stage without
+ *  its point throws, naming it. */
+export function stops({ trajet, lieu }, project) {
   const road = pts(project, trajet.points);
   const last = road.length - 1;
-  const list = [
-    { name: trajet.depart, at: 0, kind: "start" },
-    ...trajet.etapes.map((name, k) => ({ name, at: etapesAt[k], kind: "etape" })),
-    { name: lieu, at: last, kind: "end" },
-  ];
+  const etapes = trajet.etapes.map((name, k) => {
+    const at = trajet.etapesAt?.[k];
+    if (!Number.isInteger(at) || !road[at]) throw new Error(`trajet: no point for the stage « ${name} » (etapesAt[${k}] = ${at})`);
+    return { name, at, kind: "etape" };
+  });
+  const list = [{ name: trajet.depart, at: 0, kind: "start" }, ...etapes, { name: lieu, at: last, kind: "end" }];
   return list.map(({ name, at, kind }) => {
     const [x, y] = road[at];
     const near = [road[at - 1], road[at + 1]].filter(Boolean);

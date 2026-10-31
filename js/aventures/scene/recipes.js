@@ -1,5 +1,5 @@
 // The intros' recipes (spec § 4): reusable pieces of timeline, each → the moment it ends (s): the trip on a paper map,
-// the vehicle arriving with its people, and the closing poster (spec § 5, moments 1, 2 and 7).
+// the vehicle arriving with its people, the walk up a path, and the closing poster (spec § 5, moments 1, 2, 3 and 7).
 import { sfx } from "../../audio.js";
 import { h } from "../../dom.js";
 import { posterize, sheet } from "./decor.js";
@@ -13,13 +13,13 @@ const HOLD = 0.9; // s the finished poster stays before the end (at least 0.8)
 // where the paper around the picture starts, off the widest screens (units): it closes in from there
 const AWAY = { left: { x: -1100 }, right: { x: 1100 }, top: { y: -140 }, bottom: { y: 140 } };
 
-/** affiche(tl, at, { stage, layers, aventure, grain }): from `at` s, the camera back at rest (on a phone held sideways,
- *  the whole stage in the height), a cream frame closing in around the scene as the paper around a portrait poster, its
- *  rule drawn, the layers turning flat one by one (back to front) as the grain fades, then the lieu falling letter by
- *  letter (smaller if it is long) and the stamp's name and dates. → when the intro may end (s), the poster held. Its
- *  pieces: css/intros.css (af-*). */
-export function affiche(tl, at, { stage, layers, aventure, grain }) {
-  stage.pan(tl, at, { duration: 0.6, ease: "power2.inOut" });
+/** affiche(tl, at, { stage, layers, aventure, grain, only }): from `at` s, the camera back at rest on the scene (`only`,
+ *  its layers' elements; on a phone held sideways, the whole stage in the height), a cream frame closing in around it as
+ *  the paper around a portrait poster, its rule drawn, the layers turning flat one by one (back to front) as the grain
+ *  fades, then the lieu falling letter by letter (smaller if it is long) and the stamp's name and dates. → when the
+ *  intro may end (s), the poster held. Its pieces: css/intros.css (af-*). */
+export function affiche(tl, at, { stage, layers, aventure, grain, only }) {
+  stage.pan(tl, at, { duration: 0.6, ease: "power2.inOut", only });
   stage.frame(tl, at, { whole: true, duration: 0.6 });
 
   const mats = Object.keys(AWAY).map((side) => h("div", { class: `af-mat af-mat--${side}` }));
@@ -52,6 +52,18 @@ export function affiche(tl, at, { stage, layers, aventure, grain }) {
   return end;
 }
 
+/** marche(tl, at, { stage, people, layers, duration, focus, zoom, grain }): from `at` s for `duration` s, the people
+ *  (from the back) walking on the spot, swaying, their steps heard, as the decor (`layers`, a scene's) glides towards
+ *  them: each layer closes in on `focus` (where the path goes) by its depth, so the near ones (depth over 1) pass by on
+ *  the sides. The grain, still over the moving decor, softens meanwhile. → its end (s). */
+export function marche(tl, at, { stage, people, layers, duration, focus, zoom = 1.6, grain }) {
+  stage.pan(tl, at, { zoom, focus, duration, ease: "power1.inOut", only: layers });
+  people.forEach((person, k) => person.bob(tl, at + k * 0.09, duration - k * 0.09, { step: 0.21, sway: 3, lift: 4 }));
+  for (let t = at + 0.1; t < at + duration - 0.1; t += 0.21) tl.call(() => sfx("step"), null, t);
+  if (grain) tl.to(grain, { autoAlpha: 0.4, duration: 0.4, ease: "power1.out" }, at).to(grain, { autoAlpha: 1, duration: 0.4, ease: "power1.in" }, at + duration - 0.4);
+  return at + duration;
+}
+
 const SHORT = 50; // units: the car pulls up this short of the arrival, its pin beside it
 const DOT = 7; // units between the road's dots
 const LOOK = 60; // units the car looks ahead and back along the road, to know where it heads
@@ -64,16 +76,16 @@ function facesRight(at, along, length, right) {
   return Math.abs(dx) > LOOK * 0.7 ? dx > 0 : right;
 }
 
-/** carte(tl, at, { stage, layers, car, trajet, lieu, project, duration, etapesAt }): from `at` s, the trip on the map.
- *  The car (a vehicle in view « roule », standing on the trip's first point) waits for the map to be seen, then drives
- *  along the road with a bounce and its engine, the dotted line drawn behind it, the camera (on `layers`, the map's)
+/** carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }): from `at` s, the trip on the map. The car
+ *  (a vehicle in view « roule », standing on the trip's first point) waits for the map to be seen, then drives along
+ *  the road with a bounce and its engine, the dotted line drawn behind it, the camera (on `layers`, the map's)
  *  following it south a little closer; it pulls up by the arrival, the last dots run to it and its pin plops. The names
- *  come from the data: trajet.depart, trajet.etapes (each at its point etapesAt[k]) and lieu. → its end (s). */
-export function carte(tl, at, { stage, layers, car, trajet, lieu, project, duration, etapesAt }) {
+ *  come from the data: trajet.depart, trajet.etapes (each at its point trajet.etapesAt[k]) and lieu. → its end (s). */
+export function carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }) {
   const gsap = window.gsap;
   const road = trajet.points.map(project);
   const shift = (parseFloat(car.layer.style.width) - W) / 2; // the layer's x 0 is the stage's
-  const drawn = sheet("st-paper", parseFloat(car.layer.style.width), routeLine(curve(road.map(({ x, y }) => [x, y]))) + names(stops({ trajet, lieu, etapesAt }, project)));
+  const drawn = sheet("st-paper", parseFloat(car.layer.style.width), routeLine(curve(road.map(({ x, y }) => [x, y]))) + names(stops({ trajet, lieu }, project)));
   car.layer.insertBefore(drawn, car.el); // under the car
   const end = road.at(-1);
   const pin = h("div", { class: "st-pin" });
@@ -138,7 +150,7 @@ export function carte(tl, at, { stage, layers, car, trajet, lieu, project, durat
   const leave = at + ENTER; // the map seen (at 0, the screen faded in)
   const arrive = at + duration - 0.62; // the pin has plopped before the map leaves
   const ease = "sine.inOut";
-  tl.call(() => sfx("engine"), null, at + 0.3);
+  stage.sound(tl, at + 0.3, "engine");
   tl.to(driver, { progress: 1, duration: arrive - leave, ease }, leave);
   car.bounce(tl, leave, arrive - leave);
   // the camera a little closer, after the car south: where it will be (by the chords, as eased) at each step, a little

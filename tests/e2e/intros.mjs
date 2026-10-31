@@ -1,8 +1,9 @@
 // End-to-end checks of the outings' own intros (js/aventures/intros/), in headless Chrome, on two phones (the first one
-// also turned sideways) and two PCs: the Premier bivouac's map, parking and lake with their actors on screen, the
-// stickers it loads (and their stand-ins), its closing poster and its framing, its scenario file missing, leaving at
-// once, ?demo&t=. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros.mjs`
-// (ONLY=1920: a single screen). Stops at the first failure (exit code 1). A check also fails if the page logged an error.
+// also turned sideways) and two PCs: the Premier bivouac's length, its map and each of its moments with their actors on
+// screen, the phone turned while it plays, the stickers it loads (and their stand-ins), its closing poster and its
+// framing, its scenario file missing, leaving at once, entering and leaving three times, ?demo&t=. Needs the site
+// running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros.mjs` (ONLY=1920: a single screen). Stops
+// at the first failure (exit code 1). A check also fails if the page logged an error.
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
@@ -23,8 +24,18 @@ const BIVOUAC = `${BASE}?demo#/aventures/bivouac-1`;
 const KEY = "swap-cyrielle:aventures";
 const bivouac = AVENTURES.find((a) => a.id === "bivouac-1");
 const NAMES = [bivouac.trajet.depart, ...bivouac.trajet.etapes, bivouac.lieu]; // written on the map, from the data
+const LENGTH = { min: 17000, max: 18500 }; // ms, the bivouac's intro (spec § 5)
 // each moment of the intro (intros/index.js): its start, and its middle (s)
 const beat = Object.fromEntries(SCENARIOS["bivouac-1"].beats.map(({ name, at }, k, all) => [name, { at, mid: (at + (all[k + 1]?.at ?? at + 2)) / 2 }]));
+// who shows in the middle of each moment after the map (spec § 5): all of them entirely on screen
+const CAST = {
+  "Le parking": ["cycy", "kevin", "seat"],
+  "La montée": ["cycy", "kevin"],
+  "En haut": ["cycy", "kevin"],
+  "La descente": ["cycy", "kevin"],
+  "La voiture": ["seat"],
+  "L'affiche": ["cycy", "kevin"],
+};
 // ?graine=<save> (JSON) starts the page on that save, then drops itself from the address (as in aventures.mjs)
 const SEED = `{
   const seed = new URLSearchParams(location.search).get("graine");
@@ -55,17 +66,41 @@ const posterBoxes = `(() => {
     boxes: [".af-frame", ".af-title", ".af-line", ".af-title .af-letter"].flatMap((s) => [...document.querySelectorAll(s)].map((el) => ({ what: s, ...box(el) }))),
   };
 })()`;
-// the intro's timeline, held still at exactly `t` s (found by its length): what is on screen then can be measured
+// the intro's timeline (found by its length)
+const timeline = `(() => {
+  const length = Number(document.querySelector(".screen-intro")?.dataset.length) / 1000;
+  return gsap.globalTimeline.getChildren(false, false, true).find((child) => Math.abs(child.duration() - length) < 0.02);
+})()`;
+// its timeline playing: its stickers decoded (ready), not only arrived; a hold before that would be undone by its play()
+const playing = `${loaded} && ${timeline}?.paused() === false`;
+// the intro's timeline, held still at exactly `t` s: what is on screen then can be measured
 const holdAt = (t) => `(() => {
-  const length = Number(document.querySelector(".screen-intro").dataset.length) / 1000;
-  const tl = gsap.globalTimeline.getChildren(false, false, true).find((child) => Math.abs(child.duration() - length) < 0.02);
-  tl.pause().seek(${t});
+  ${timeline}.pause().seek(${t});
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 })()`;
-// the boxes (px) of what shows: the actors (the look each wears), the map's names and its pin, with the screen's size
+// GSAP's lag smoothing, by its effect: after a frame of 0.8 s, how far a tween went (s). GSAP's own (500, 33) drops
+// that time (a few hundredths); turned off, it keeps it all
+const lagged = `(async () => {
+  const frames = (n) => new Promise((resolve) => (function next(k) { k ? requestAnimationFrame(() => next(k - 1)) : resolve(); })(n));
+  const probe = gsap.to({}, { duration: 60, ease: "none" });
+  await frames(2);
+  const t0 = probe.time();
+  const until = performance.now() + 800;
+  while (performance.now() < until);
+  await frames(2);
+  const went = probe.time() - t0;
+  probe.kill();
+  return went;
+})()`;
+// the boxes (px) of what shows (visible, and not see-through: opacity > 0 up its tree): the actors (the look each
+// wears), the map's names and its pin, with the screen's size
 const sceneBoxes = `(() => {
   const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-  const shows = (el) => getComputedStyle(el).visibility === "visible";
+  const shows = (el) => {
+    if (getComputedStyle(el).visibility !== "visible") return false;
+    for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
+    return true;
+  };
   const actors = [...document.querySelectorAll(".st-actor")].filter(shows).map((el) => {
     const img = [...el.querySelectorAll(".st-actor__img")].find(shows);
     return img && box(img, el.dataset.who || el.dataset.vehicle);
@@ -91,12 +126,23 @@ function inside({ screen, boxes }, where) {
 async function suite(page, vp) {
   const check = checker(page);
 
-  /** The bivouac's intro played through: its poster says the lieu, then the stamp's name and dates, all of it on
-   *  screen, its title out of the sound button's corner; then the passport. */
+  /** The bivouac's intro played through, as long as it says (17 to 18.5 s) and not shorter: its poster says the lieu,
+   *  then the stamp's name and dates, all of it on screen, its title out of the sound button's corner; then the
+   *  passport. */
   async function poster(where) {
     await page.goto(BIVOUAC);
     await page.waitFor(`document.querySelector(".screen-intro .st-stage") && ${length} > 0`, 6000);
     const ms = await page.eval(length);
+    if (!(ms >= LENGTH.min && ms <= LENGTH.max)) throw new Error(`${where} : data-length ${ms}, pas entre ${LENGTH.min} et ${LENGTH.max}`);
+    // the page's own clock: when its timeline started playing, when it left its address
+    await page.eval(`(() => {
+      window.__played = window.__ended = null;
+      const watch = setInterval(() => {
+        const tl = ${timeline};
+        if (tl && tl.time() > 0 && window.__played === null) window.__played = performance.now() - tl.time() * 1000;
+        if (location.hash !== "#/aventures/bivouac-1") (window.__ended = performance.now()), clearInterval(watch);
+      }, 10);
+    })()`);
     await page.waitFor(built, ms + 4000);
     const seen = await page.eval(posterBoxes);
     if (seen.title !== TITLE) throw new Error(`${where} : titre « ${seen.title} »`);
@@ -106,15 +152,17 @@ async function suite(page, vp) {
     const corner = seen.boxes.filter((b) => b.what === ".af-title .af-letter" && b.right > seen.screen.width - 56 && b.top < 56);
     if (corner.length) throw new Error(`${where} : le titre sous le bouton du son ${JSON.stringify(corner.map(round))}`);
     await page.waitFor(atPassport, 5000);
+    const { played, ended } = await page.eval(`({ played: window.__played, ended: window.__ended })`);
+    if (played === null || ended === null || ended - played < ms - 300) throw new Error(`${where} : jouée ${Math.round(ended - played)} ms pour ${ms}`);
   }
 
-  /** The map, the parking and the lake, each held at its moment: the Seat, the start's name, the pin and the lieu's
-   *  name on screen when they count (spec § 11), the names those of the data, none cut by the screen's edge; then Cycy,
-   *  Kevin and the Seat, the two of them not hidden by it. */
+  /** The map and each moment after it, held there: on the map, the Seat, the start's name, the pin and the lieu's name
+   *  on screen when they count (spec § 11), the names those of the data, none cut by the screen's edge; in the middle of
+   *  each moment, those it shows (Cycy, Kevin, the Seat) entirely on screen, the two of them not hidden by the Seat. */
   async function scenes(where) {
     const seen = async (t) => {
       await page.goto(`${BASE}?demo&t=${t}#/aventures/bivouac-1`);
-      await page.waitFor(loaded, 8000);
+      await page.waitFor(playing, 8000);
       await sleep(250);
       await page.eval(holdAt(t));
       return page.eval(sceneBoxes);
@@ -134,14 +182,13 @@ async function suite(page, vp) {
       const cut = outside(now.screen, now.names.filter((b) => b.right > 0 && b.left < now.screen.width && b.bottom > 0 && b.top < now.screen.height));
       if (cut.length) throw new Error(`${where}, sur la carte à ${t} s : un nom coupé par le bord ${JSON.stringify(cut.map(round))}`);
     }
-    for (const [name, needs] of [
-      ["Le parking", ["cycy", "kevin", "seat"]],
-      ["En haut", ["cycy", "kevin"]],
-    ]) {
+    const moments = Object.keys(beat).filter((name) => name !== "La carte");
+    if (JSON.stringify(moments) !== JSON.stringify(Object.keys(CAST))) throw new Error(`les temps de l'intro ${JSON.stringify(Object.keys(beat))}, pas « La carte » puis ${JSON.stringify(Object.keys(CAST))}`);
+    for (const [name, needs] of Object.entries(CAST)) {
       const t = beat[name].mid;
       const now = await seen(t);
       const who = now.actors.map((b) => b.what).sort();
-      if (JSON.stringify(who) !== JSON.stringify(needs)) throw new Error(`${where}, « ${name} » à ${t} s : à l'écran ${JSON.stringify(who)}`);
+      if (JSON.stringify(who) !== JSON.stringify([...needs].sort())) throw new Error(`${where}, « ${name} » à ${t} s : à l'écran ${JSON.stringify(who)}`);
       const off = outside(now.screen, now.actors);
       if (off.length) throw new Error(`${where}, « ${name} » à ${t} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
       // the two of them beside the Seat, not hidden by it: each box covers at most a fifth of its own by the Seat's
@@ -154,16 +201,16 @@ async function suite(page, vp) {
     }
   }
 
-  await check(`?demo#/aventures/bivouac-1 : l'intro jouée en entier, puis l'affiche dit exactement « ${TITLE} » et « ${LINE} », son cadre et son lettrage entièrement dans l'écran, le titre hors du coin du bouton du son ; puis le passeport`, async () => {
+  await check(`?demo#/aventures/bivouac-1 : data-length entre ${LENGTH.min} et ${LENGTH.max} ms, l'intro jouée en entier (pas moins de data-length − 300 ms), puis l'affiche dit exactement « ${TITLE} » et « ${LINE} », son cadre et son lettrage entièrement dans l'écran, le titre hors du coin du bouton du son ; puis le passeport`, async () => {
     await poster(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : sur la carte (?t= 0,3, 1,6 et 3,0), la Seat dans l'écran, « ${bivouac.trajet.depart} » au départ, l'épingle et « ${bivouac.lieu} » à l'arrivée, les noms ceux des données et jamais coupés par le bord ; au parking puis sur la vue du lac (?t= au milieu), Cycy, Kevin (et la Seat au parking) dans l'écran, Cycy et Kevin pas cachés par la Seat`, async () => {
+  await check(`${vp.width} × ${vp.height} : sur la carte (?t= 0,3, 1,6 et 3,0), la Seat dans l'écran, « ${bivouac.trajet.depart} » au départ, l'épingle et « ${bivouac.lieu} » à l'arrivée, les noms ceux des données et jamais coupés par le bord ; au milieu de chacun des autres temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, Cycy et Kevin pas cachés par la Seat`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 
   if (vp.turned)
-    await check("852 × 393 (le téléphone tourné) : la carte, le parking et le lac comme sur les autres écrans", async () => {
+    await check("852 × 393 (le téléphone tourné) : la carte et chacun des temps comme sur les autres écrans", async () => {
       await page.resize(852, 393);
       try {
         await scenes("852 × 393");
@@ -177,12 +224,48 @@ async function suite(page, vp) {
       await page.resize(852, 393);
       try {
         await page.goto(`${BASE}?demo&t=${beat["Le parking"].mid}#/aventures/bivouac-1`);
-        await page.waitFor(`innerWidth === 852 && ${loaded}`, 8000);
+        await page.waitFor(`innerWidth === 852 && ${playing}`, 8000);
         await page.eval(holdAt(beat["Le parking"].mid));
         // the band y 250 to 730 fills the height: the world's 760 units are 760 × 393 / 480 px high, its top above the screen
         const world = await page.eval(`(() => { const r = document.querySelector(".st-world").getBoundingClientRect(); return { top: r.top, height: r.height }; })()`);
         if (Math.abs(world.height - (760 * 393) / 480) > 1 || Math.abs(world.top + (250 * 393) / 480) > 1) throw new Error(`cadrage ${JSON.stringify(world)}`);
         await poster("852 × 393");
+      } finally {
+        await page.resize(vp.width, vp.height);
+      }
+    });
+
+  if (vp.turned)
+    await check("point 2 : le téléphone tourné au milieu de la montée (portrait → paysage, puis 1 s plus tard → portrait) : la même intro, sa timeline avance tout du long, et à chaque arrêt Cycy et Kevin sont entièrement dans l'écran", async () => {
+      const montee = beat["La montée"];
+      const from = +(montee.mid - 0.4).toFixed(2);
+      await page.goto(`${BASE}?demo&t=${from}#/aventures/bivouac-1`);
+      await page.waitFor(`${loaded} && ${timeline}?.time() > ${from + 0.05}`, 8000); // playing
+      await page.eval(`void (window.__intro = document.querySelector(".screen-intro"))`);
+      /** At a stop on a width × height screen: the intro still the same, its timeline going on (read twice: the first
+       *  frame on the new screen draws it all again, slow on this machine), and Cycy and Kevin entirely on screen. */
+      const stop = async (width, height) => {
+        await page.resize(width, height);
+        await page.waitFor(`innerWidth === ${width}`, 2000);
+        const t0 = await page.eval(`${timeline}.time()`);
+        await page.waitFor(`${timeline}.time() > ${t0 + 0.1}`, 3000).catch(async () => {
+          throw new Error(`${width} × ${height} : la timeline n'avance plus (${t0} puis ${await page.eval(`${timeline}.time()`)})`);
+        });
+        const now = await page.eval(`({ same: window.__intro === document.querySelector(".screen-intro"), t: ${timeline}?.time(), seen: ${sceneBoxes} })`);
+        if (!now.same) throw new Error(`${width} × ${height} : l'intro a changé`);
+        const people = now.seen.actors.filter((b) => b.what === "cycy" || b.what === "kevin");
+        if (people.length !== 2) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : à l'écran ${JSON.stringify(now.seen.actors.map((b) => b.what))}`);
+        const off = outside(now.seen.screen, people);
+        if (off.length) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
+        return now.t;
+      };
+      try {
+        const turned = Date.now();
+        const sideways = await stop(852, 393);
+        await sleep(Math.max(0, 1000 - (Date.now() - turned)));
+        const back = await stop(vp.width, vp.height);
+        if (sideways < montee.at || sideways > beat["En haut"].at) throw new Error(`tourné à ${sideways.toFixed(2)} s, pas pendant la montée`);
+        if (!(back > sideways)) throw new Error(`la timeline est repartie en arrière : ${sideways.toFixed(2)} s puis ${back.toFixed(2)} s`); // never restarted
       } finally {
         await page.resize(vp.width, vp.height);
       }
@@ -213,15 +296,18 @@ async function suite(page, vp) {
       if (JSON.stringify(asked) !== JSON.stringify([...stickers].sort())) throw new Error(`demandés ${JSON.stringify(asked)}`);
     });
 
-    await check("un sticker bloqué (cycy-face-joie) : Cycy passe sur son remplaçant assets/cyrielle/joy.webp, et l'intro se termine ; aucune autre erreur que celle du fichier bloqué", async () => {
+    await check("un sticker bloqué (cycy-face-joie) : Cycy de face en joie passe sur son remplaçant assets/cyrielle/joy.webp, ses autres poses restent les siennes, et l'intro se termine ; aucune autre erreur que celle du fichier bloqué", async () => {
       const before = page.errors.length;
       await page.block(["*/bivouac-1/cycy-face-joie.webp"]);
       try {
         await page.goto(BIVOUAC);
         const cycy = `[...document.querySelectorAll('.st-actor[data-who="cycy"] .st-actor__img')]`;
         await page.waitFor(`${cycy}.length > 0 && ${cycy}.every((img) => img.complete && img.naturalWidth > 0)`, 8000);
-        const srcs = await page.eval(`${cycy}.map((img) => new URL(img.src).pathname)`);
-        if (!srcs.every((src) => src === "/assets/cyrielle/joy.webp")) throw new Error(`Cycy : ${JSON.stringify(srcs)}`);
+        const looks = await page.eval(`${cycy}.map((img) => ({ src: new URL(img.src).pathname, standIn: img.dataset.fallback }))`);
+        const joy = looks.filter((look) => look.standIn === "assets/cyrielle/joy.webp");
+        const others = looks.filter((look) => look.standIn !== "assets/cyrielle/joy.webp");
+        if (!joy.length || !joy.every((look) => look.src === "/assets/cyrielle/joy.webp") || !others.every((look) => look.src.startsWith("/assets/aventures/bivouac-1/cycy-")))
+          throw new Error(`Cycy : ${JSON.stringify(looks.map((look) => look.src))}`);
         await page.waitFor(atPassport, Number(await page.eval(length)) + 5000);
       } finally {
         await page.block([]);
@@ -230,23 +316,63 @@ async function suite(page, vp) {
       if (errors.some((e) => !e.includes("cycy-face-joie.webp"))) throw new Error(`erreurs : ${JSON.stringify(errors)}`);
     }, { allowErrors: true });
 
-    await check("point 1 : entrer dans l'intro (première visite, hors démo) puis le retour du navigateur 50 ms après, pendant le chargement des stickers : le passeport, aucune scène restée, rien d'enregistré, pas de tampon qui attend", async () => {
+    await check("point 1 : entrer dans l'intro (première visite, hors démo) puis le retour du navigateur 50 ms après, ses stickers encore en route (retenus 1,5 s) et sa timeline pas encore partie : le passeport, aucune scène restée, rien d'enregistré, pas de tampon qui attend, et le lissage de GSAP à son réglage d'origine", async () => {
       await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify({ welcomed: true, known: AVENTURES.map((a) => a.id) }))}#/aventures`);
       await page.waitFor(`document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"][data-page="1"]') && document.querySelector('.pp-slot[data-id="bivouac-1"][data-status="open"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`, 8000);
+      // just before the back: is its timeline still waiting (paused), and how many of its stickers are still on their way?
       await page.eval(`new MutationObserver((_, watch) => {
-        if (!document.querySelector("#app > .screen-intro")) return;
+        const el = document.querySelector("#app > .screen-intro");
+        if (!el) return;
         watch.disconnect();
-        setTimeout(() => history.back(), 50);
+        setTimeout(() => {
+          const tl = ${timeline};
+          window.__atBack = { timeline: Boolean(tl), paused: tl?.paused(), loading: [...el.querySelectorAll(".st-actor__img")].filter((img) => !img.complete).length };
+          history.back();
+        }, 50);
       }).observe(document, { childList: true, subtree: true })`);
-      await page.tap('.pp-slot[data-id="bivouac-1"]');
-      await page.waitFor(`location.hash === "#/aventures/bivouac-1"`, 4000);
-      await page.waitFor(atPassport, 4000);
-      await sleep(4500); // past the stickers' wait (4 s): nothing comes back
+      await page.hold(["*/assets/aventures/*.webp"], 1500);
+      try {
+        await page.tap('.pp-slot[data-id="bivouac-1"]');
+        await page.waitFor(`location.hash === "#/aventures/bivouac-1"`, 4000);
+        await page.waitFor(atPassport, 4000);
+        await sleep(4500); // past the stickers' wait (4 s): nothing comes back
+      } finally {
+        await page.hold([]);
+      }
       const now = await page.eval(`({ hash: location.hash, stages: document.querySelectorAll(".st-stage").length, intro: Boolean(document.querySelector(".screen-intro")),
-        tool: Boolean(document.querySelector(".pp-tool")), slot: document.querySelector('.pp-slot[data-id="bivouac-1"]')?.dataset.status, save: JSON.parse(localStorage.getItem("${KEY}")) })`);
+        tool: Boolean(document.querySelector(".pp-tool")), slot: document.querySelector('.pp-slot[data-id="bivouac-1"]')?.dataset.status, save: JSON.parse(localStorage.getItem("${KEY}")), atBack: window.__atBack })`);
+      if (!now.atBack?.timeline || !now.atBack.paused || !now.atBack.loading) throw new Error(`au retour, l'intro n'attendait plus ses stickers : ${JSON.stringify(now.atBack)}`);
       if (now.hash !== "#/aventures" || now.stages || now.intro || now.tool || now.slot !== "open") throw new Error(JSON.stringify({ ...now, save: undefined }));
       if (now.save?.pending?.includes("bivouac-1") || now.save?.stamped?.includes("bivouac-1")) throw new Error(`enregistré : ${JSON.stringify(now.save)}`);
+      const went = await page.eval(lagged);
+      if (went > 0.3) throw new Error(`le lissage de GSAP coupé : une image de 0,8 s a avancé de ${went.toFixed(2)} s`);
       await page.goto("about:blank");
+    });
+
+    await check("point 5 : sur le passeport, entrer dans l'intro et en sortir trois fois de suite (le retour du navigateur pendant qu'elle joue) : gsap.globalTimeline.getChildren() revient à son compte de départ, aucune .st-stage ne reste, et le lissage de GSAP est à son réglage d'origine", async () => {
+      await page.goto(`${BASE}?demo#/aventures`);
+      const settled = `${atPassport} && !document.querySelector(".screen-intro") && document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
+      const count = `gsap.globalTimeline.getChildren().length`;
+      /** The count of GSAP's children once the passport is still: only its own endless loops left (no screen fading,
+       *  no timeline still going: a timeline left behind keeps this false). */
+      const steady = async () => {
+        await page.waitFor(settled, 8000);
+        await page.waitFor(`gsap.globalTimeline.getChildren().every((child) => child.repeat() === -1)`, 8000);
+        return page.eval(count);
+      };
+      const before = await steady();
+      for (let k = 0; k < 3; k++) {
+        await page.eval(`location.hash = "#/aventures/bivouac-1"`);
+        await page.waitFor(`${loaded} && ${timeline}?.isActive()`, 8000);
+        await sleep(700);
+        await page.eval(`history.back()`);
+        await page.waitFor(settled, 8000);
+      }
+      const after = await steady();
+      const stages = await page.eval(`document.querySelectorAll(".st-stage").length`);
+      if (after !== before || stages) throw new Error(`compte ${before} au départ, ${after} après ; ${stages} .st-stage`);
+      const went = await page.eval(lagged);
+      if (went > 0.3) throw new Error(`le lissage de GSAP coupé : une image de 0,8 s a avancé de ${went.toFixed(2)} s`);
     });
   }
 

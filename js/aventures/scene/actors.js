@@ -90,8 +90,8 @@ function drawing(cls, markup) {
 }
 
 /** person({ stage, layer, outing, who, x, y, height, side, pose }): Cycy or Kevin (`who`), `height` units tall, from the
- *  front or the back (`side`: "face" or "dos") in one of the 12 poses. Person = Actor + { set, turn, hop, jump, bob,
- *  lean, emote }. */
+ *  front or the back (`side`: "face" or "dos") in one of the 12 poses. Person = Actor + { set, into, turn, hop, jump,
+ *  bob, stamp, lean, emote }. */
 export function person({ layer, outing, who, x, y, height, side = "face", pose = "joie" }) {
   const self = cast({ layer, x, y, size: height });
   self.el.dataset.who = who;
@@ -102,6 +102,11 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
     set(s, p) {
       look(s, p);
       self.wear(`${s}-${p}`);
+    },
+    /** Into side `s` and pose `p` at `at` s, at once. */
+    into(tl, at, s, p) {
+      look(s, p);
+      self.wearAt(tl, at, `${s}-${p}`);
     },
     /** Turns round at `at` s (face ↔ dos), into `p`: squeezed to nothing and back. */
     turn(tl, at, s, p) {
@@ -117,13 +122,23 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
       tl.to(self.pose, { scaleY: 0.9, scaleX: 1.05, duration: 0.1, ease: "power1.out" }, at).to(self.pose, { scaleY: 1, scaleX: 1, duration: 0.08 }, at + 0.1);
       return hopOf(tl, self.pose, at + 0.1, 40, 0.24);
     },
-    /** Walking for `duration` s: a sway from foot to foot. */
-    bob(tl, at, duration) {
-      const step = 0.18;
+    /** Walking for `duration` s: a sway from foot to foot, `step` s a step, `sway` degrees either side of `lean`, lifted
+     *  `lift` units a step. */
+    bob(tl, at, duration, { step = 0.18, sway = 2.5, lift = 3, lean = 0 } = {}) {
       const steps = Math.max(2, Math.round(duration / step) & ~1); // an even count: it ends upright
-      tl.fromTo(self.pose, { rotation: -2.5 }, { rotation: 2.5, duration: step, ease: "sine.inOut", repeat: steps - 1, yoyo: true, immediateRender: false }, at)
-        .to(self.pose, { y: -3, duration: step / 2, ease: "sine.out", repeat: steps * 2 - 1, yoyo: true }, at)
+      tl.fromTo(self.pose, { rotation: lean - sway }, { rotation: lean + sway, duration: step, ease: "sine.inOut", repeat: steps - 1, yoyo: true, immediateRender: false }, at)
+        .to(self.pose, { y: -lift, duration: step / 2, ease: "sine.out", repeat: steps * 2 - 1, yoyo: true }, at)
         .to(self.pose, { rotation: 0, duration: 0.1 }, at + steps * step);
+    },
+    /** Taps a foot `count` times from `at` s, impatient, a step's sound each. → when done. */
+    stamp(tl, at, count = 4) {
+      const beat = 0.3;
+      for (let k = 0; k < count; k++) {
+        const t = at + k * beat;
+        tl.to(self.pose, { rotation: 3, y: -5, duration: 0.07, ease: "power1.out" }, t).to(self.pose, { rotation: 0, y: 0, duration: 0.08, ease: "power2.in" }, t + 0.07);
+        tl.call(() => sfx("step"), null, t + 0.15);
+      }
+      return at + count * beat;
     },
     /** Leans by `degrees` (towards the back for a negative angle) in `duration` s, and stays so. */
     lean(tl, at, degrees, duration = 0.3) {

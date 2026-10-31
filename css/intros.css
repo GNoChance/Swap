@@ -279,6 +279,71 @@
   display: block;
 }
 
+/* ── The animals (props-animaux.js): drawn in code, standing on their point like the actors (a box of no size), their
+   turn box for their facing, their body hopping and swaying, drawn apart; their looks stacked, one shown at a time ── */
+.st-prop {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  width: 0;
+  height: 0;
+}
+
+.st-prop__turn {
+  position: relative;
+  flex: none;
+  transform-origin: 50% 100%;
+}
+
+.st-prop__body {
+  display: grid;
+  transform-origin: 50% 100%;
+  will-change: transform; /* drawn once, then only moved */
+}
+
+.st-prop__look {
+  display: block;
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: end;
+}
+
+.st-prop svg,
+.st-star svg,
+.st-dawn-sun svg,
+.st-bird svg,
+.st-tent svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ── The night at the lake (props-lac.js): the stars, the morning sun and bird in their skies, the tent that unfolds;
+   the sunset's warm light and the night's dark over the whole lake, faded in and out by GSAP ── */
+.st-star,
+.st-dawn-sun,
+.st-bird,
+.st-tent {
+  position: absolute;
+  display: block;
+}
+
+.st-tent {
+  will-change: transform; /* it unfolds: drawn once, then only stretched */
+}
+
+.st-veil {
+  will-change: opacity; /* its fades never repaint what is under it */
+}
+
+.st-veil--chaud {
+  background: linear-gradient(to bottom, rgba(255, 168, 96, 0.05), rgba(255, 140, 84, 0.3) 300px, rgba(232, 112, 104, 0.26) 440px, rgba(200, 96, 110, 0.2));
+}
+
+.st-veil--nuit {
+  background: linear-gradient(to bottom, rgba(16, 22, 50, 0), rgba(16, 22, 50, 0.3) 280px, rgba(16, 22, 50, 0.52) 400px, rgba(16, 22, 50, 0.58));
+}
+
 /* ── The map (recipes.carte): its names in ink on the paper, haloed so the land under them never muddles them; the
    arrival's pin, its tip on its point ── */
 .st-name {

@@ -99,6 +99,7 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
   if (mobile) await cmd("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
 
   let held = false; // the mouse's left button
+  let holding = null; // hold()'s listener
 
   const page = {
     errors,
@@ -205,6 +206,17 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
     async block(patterns) {
       await cmd("Network.enable");
       await cmd("Network.setBlockedURLs", { urls: patterns });
+    },
+    /** Holds the requests to matching urls ("*aventures/*.webp") `ms` before letting them through, the cache off,
+     *  as on a slow connection; [] lifts it. */
+    async hold(patterns, ms = 0) {
+      holding?.();
+      holding = null;
+      await cmd("Network.enable");
+      await cmd("Network.setCacheDisabled", { cacheDisabled: patterns.length > 0 });
+      if (!patterns.length) return cmd("Fetch.disable");
+      holding = on("Fetch.requestPaused", ({ requestId }) => setTimeout(() => cmd("Fetch.continueRequest", { requestId }).catch(() => {}), ms));
+      await cmd("Fetch.enable", { patterns: patterns.map((urlPattern) => ({ urlPattern })) });
     },
     /** A PNG of the page, or of `clip` ({ x, y, width, height }); `transparent` keeps the page's empty areas see-through. */
     async screenshot(file, { clip, transparent = false } = {}) {

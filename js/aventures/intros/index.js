@@ -8,8 +8,11 @@ export const SCENARIOS = {
     beats: [
       { name: "La carte", at: 0 },
       { name: "Le parking", at: 3.3 },
-      { name: "En haut", at: 4.3 },
-      { name: "L'affiche", at: 5.8 },
+      { name: "La montée", at: 4.3 },
+      { name: "En haut", at: 7.1 },
+      { name: "La descente", at: 10.1 },
+      { name: "La voiture", at: 13.1 },
+      { name: "L'affiche", at: 15.4 },
     ],
   },
 };

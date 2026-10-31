@@ -656,8 +656,8 @@ export const content = {
     skip: "Passer ▸",
     prev: "Page précédente",
     nextPage: "Page suivante",
-    // Les signes au-dessus des personnes, dans les intros (« … » quand on attend, « Meuh ! » d'une vache)
-    intros: { dots: "…", moo: "Meuh !" },
+    // Les bulles des intros (« … » quand on attend, « Meuh ! » d'une vache, « Ouaf ! » du border collie)
+    intros: { dots: "…", moo: "Meuh !", bark: "Ouaf !" },
   },
 
   // L'accueil du swap (#/swap) : le parcours à revoir
