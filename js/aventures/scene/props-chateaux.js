@@ -3,8 +3,7 @@
 // same for the same arguments.
 import { AFFICHE as A } from "./decor.js";
 import { blob, lens, path, poly, random } from "./geom.js";
-import { paper, piece, slab } from "./props.js";
-import { woods } from "./props-riviere.js";
+import { paper, piece, roundTrees, slab } from "./props.js";
 
 const R = 995; // a 1600-wide layer's right edge
 const FOOT = 452; // the water line (props-riviere.js: WATER_LINE)
@@ -13,13 +12,15 @@ const FOOT = 452; // the water line (props-riviere.js: WATER_LINE)
  *  layer's right edge: the river's reflection mirrors it. */
 export const CLIFF = [[184, FOOT], [194, 424], [206, 392], [222, 356], [236, 322], [254, 302], [290, 292], [340, 290], [400, 298], [470, 306], [560, 314], [680, 322], [820, 330], [R, 336]];
 
-/** A house at x, y (its foot), `w` wide: its walls, the shaded side, a roof, a window. → { outline, markup }. */
-function house(x, y, w, c) {
-  const h = w * 0.62;
-  const roof = [[x - 1.5, y - h], [x + w * 0.5, y - h - w * 0.5], [x + w + 1.5, y - h]];
+/** A stone house at x, y (its foot), `w` wide (Beynac's village, the valley's map): its walls (`stone`), the shaded
+ *  side, a roof, a window; `tall` and `pitch`: its walls' and its roof's height over its width. → { outline, markup },
+ *  to cut with its neighbours. */
+export function house(x, y, w, { stone, shade, roof, window, tall = 0.62, pitch = 0.5 }) {
+  const h = w * tall;
+  const top = [[x - 1.5, y - h], [x + w * 0.5, y - h - w * pitch], [x + w + 1.5, y - h]];
   return {
-    outline: poly([[x, y], [x, y - h], ...roof, [x + w, y - h], [x + w, y]]),
-    markup: path(poly([[x, y], [x, y - h], [x + w, y - h], [x + w, y]]), c.stone) + path(poly([[x + w * 0.64, y], [x + w * 0.64, y - h], [x + w, y - h], [x + w, y]]), c.shade) + path(poly(roof), c.roof) + path(poly([[x + w * 0.2, y - h * 0.66], [x + w * 0.38, y - h * 0.66], [x + w * 0.38, y - h * 0.36], [x + w * 0.2, y - h * 0.36]]), c.window),
+    outline: poly([[x, y], [x, y - h], ...top, [x + w, y - h], [x + w, y]]),
+    markup: path(poly([[x, y], [x, y - h], [x + w, y - h], [x + w, y]]), stone) + path(poly([[x + w * 0.64, y], [x + w * 0.64, y - h], [x + w, y - h], [x + w, y]]), shade) + path(poly(top), roof) + path(poly([[x + w * 0.2, y - h * 0.66], [x + w * 0.38, y - h * 0.66], [x + w * 0.38, y - h * 0.36], [x + w * 0.2, y - h * 0.36]]), window),
   };
 }
 
@@ -87,7 +88,7 @@ export function beynac(skin) {
   const slope = [[110, FOOT + 6], [118, 420], [132, 386], [150, 360], [172, 352], [196, 360], [206, 392], [194, 424], [184, FOOT + 6]];
   return [
     piece(skin, poly(face), path(poly(face), c.cliff) + path(bands, c.band) + path(lit, c.lit) + path(overhangs, c.overhang) + path(streaks, c.streak) + path(tufts, c.tuft), "", 0.8),
-    woods(topWoods, skin),
+    roundTrees(topWoods, { skin }),
     slab(skin, slope, c.slope, 0.6),
     piece(skin, castle + cone + lodgingRoof, path(castle, c.castle) + path(shade, c.castleShade) + path(lodgingRoof + cone, c.roof) + path(windows, c.window), "", 0.9),
     piece(skin, village.map((h) => h.outline).join(""), village.map((h) => h.markup).join(""), "", 0.5),

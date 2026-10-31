@@ -205,9 +205,10 @@ const escape = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`
 /** stops({ trajet, lieu }, project): where names are written, [{ name, x, y, kind, side, gap, tx, ty, anchor, box }]:
  *  the start (trajet.depart, its first point), each stage (trajet.etapes, at the point of index trajet.etapesAt[k], the
  *  nearest to its town) and the arrival (trajet.arrivee, else lieu; its last point). On a trip going south, each name on
- *  the side the road does not take; on a trip going east (further across than down), the start's and the arrival's
- *  under the road, the first beginning by its point and the last ending by it (in the stage, past the car on the
- *  start), and each stage's over it. The text at tx, ty, anchored there. A stage without its point throws, naming it. */
+ *  the side the road does not take; on a trip going east (further across than down), under the road where the car
+ *  never covers them, the start's beginning by its point (past the car on the start), each stage's centred on its
+ *  point, and the arrival's over its pin, ending by it (in the stage). The text at tx, ty, anchored there. A stage
+ *  without its point throws, naming it. */
 export function stops({ trajet, lieu }, project) {
   const road = pts(project, trajet.points);
   const last = road.length - 1;
@@ -229,8 +230,8 @@ export function stops({ trajet, lieu }, project) {
       : kind === "start"
         ? [x + 16, y + 24, "start"]
         : kind === "end"
-          ? [x + 14, y + 24, "end"]
-          : [x, y - 11, "middle"];
+          ? [x + 14, y - 46, "end"]
+          : [x, y + 24, "middle"];
     const x0 = anchor === "end" ? tx - wide : anchor === "middle" ? tx - wide / 2 : tx;
     return { name, x, y, kind, side, gap, tx, ty, anchor, box: { x0: x0 - 4, x1: x0 + wide + 4, y0: ty - 21, y1: ty + 4 } };
   });

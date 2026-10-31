@@ -11,7 +11,7 @@ const SKY_FOOT = 440; // the sky and the lake stop where the meadows cover them:
 const LAKE_FOOT = 560;
 export const paper = (skin) => skin === "paper";
 
-// the paper pieces, shared with the other props files (props-carte.js, props-vallee.js)
+// the paper pieces, shared with the other props files (props-carte.js, props-vallee.js, the canoe's props-*.js)
 /** A piece of paper (paper: its shadow and light edge; poster: flat). */
 export const piece = (skin, silhouette, markup, edge = "", lift = 1) => (paper(skin) ? cutPiece({ silhouette, markup, edge, lift }) : markup);
 /** A sheet down to the bottom, its top edge through the points, `extra` drawn on it. */
@@ -21,6 +21,25 @@ export function sheetOf(skin, edge, fill, extra = "", bottom = 790) {
 }
 /** A polygon cut out of paper, its top edges lit. */
 export const slab = (skin, list, fill, lift = 1) => piece(skin, poly(list), path(poly(list), fill), topEdge(list), lift);
+
+const ROUND = { paper: { crown: "#4f7a3e", lit: "#6e9a50", trunk: "#5b4430" }, poster: { crown: "#2f5a3c", lit: A.green, trunk: A.navy } };
+/** Round leafy trees at once ([[x, y, r]]: the foot, the crown's radius), cut together: a crown, its west side lit, a
+ *  short trunk (the canoe's banks and maps). smooth: curved crowns (a few big trees); else small polygons, as round at
+ *  their size and far lighter to draw (a map has hundreds). */
+export function roundTrees(list, { skin = "paper", tint = {}, lift = 0.45, smooth = true } = {}) {
+  const c = { ...ROUND[skin], ...tint };
+  const shape = smooth ? blob : poly;
+  let crowns = "";
+  let lit = "";
+  let trunks = "";
+  for (const [x, y, s] of [...list].sort((a, b) => a[1] - b[1])) {
+    const cy = y - s * 1.2;
+    crowns += shape([[x - s, cy + s * 0.2], [x - s * 0.8, cy - s * 0.55], [x - s * 0.25, cy - s], [x + s * 0.45, cy - s * 0.88], [x + s, cy - s * 0.15], [x + s * 0.7, cy + s * 0.65], [x - s * 0.35, cy + s * 0.8]]);
+    lit += shape([[x - s * 0.82, cy + s * 0.08], [x - s * 0.64, cy - s * 0.5], [x - s * 0.18, cy - s * 0.84], [x - s * 0.24, cy - s * 0.24]]);
+    trunks += poly([[x - s * 0.12, y], [x - s * 0.12, cy + s * 0.5], [x + s * 0.12, cy + s * 0.5], [x + s * 0.12, y]]);
+  }
+  return piece(skin, crowns, path(trunks, c.trunk) + path(crowns, c.crown) + path(lit, c.lit), "", lift);
+}
 
 // ── The sky ─────────────────────────────────────────────────
 

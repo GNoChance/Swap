@@ -21,8 +21,12 @@ const canoe = AVENTURES.find((a) => a.id === "canoe");
 const { trajet } = canoe;
 const MAP_NAMES = [trajet.depart, ...trajet.etapes, trajet.arrivee]; // the regional map's, from the data
 const RELAY_NAMES = [trajet.arrivee, ...trajet.relais.noms, trajet.relais.arrivee]; // the valley's
-const MAP_TIMES = [0.3, 1.5, 2.6]; // s: the C3 on the regional map
+const MAP_TIMES = [0.3, 1.5, 2, 2.6]; // s: the C3 on the regional map
+const ARRIVAL_IN_SIGHT = 2; // s: from then on, the C3 near it, Port d'Enveaux's P in the screen
 const RELAY_AT = 4.6; // s: the bus by Carsac, its pin plopped
+// the valley's places west to east (spec § 2, moment 1; Beynac faces Castelnaud: either first), Sarlat up north
+const VALLEY_ORDER = [["Port d'Enveaux"], ["les Milandes"], ["Beynac", "Castelnaud"], ["Marqueyssac"], ["La Roque-Gageac"], ["Domme"], ["Vitrac"], ["Montfort"], ["Carsac"]];
+const SARLAT = "Sarlat";
 // a save whose welcome is seen, the Premier bivouac stamped: the canoe to live, the first time
 const BIVOUAC_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), stamped: ["bivouac-1"] };
 const SCENE = "canoe/scene-cycy-et-kevin-en-canoe-11"; // the canoe in front of the cliff, on the poster
@@ -45,7 +49,8 @@ const posterBoxes = `(() => {
   };
 })()`;
 // what shows on the maps (the regional map's and the valley's are both in the page, one hidden): the actors as the kit
-// sees them, the names and pins that show, and the parking's P
+// sees them, the names and pins that show, the parking's P, the valley's places (.st-place, data-place), and the
+// stage's scale (px a unit)
 const onMap = `(() => {
   const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
   const shows = (el) => {
@@ -54,8 +59,12 @@ const onMap = `(() => {
     return true;
   };
   const seen = (selector, what) => [...document.querySelectorAll(selector)].filter(shows).map((el) => box(el, what ?? el.textContent));
-  return { ...${sceneBoxes}, names: seen(".st-name"), pins: seen(".st-pin", "épingle"), parking: seen(".st-parking", "P") };
+  const places = [...document.querySelectorAll(".st-place")].filter(shows).map((el) => box(el, el.dataset.place));
+  const scale = document.querySelector(".st-world").getBoundingClientRect().height / 760;
+  return { ...${sceneBoxes}, names: seen(".st-name"), pins: seen(".st-pin", "épingle"), parking: seen(".st-parking", "P"), places, scale };
 })()`;
+/** How far apart two boxes are (px; 0 if they touch or overlap). */
+const gap = (a, b) => Math.max(0, a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
 
 async function suite(page, vp) {
   const check = checker(page);
@@ -91,10 +100,12 @@ async function suite(page, vp) {
     if (played === null || ended === null || ended - played < ms - 300) throw new Error(`${where} : jouée ${Math.round(ended - played)} ms pour ${ms}`);
   }
 
-  /** The map in two steps, held at given moments: on the regional map, the C3 alone and in sight, the three names of the
-   *  data written, none cut by the screen's edge, and at its end the pin and the P of Port d'Enveaux in sight; on the
-   *  valley's map, the bus alone and in sight, the relay's names those of the data, none cut, Carsac and its pin in
-   *  sight. */
+  /** The map in two steps, held at given moments. On the regional map: the C3 alone and in sight, the three names of
+   *  the data written, none cut by the screen's edge, all of them in the screen at the start, Bergerac never under the
+   *  C3, and the P of Port d'Enveaux in the screen once the C3 comes near it, its pin and its name too at the end. On the
+   *  valley's map: the bus alone and in sight, the relay's names those of the data, every name and every place in the
+   *  screen, the places west to east in the spec's order (Beynac facing Castelnaud across the river, Sarlat up north),
+   *  each name by its own place and on no other, Carsac's pin in sight. */
   async function maps(where) {
     const seen = async (t) => {
       await page.goto(`${BASE}?demo&t=${t}#/aventures/canoe`);
@@ -103,40 +114,64 @@ async function suite(page, vp) {
       await page.eval(holdAt(t));
       return page.eval(onMap);
     };
-    /** Names in view are whole: never cut by the screen's edge. */
-    const whole = (now, t) => {
-      const cut = outside(now.screen, now.names.filter((b) => b.right > 0 && b.left < now.screen.width && b.bottom > 0 && b.top < now.screen.height));
-      if (cut.length) throw new Error(`${where}, à ${t} s : un nom coupé par le bord ${JSON.stringify(cut.map(round))}`);
+    const offScreen = (now, t, boxes, what) => {
+      const off = outside(now.screen, boxes);
+      if (off.length) throw new Error(`${where}, à ${t} s : ${what} hors de l'écran ${JSON.stringify(off.map((b) => b && round(b)))}`);
     };
+    /** Names in view are whole: never cut by the screen's edge. */
+    const whole = (now, t) => offScreen(now, t, now.names.filter((b) => b.right > 0 && b.left < now.screen.width && b.bottom > 0 && b.top < now.screen.height), "un nom coupé par le bord");
     for (const t of MAP_TIMES) {
       const now = await seen(t);
       const names = now.names.map((b) => b.what);
       if (JSON.stringify(names) !== JSON.stringify(MAP_NAMES)) throw new Error(`${where}, à ${t} s : les noms ${JSON.stringify(names)}, pas ${JSON.stringify(MAP_NAMES)}`);
       if (now.actors.length !== 1 || now.actors[0].what !== "c3") throw new Error(`${where}, à ${t} s : à l'écran ${JSON.stringify(now.actors.map((b) => b.what))}`);
-      const wanted = [...now.actors];
-      if (t === MAP_TIMES.at(-1)) {
-        if (now.pins.length !== 1 || now.parking.length !== 1) throw new Error(`${where}, à ${t} s : ${now.pins.length} épingle(s), ${now.parking.length} P`);
-        wanted.push(...now.pins, ...now.parking);
-      }
-      const off = outside(now.screen, wanted);
-      if (off.length) throw new Error(`${where}, sur la carte à ${t} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
+      offScreen(now, t, now.actors, "la C3");
       whole(now, t);
+      if (t === MAP_TIMES[0]) offScreen(now, t, now.names, "un nom de la carte");
+      const stage = now.names.find((b) => b.what === trajet.etapes[0]);
+      if (gap(stage, now.actors[0]) === 0) throw new Error(`${where}, à ${t} s : « ${stage.what} » sous la C3 ${JSON.stringify([stage, now.actors[0]].map(round))}`);
+      if (t >= ARRIVAL_IN_SIGHT) {
+        if (now.parking.length !== 1) throw new Error(`${where}, à ${t} s : ${now.parking.length} P`);
+        offScreen(now, t, now.parking, "le P");
+      }
+      if (t === MAP_TIMES.at(-1)) {
+        if (now.pins.length !== 1) throw new Error(`${where}, à ${t} s : ${now.pins.length} épingle(s)`);
+        offScreen(now, t, [...now.pins, now.names.find((b) => b.what === trajet.arrivee)], "l'arrivée");
+      }
     }
     const now = await seen(RELAY_AT);
     const names = now.names.map((b) => b.what);
     if (JSON.stringify([...names].sort()) !== JSON.stringify([...RELAY_NAMES].sort())) throw new Error(`${where}, à ${RELAY_AT} s : les noms ${JSON.stringify(names)}, pas ${JSON.stringify(RELAY_NAMES)}`);
     if (now.actors.length !== 1 || now.actors[0].what !== "bus") throw new Error(`${where}, à ${RELAY_AT} s : à l'écran ${JSON.stringify(now.actors.map((b) => b.what))}`);
     if (now.pins.length !== 1) throw new Error(`${where}, à ${RELAY_AT} s : ${now.pins.length} épingle(s)`);
-    const off = outside(now.screen, [...now.actors, ...now.pins, now.names.find((b) => b.what === trajet.relais.arrivee)]);
-    if (off.length) throw new Error(`${where}, sur la vallée à ${RELAY_AT} s : hors de l'écran ${JSON.stringify(off.map((b) => b && round(b)))}`);
-    whole(now, RELAY_AT);
+    offScreen(now, RELAY_AT, [...now.actors, ...now.pins], "le bus ou l'épingle");
+    offScreen(now, RELAY_AT, now.names, "un nom de la vallée");
+    // the places west to east, Beynac and Castelnaud side by side, each on its own bank; Sarlat over all of them
+    const place = (name) => now.places.find((b) => b.what === name);
+    const missing = [...VALLEY_ORDER.flat(), SARLAT].filter((name) => !place(name));
+    if (missing.length) throw new Error(`${where}, à ${RELAY_AT} s : pas de place pour ${JSON.stringify(missing)}`);
+    offScreen(now, RELAY_AT, now.places, "une place de la vallée");
+    const middle = (b) => (b.left + b.right) / 2;
+    const order = VALLEY_ORDER.flat().sort((a, b) => middle(place(a)) - middle(place(b)));
+    const slots = order.map((name) => VALLEY_ORDER.findIndex((slot) => slot.includes(name)));
+    if (slots.some((slot, k) => k && slot < slots[k - 1])) throw new Error(`${where}, à ${RELAY_AT} s : d'ouest en est ${JSON.stringify(order)}`);
+    const [beynac, castelnaud] = [place("Beynac"), place("Castelnaud")];
+    if (Math.abs(middle(beynac) - middle(castelnaud)) > 30 * now.scale || beynac.bottom > castelnaud.top) throw new Error(`${where}, à ${RELAY_AT} s : Beynac pas en face de Castelnaud ${JSON.stringify([beynac, castelnaud].map(round))}`);
+    if (now.places.some((b) => b.what !== SARLAT && b.top < place(SARLAT).bottom)) throw new Error(`${where}, à ${RELAY_AT} s : Sarlat pas au nord`);
+    // each name by its own place (at most 14 units away), on no other place and no other name
+    for (const name of now.names) {
+      const own = place(name.what);
+      if (!own || gap(name, own) > 14 * now.scale) throw new Error(`${where}, à ${RELAY_AT} s : « ${name.what} » loin de sa place ${JSON.stringify([name, own].map((b) => b && round(b)))}`);
+      const onto = [...now.places.filter((b) => b.what !== name.what), ...now.names.filter((b) => b !== name)].find((b) => gap(name, b) === 0);
+      if (onto) throw new Error(`${where}, à ${RELAY_AT} s : « ${name.what} » sur « ${onto.what} »`);
+    }
   }
 
   await check(`?demo#/aventures/canoe : data-length entre ${LENGTH.min} et ${LENGTH.max} ms, l'intro jouée en entier (pas moins de data-length − 300 ms), puis l'affiche dit exactement « ${TITLE} » et « ${LINE} », son cadre et son lettrage entièrement dans l'écran, le titre hors du coin du bouton du son ; puis le passeport`, async () => {
     await poster(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : sur la carte (?t= ${MAP_TIMES.join(", ").replaceAll(".", ",")}), la C3 seule et dans l'écran, « ${MAP_NAMES.join(" », « ")} » écrits et jamais coupés par le bord, à la fin l'épingle et le P de ${trajet.arrivee} dans l'écran ; à ?t= ${String(RELAY_AT).replace(".", ",")}, sur la vallée, le bus seul et dans l'écran, les noms du relais ceux des données et jamais coupés, « ${trajet.relais.arrivee} » et son épingle dans l'écran`, async () => {
+  await check(`${vp.width} × ${vp.height} : sur la carte (?t= ${MAP_TIMES.join(", ").replaceAll(".", ",")}), la C3 seule et dans l'écran, « ${MAP_NAMES.join(" », « ")} » écrits, jamais coupés par le bord, tous dans l'écran au départ, « ${trajet.etapes[0]} » jamais sous la C3, le P de ${trajet.arrivee} dans l'écran dès ${ARRIVAL_IN_SIGHT} s, son épingle et son nom à la fin ; à ?t= ${String(RELAY_AT).replace(".", ",")}, sur la vallée, le bus seul et dans l'écran, les noms du relais ceux des données, chaque nom et chaque place dans l'écran, les places d'ouest en est (${VALLEY_ORDER.map((slot) => slot.join(" face à ")).join(", ")}, ${SARLAT} au nord), chaque nom près de sa place et sur aucune autre, « ${trajet.relais.arrivee} » et son épingle dans l'écran`, async () => {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
@@ -201,10 +236,11 @@ async function suite(page, vp) {
       await page.waitFor(`${timeline}.time() > 6`, 9000);
       const touched = await page.eval(`${timeline}.time()`);
       await page.tap(".screen-intro");
-      await sleep(1200);
+      // still there and playing on, a second of its timeline later (by its own clock: a slow frame only delays it)
+      await page.waitFor(`location.hash !== "#/aventures/canoe" || ${timeline}?.time() > ${touched + 1}`, 6000).catch(() => {});
       const later = await page.eval(`({ hash: location.hash, intro: Boolean(document.querySelector(".screen-intro .st-stage")), t: ${timeline}?.time(), paused: ${timeline}?.paused() })`);
-      if (later.hash !== "#/aventures/canoe" || !later.intro || later.paused || !(later.t > touched + 0.8)) throw new Error(`après le toucher à ${touched.toFixed(2)} s : ${JSON.stringify(later)}`);
-      await page.waitFor(`${timeline}.time() > 10`, 6000);
+      if (later.hash !== "#/aventures/canoe" || !later.intro || later.paused || !(later.t > touched + 1)) throw new Error(`après le toucher à ${touched.toFixed(2)} s : ${JSON.stringify(later)}`);
+      await page.waitFor(`${timeline}.time() > 10`, 10000);
       await page.eval(`history.back()`);
       await page.waitFor(atPassport, 4000);
       await sleep(1500); // what the intro would have left behind

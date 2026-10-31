@@ -192,14 +192,14 @@ test("intros: a trip names its own arrival, else the lieu", () => {
   assert.deepEqual(stops(bivouac, projection(BIVOUAC_MAP)).map((s) => s.name), ["Bordeaux", "Pau", "Lacs d'Ayous"]);
 });
 
-// A trip going south writes its names beside the road; one going east, under and over it, inside the stage (x 25 to
-// 365): beside it, they would leave the stage on a phone.
-test("intros: a trip going east writes its names under and over its road, one going south beside it", () => {
+// A trip going south writes its names beside the road; one going east, under it (the car drives over it) and the
+// arrival's over its pin, inside the stage (x 25 to 365): beside the road, they would leave the stage on a phone.
+test("intros: a trip going east writes its names under its road and over its pin, one going south beside it", () => {
   const { trajet, lieu } = byId("canoe");
   const [start, stage, end] = stops({ trajet, lieu }, projection(CANOE_MAP));
   assert.ok(start.anchor === "start" && start.tx > start.x && start.ty > start.y, `start: ${JSON.stringify(start)}`);
-  assert.ok(stage.anchor === "middle" && stage.tx === stage.x && stage.ty < stage.y, `stage: ${JSON.stringify(stage)}`);
-  assert.ok(end.anchor === "end" && end.ty > end.y, `end: ${JSON.stringify(end)}`);
+  assert.ok(stage.anchor === "middle" && stage.tx === stage.x && stage.ty > stage.y, `stage: ${JSON.stringify(stage)}`);
+  assert.ok(end.anchor === "end" && end.ty < end.y - 38, `end: ${JSON.stringify(end)}`); // over its pin, 38 units tall
   for (const s of [start, stage, end]) assert.ok(s.box.x0 >= 25 && s.box.x1 <= 365, `${s.name}: ${JSON.stringify(s.box)}`);
   const bivouac = stops(byId("bivouac-1"), projection(BIVOUAC_MAP));
   assert.deepEqual(bivouac.map((s) => [s.anchor, Math.round(s.ty - s.y)]), [["end", 5], ["end", 5], ["end", 5]]);

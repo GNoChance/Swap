@@ -4,8 +4,8 @@
 // its skin, "paper" or "poster" (props.js). Its layers are 1600 units wide (x −605 to 995), the stage's middle clear for
 // the canoe. Pure: markup only, the same for the same arguments.
 import { AFFICHE as A } from "./decor.js";
-import { blob, curve, dot, edgeAt, lens, mirror, path, poly, random, topEdge, tuft } from "./geom.js";
-import { paper, piece, sheetOf, slab } from "./props.js";
+import { blob, curve, dot, lens, mirror, path, poly, random, topEdge, tuft } from "./geom.js";
+import { paper, piece, roundTrees, row, sheetOf, slab } from "./props.js";
 
 const L = -605; // a 1600-wide layer's edges
 const R = 995;
@@ -59,29 +59,6 @@ export function sky(skin) {
 const FAR = [[L, 392], [-460, 372], [-300, 386], [-160, 366], [-40, 380], [60, 370], [150, 388], [240, 376], [340, 392], [480, 370], [620, 384], [780, 366], [R, 380]];
 const BANK = [[L, 404], [-440, 396], [-300, 410], [-180, 398], [-60, 414], [40, 404], [110, 420], [170, 440], [200, WATER_LINE + 4]];
 
-/** Round trees on a bank ([[x, y, r]]), cut together (the poster: two greens). */
-export function woods(list, skin, tint = {}) {
-  const c = { ...(paper(skin) ? { crown: "#4f7a3e", lit: "#6e9a50", trunk: "#5b4430" } : { crown: "#2f5a3c", lit: A.green, trunk: A.navy }), ...tint };
-  let crowns = "";
-  let lit = "";
-  let trunks = "";
-  for (const [x, y, s] of [...list].sort((a, b) => a[1] - b[1])) {
-    const cy = y - s * 1.1;
-    crowns += blob([[x - s, cy + s * 0.2], [x - s * 0.8, cy - s * 0.6], [x - s * 0.2, cy - s], [x + s * 0.5, cy - s * 0.86], [x + s, cy - s * 0.1], [x + s * 0.7, cy + s * 0.7], [x - s * 0.4, cy + s * 0.8]]);
-    lit += blob([[x - s * 0.84, cy + s * 0.1], [x - s * 0.66, cy - s * 0.52], [x - s * 0.16, cy - s * 0.86], [x - s * 0.24, cy - s * 0.24]]);
-    trunks += poly([[x - s * 0.1, y], [x - s * 0.1, cy + s * 0.5], [x + s * 0.1, cy + s * 0.5], [x + s * 0.1, y]]);
-  }
-  return piece(skin, crowns, path(trunks, c.trunk) + path(crowns, c.crown) + path(lit, c.lit), "", 0.45);
-}
-
-/** A row of round trees along an edge, from x0 to x1 about `step` apart, sunk under it. */
-function row(edge, x0, x1, step, [s0, s1], sink, seed) {
-  const r = random(seed);
-  const list = [];
-  for (let x = x0; x < x1; x += step * (0.6 + r() * 0.7)) list.push([x, edgeAt(edge, x) + sink + r() * sink, s0 + r() * (s1 - s0)]);
-  return list;
-}
-
 /** The far hills along the river, pale with the distance, and the south bank on the left: a wooded slope down to the
  *  water, its trees in rows. */
 export function hills(skin) {
@@ -90,9 +67,9 @@ export function hills(skin) {
   const farLit = poly([...FAR, ...[...FAR].reverse().map(([x, y]) => [x, y + 8])]);
   return [
     sheetOf(skin, FAR, c.far, path(farLit, c.farLit), WATER_LINE + 10),
-    woods(row(FAR, L, R, 30, [7, 11], 6, 181), skin, p ? { crown: "#7d9b7a", lit: "#91ad8a", trunk: "#7d9b7a" } : { crown: "#3f7a66", lit: "#4f8a72", trunk: "#3f7a66" }),
+    roundTrees(row(FAR, L, R, 30, [7, 11], 6, 181), { skin, tint: p ? { crown: "#7d9b7a", lit: "#91ad8a", trunk: "#7d9b7a" } : { crown: "#3f7a66", lit: "#4f8a72", trunk: "#3f7a66" } }),
     sheetOf(skin, BANK, c.bank, "", WATER_LINE + 10),
-    woods([...row(BANK, L, 196, 22, [14, 22], 10, 183), ...row(BANK, L, 150, 26, [16, 26], 26, 185)], skin),
+    roundTrees([...row(BANK, L, 196, 22, [14, 22], 10, 183), ...row(BANK, L, 150, 26, [16, 26], 26, 185)], { skin }),
   ].join("");
 }
 

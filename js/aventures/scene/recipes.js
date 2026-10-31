@@ -209,7 +209,7 @@ export function carte(tl, at, { stage, layers, car, trajet, lieu, project, durat
 
 const RELAY_SHORT = 30; // units: the relay's vehicle pulls up this short of its arrival
 const DIVE = 4; // the zoom the camera dives to, onto the relay's start
-const CLOSE = 2.4; // the zoom the next map shows at first, on its own start
+const CLOSE = 1.3; // the zoom the next map shows at first, on its own start
 
 /** relais(tl, at, { stage, from, layers, vehicle, route, duration }): from `at` s, the trip goes on by another vehicle
  *  on a map of its own. The camera dives onto the relay's start on the map before (from = { layers, x, y }: its layers'
