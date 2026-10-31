@@ -7,9 +7,8 @@ import { sfx } from "../../audio.js";
 import { content } from "../../content.js";
 import { cutPiece } from "./decor.js";
 import { blob, dot, path, poly } from "./geom.js";
-import { W } from "./stage.js";
+import { HIDDEN, layerX } from "./stage.js";
 
-const HIDDEN = { opacity: "0", visibility: "hidden" }; // autoAlpha 0, without reading the page's styles
 const box = (tag, cls) => Object.assign(document.createElement(tag), { className: cls });
 const svg = (viewBox, size, markup) => `<svg viewBox="${viewBox.join(" ")}" width="${viewBox[2] * size}" height="${viewBox[3] * size}">${markup}</svg>`;
 const line = (d, stroke, width) => `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -24,7 +23,7 @@ function creature({ layer, x, y, cls, looks }) {
   const body = box("div", "st-prop__body");
   turn.append(body);
   el.append(turn);
-  el.style.left = `${x + (parseFloat(layer.style.width) - W) / 2}px`; // the layer's x 0 is the stage's
+  el.style.left = `${layerX(layer, x)}px`;
   el.style.top = `${y}px`;
   const shown = looks.map((markup, k) => {
     const look = box("span", "st-prop__look");
@@ -41,9 +40,9 @@ function creature({ layer, x, y, cls, looks }) {
 const wearAt = (tl, at, looks, k) => looks.forEach((look, i) => tl.set(look, { autoAlpha: i === k ? 1 : 0 }, at));
 
 /** A bubble of words `lift` units over an animal's point (outside its turn box: never mirrored), popping at `at` s for
- *  `duration` s. */
+ *  `duration` s; one bubble per text, made once. */
 function say(tl, at, { el }, text, duration, lift) {
-  let bubble = el.querySelector(":scope > .st-emote");
+  let bubble = [...el.querySelectorAll(":scope > .st-emote")].find((said) => said.textContent === text);
   if (!bubble) {
     bubble = Object.assign(box("span", "st-emote st-emote--bubble"), { textContent: text });
     Object.assign(bubble.style, HIDDEN, { bottom: `${lift}px` });
@@ -302,7 +301,7 @@ const PUFF = `<svg viewBox="-14 -12 28 24" width="28" height="24"><g fill="#3b2a
 export function puff({ layer, x, y }) {
   const el = box("span", "st-puff");
   el.innerHTML = PUFF;
-  Object.assign(el.style, HIDDEN, { left: `${x - 14 + (parseFloat(layer.style.width) - W) / 2}px`, top: `${y - 18}px` });
+  Object.assign(el.style, HIDDEN, { left: `${layerX(layer, x - 14)}px`, top: `${y - 18}px` });
   layer.append(el);
   return {
     el,

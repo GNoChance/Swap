@@ -2,6 +2,7 @@
 // its top, drawn once in its layer and then only moved; each layer's poster version (flat colours, no shadow, no
 // grain), the same shapes in another palette, waits hidden for posterize(). The grain lies over the whole stage. No
 // live SVG filter: a shadow is its piece's silhouette again, lower and fainter. Reads `window` only in its functions.
+import { HIDDEN } from "./stage.js";
 
 /** The poster's palette (option C of the style sketch). */
 export const AFFICHE = { navy: "#22344f", teal: "#2f7f86", orange: "#e9844a", sun: "#f6c453", cream: "#f4e4c1", green: "#3f6b4a", grass: "#7fa05a" };
@@ -54,7 +55,7 @@ export function paperLayer({ stage, name, depth = 1, width = 1600, paper, poster
   el.append(flat);
   if (poster === undefined) return { el, paper: flat, poster: null };
   const print = sheet("st-poster", width, poster);
-  Object.assign(print.style, { opacity: "0", visibility: "hidden" }); // as autoAlpha 0, without reading the page's styles
+  Object.assign(print.style, HIDDEN);
   el.append(print);
   return { el, paper: flat, poster: print };
 }
@@ -63,13 +64,14 @@ export function paperLayer({ stage, name, depth = 1, width = 1600, paper, poster
  *  in once its screen is in (a layer over the whole screen is costly while the screen fades in). */
 export function grain(stage) {
   const el = Object.assign(document.createElement("div"), { className: "st-grain" });
-  Object.assign(el.style, { opacity: "0", visibility: "hidden" }); // autoAlpha 0
+  Object.assign(el.style, HIDDEN);
   stage.el.append(el);
   return el;
 }
 
-/** posterize(tl, at, layers, { stagger, grain }): from `at` s, each layer (back to front, `stagger` s apart) fades into
- *  its poster version, and the grain (grain()) fades away. → when the last one is done (s). */
+/** posterize(tl, at, layers, { stagger, grain }): from `at` s, each layer (a paperLayer(), or { paper: [elements…],
+ *  poster } with what lies on its paper) fades into its poster version, back to front, `stagger` s apart, and the grain
+ *  (grain()) fades away. → when the last one is done (s). */
 export function posterize(tl, at, layers, { stagger = 0.12, grain } = {}) {
   const fade = 0.4;
   layers.forEach((layer, k) => {

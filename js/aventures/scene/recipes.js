@@ -6,9 +6,8 @@ import { posterize, sheet } from "./decor.js";
 import { curve } from "./geom.js";
 import { fitTitle, posterLine, posterTitle, TITLE_FIT } from "./poster-text.js";
 import { names, PIN, routeDots, routeLine, stops } from "./props-carte.js";
-import { ENTER, H, W } from "./stage.js";
+import { ENTER, H, HIDDEN, layerX, W } from "./stage.js";
 
-const HIDDEN = { opacity: "0", visibility: "hidden" }; // autoAlpha 0, without reading the page's styles
 const HOLD = 0.9; // s the finished poster stays before the end (at least 0.8)
 // where the paper around the picture starts, off the widest screens (units): it closes in from there
 const AWAY = { left: { x: -1100 }, right: { x: 1100 }, top: { y: -140 }, bottom: { y: 140 } };
@@ -84,13 +83,12 @@ function facesRight(at, along, length, right) {
 export function carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }) {
   const gsap = window.gsap;
   const road = trajet.points.map(project);
-  const shift = (parseFloat(car.layer.style.width) - W) / 2; // the layer's x 0 is the stage's
   const drawn = sheet("st-paper", parseFloat(car.layer.style.width), routeLine(curve(road.map(({ x, y }) => [x, y]))) + names(stops({ trajet, lieu }, project)));
   car.layer.insertBefore(drawn, car.el); // under the car
   const end = road.at(-1);
   const pin = h("div", { class: "st-pin" });
   pin.innerHTML = PIN;
-  Object.assign(pin.style, HIDDEN, { left: `${end.x - 14 + shift}px`, top: `${end.y - 38}px` });
+  Object.assign(pin.style, HIDDEN, { left: `${layerX(car.layer, end.x - 14)}px`, top: `${end.y - 38}px` });
   car.layer.append(pin); // over it
 
   const line = drawn.querySelector(".st-route-path");

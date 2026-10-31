@@ -1,7 +1,7 @@
 // The map's pieces (spec § 5, moment 1): the South-West in paper, from real coordinates [lat, lon] placed by a
 // projection (geo.js): the ocean and its waves, the land with the Gironde's estuary and the Arcachon basin, the rivers,
 // the Landes' pines, the Pyrenees in paper peaks with the Ossau's two horns, the trip's stops and names, its dotted line
-// and the arrival's pin. All of it reaches far past the stage (x −900 to 1500), the camera follows the car south. Paper
+// and the arrival's pin. All of it reaches far past the stage (x −1000 to 1600), the camera follows the car south. Paper
 // only: the map never becomes the poster. Pure: markup only, the same for the same arguments.
 import { cutPiece } from "./decor.js";
 import { blob, curve, edgeAt, n, path, poly, random, topEdge } from "./geom.js";

@@ -11,6 +11,12 @@ const CENTRE = { x: W / 2, y: H / 2 }; // where a layer zooms by itself (css/int
 const TALL = 560; // px: from this height up, the whole stage in the height
 const BAND = { y0: 250, y1: 730 }; // the action band, for a short screen
 
+/** autoAlpha 0 as inline styles: hidden until its moment, without GSAP reading the page's styles. */
+export const HIDDEN = { opacity: "0", visibility: "hidden" };
+
+/** The stage's x in `layer` (units): a layer wider than the stage starts left of it, by its inline width. */
+export const layerX = (layer, x) => x + (parseFloat(layer.style.width) - W) / 2;
+
 /** The stage on a width × height screen (px): its scale, and where its top left corner goes. */
 export function fit(width, height) {
   if (height >= TALL) {

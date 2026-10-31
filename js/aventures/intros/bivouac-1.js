@@ -5,8 +5,8 @@
 // and his blocked back, overtaken by a snail, Cycy waiting for him), the car back in the valley among the cows until the
 // collie moves them, then the closing poster « LACS D'AYOUS » on the lake. Its moments are the beats of
 // intros/index.js; its stickers, bivouac-1.stickers.js.
-import { createStage, ENTER, H, W } from "../scene/stage.js";
-import { grain, paperLayer } from "../scene/decor.js";
+import { createStage, ENTER, H, HIDDEN, W } from "../scene/stage.js";
+import { grain, paperLayer, sheet } from "../scene/decor.js";
 import { person, preload, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
 import * as props from "../scene/props.js";
@@ -23,7 +23,6 @@ export { stickers } from "./bivouac-1.stickers.js";
 const gsap = window.gsap;
 const beat = (name) => SCENARIOS["bivouac-1"].beats.find((b) => b.name === name).at;
 const MAP = { at: { x: 199, y: 161 }, unitsPerDegree: 258 }; // Bordeaux (its first point) there, 258 units a degree
-const HIDDEN = { opacity: "0", visibility: "hidden" }; // autoAlpha 0, without reading the page's styles
 const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 
 // the lake's layers, back to front: [name, depth (its share of the camera's moves), its markup in a skin]; the night's
@@ -57,13 +56,14 @@ const PATH_LAYERS = [
   ["sentier-roches", 1.5, montagne.roches],
   ["sentier-sapins", 2.2, montagne.sapins],
 ];
-// the cows lying round the Seat (it parks at x 205): [x, y, size, facing, the way it walks off]
+// the cows lying round the Seat (it parks at x 205), whole on a phone (x 20 to 370, the camera closing in) and clear of
+// the near firs held sideways: [x, y, size, facing, the way it walks off]
 const HERD = [
-  [66, 648, 0.74, "right", -1],
-  [342, 650, 0.74, "left", 1],
+  [74, 648, 0.7, "right", -1],
+  [316, 650, 0.7, "left", 1],
   [100, 716, 0.88, "right", -1],
-  [312, 720, 0.88, "left", 1],
-  [-130, 690, 0.84, "right", -1],
+  [308, 720, 0.88, "left", 1],
+  [-230, 690, 0.84, "right", -1],
   [540, 694, 0.84, "left", 1],
 ];
 
@@ -83,9 +83,12 @@ export function mount(host, { aventure }) {
   const night = paperLayer({ stage, name: "nuit", depth: 0.04, paper: lac.nightSky() });
   const dawn = paperLayer({ stage, name: "aube", depth: 0.04, paper: lac.dawnSky() });
   const land = draw(LAKE_LAND, true);
-  const tentLayer = land.find((layer) => layer.el.dataset.layer === "tente");
+  const layerOf = (name) => land.find((layer) => layer.el.dataset.layer === name);
+  const tentLayer = layerOf("tente");
   const tent = lac.tentUnfold({ layer: tentLayer.el });
-  tentLayer.paper = [tentLayer.paper, tent.el]; // the poster covers the unfolded tent too
+  const water = layerOf("lac");
+  const glow = sheet("st-paper", 1600, props.lakeGlow()); // the lake's golden light: it goes with the night
+  water.paper.after(glow); // under its poster
   const lakeCrowd = stage.layer("lac-gens", { depth: 0.9 });
   const lakePeople = [
     person({ stage, layer: lakeCrowd, outing, who: "cycy", x: 168, y: 712, height: 108, side: "dos" }),
@@ -98,9 +101,14 @@ export function mount(host, { aventure }) {
   });
   const [warm, dark] = veils;
   const starry = lac.stars({ layer: night.el });
-  const sunrise = lac.dawnSun({ layer: dawn.el, x: 336, y: 228 });
+  const sunrise = lac.dawnSun({ layer: dawn.el, x: 125, y: 222 }); // over the ridge, left of the Ossau: in sight on a phone
   const lark = lac.bird({ layer: dawn.el, x: 30, y: 214 });
-  const lakePoster = [sky, sun, ...land];
+  // the poster covers what lies on a layer's paper too: the unfolded tent, the lake's golden light
+  const over = new Map([
+    [tentLayer, tent.el],
+    [water, glow],
+  ]);
+  const lakePoster = [sky, sun, ...land].map((layer) => (over.has(layer) ? { ...layer, paper: [layer.paper, over.get(layer)] } : layer));
   const lake = [...lakePoster.map((layer) => layer.el), lakeCrowd];
   const nightfall = [night.el, dawn.el, ...veils]; // shown only while the sky turns
 
@@ -194,12 +202,14 @@ export function mount(host, { aventure }) {
   timeline.to(sun.el, { y: 150, duration: 0.5, ease: "power1.in" }, dusk);
   timeline.to(warm, { autoAlpha: 1, duration: 0.3, ease: "power1.out" }, dusk).to(warm, { autoAlpha: 0, duration: 0.25 }, dusk + 0.4);
   timeline.to([night.el, dark], { autoAlpha: 1, duration: 0.3, ease: "power1.inOut" }, dusk + 0.3);
+  timeline.fromTo(glow, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.3, ease: "power1.inOut", immediateRender: false }, dusk + 0.3); // no gold on the lake by night
   starry.light(timeline, dusk + 0.45);
   stage.sound(timeline, dusk + 0.4, "crickets");
   const dawnAt = dusk + 0.92;
   timeline.to(dawn.el, { autoAlpha: 1, duration: 0.35, ease: "power1.inOut" }, dawnAt).to(dark, { autoAlpha: 0, duration: 0.4 }, dawnAt);
   timeline.to(warm, { autoAlpha: 0.7, duration: 0.25 }, dawnAt).to(warm, { autoAlpha: 0, duration: 0.35 }, dawnAt + 0.35);
   sunrise.rise(timeline, dawnAt + 0.05, 0.55);
+  timeline.fromTo(glow, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4, ease: "power1.inOut", immediateRender: false }, dawnAt + 0.2); // back with the sun
   lark.fly(timeline, dawnAt + 0.2, { dx: 300, dy: -60, duration: 1.1 });
   stage.sound(timeline, dawnAt + 0.3, "bird");
 
@@ -212,7 +222,7 @@ export function mount(host, { aventure }) {
   fadeIn(pathScene, descente);
   stage.frame(timeline, descente, { whole: false, duration: 0.3 });
   timeline.set([...lake, ...nightfall], { autoAlpha: 0 }, descente + 0.35).set(sun.el, { y: 0 }, descente + 0.35); // the lake as it was, for the poster
-  const crawl = 2.9; // s: a third of the traverse
+  const crawl = down - 0.1; // s: till just before the valley, a third of the traverse
   slowpoke.bob(timeline, descente, crawl, { step: 0.3, sway: 2.5, lift: 1.2, lean: -5 });
   timeline.to(slowpoke.el, { x: (bottom[0] - top[0]) / 3, y: (bottom[1] - top[1]) / 3, duration: crawl, ease: "none" }, descente);
   slowpoke.emote(timeline, descente + 0.3, "sweat", down - 0.4);

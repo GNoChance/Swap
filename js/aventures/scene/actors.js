@@ -7,9 +7,8 @@
 import { sfx } from "../../audio.js";
 import { content } from "../../content.js";
 import { fallbackUrl, stickerUrl, vehicleFallback, vehicleUrl } from "./urls.js";
-import { W } from "./stage.js";
+import { HIDDEN, layerX } from "./stage.js";
 
-const HIDDEN = { opacity: "0", visibility: "hidden" }; // autoAlpha 0, without reading the page's styles
 const SHOWN = { opacity: "", visibility: "" };
 const box = (tag, cls) => Object.assign(document.createElement(tag), { className: cls });
 
@@ -21,7 +20,7 @@ function cast({ layer, x, y, size, wide = false }) {
   const pose = box("div", "st-actor__pose");
   turn.append(pose);
   el.append(turn);
-  el.style.left = `${x + (parseFloat(layer.style.width) - W) / 2}px`; // the layer's inline width: its x 0 is the stage's
+  el.style.left = `${layerX(layer, x)}px`;
   el.style.top = `${y}px`;
   layer.append(el);
   const looks = new Map(); // key → <img>

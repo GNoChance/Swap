@@ -1,16 +1,15 @@
 // The night at the Ayous lake (spec § 5, moment 4): the tent unfolding from the meadow like a pop-up book, and the sky
 // turning (sunset → night → sunrise) by skies fading over the evening's: the night's, navy with its moon, its stars
-// lighting up, and the dawn's, pink and gold, its sun rising behind the Ossau's shoulder and a morning bird. The skies
+// lighting up, and the dawn's, pink and gold, its sun rising over the ridge and a morning bird. The skies
 // are markup for paper layers (pure); the tent, the stars, the sun and the bird are elements in their layer, with their
 // moves on a timeline. Reads `window` only in its functions.
 import { cutPiece } from "./decor.js";
 import { dot, path, random } from "./geom.js";
 import { cloud, sheetOf, tent } from "./props.js";
-import { W } from "./stage.js";
+import { HIDDEN, layerX } from "./stage.js";
 
 const L = -605; // a 1600-wide layer's edges
 const SKY_FOOT = 440; // where the meadows cover the sky (props.js)
-const HIDDEN = { opacity: "0", visibility: "hidden" }; // autoAlpha 0, without reading the page's styles
 const STRIPS = [112, 186, 244, 300]; // the sky's strips, as the evening's (props.js)
 
 /** A sky in strips of paper, `tones` from the top down (5), its edges gently waving. */
@@ -40,7 +39,7 @@ export function dawnSky() {
   return [strips(["#93b3d8", "#b4c3dc", "#dcc4cf", "#f2cbb2", "#f8dba8"], 81), cloud(-300, 150, 90, "paper"), cloud(30, 120, 76, "paper"), cloud(520, 160, 96, "paper")].join("");
 }
 
-const at = (layer, x) => `${x + (parseFloat(layer.style.width) - W) / 2}px`; // a stage x in a layer (its x 0 is the stage's)
+const at = (layer, x) => `${layerX(layer, x)}px`; // a stage x in a layer, as its left
 const box = (cls) => Object.assign(document.createElement("span"), { className: cls });
 
 // the stars that light up, over the sky but never over the Ossau: [x, y, size]

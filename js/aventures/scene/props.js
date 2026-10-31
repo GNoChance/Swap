@@ -308,18 +308,15 @@ export function refuge(x, y, skin) {
 
 const WATER = 360; // the far shore's water line
 
-/** The lake d'Ayous: the Ossau and the shores mirrored in it, ripples breaking them, the sun's glints. */
-export function lake(skin) {
-  const p = paper(skin);
-  const c = p
-    ? { water: "#7aa3c1", far: "#6f98b8", massif: "#6c86a3", ossau: "#566e91", hills: "#587563", slope: "#5f7b67", breaks: "#7aa3c1", ripple: "#a7c7db", warm: "#dccbbd", glint: "#f8dfb2" }
-    : { water: A.teal, far: A.teal, massif: "#2f5d7a", ossau: A.navy, hills: "#24442f", slope: "#2a4d37", breaks: A.teal, ripple: "#5aa3a7", warm: "#f0a960", glint: A.sun };
-  const shore = [[L, WATER], [-300, WATER - 1.2], [0, WATER + 0.8], [300, WATER - 1], [600, WATER + 1], [R + 20, WATER]];
-  const k = 0.5;
-  const ossau = mirror(OSSAU, WATER, k);
-  const hills = mirror(HILL, WATER, k * 1.2);
-  const slope = mirror(SLOPE, WATER, k * 1.4);
-  const massif = mirror([[300, 330], [368, 276], [420, 236], [492, 204], [570, 234], [648, 250], [750, 256], [870, 280], [R, 286]], WATER, k * 0.8);
+// its colours, on paper (the sunset's warm streaks and glints drawn apart: lakeGlow()) and on the poster
+const LAKE = {
+  paper: { water: "#7aa3c1", far: "#6f98b8", massif: "#6c86a3", ossau: "#566e91", hills: "#587563", slope: "#5f7b67", breaks: "#7aa3c1", ripple: "#a7c7db", warm: "#dccbbd", glint: "#f8dfb2" },
+  poster: { water: A.teal, far: A.teal, massif: "#2f5d7a", ossau: A.navy, hills: "#24442f", slope: "#2a4d37", breaks: A.teal, ripple: "#5aa3a7", warm: "#f0a960", glint: A.sun },
+};
+
+/** The lake's lenses of light, the same each time: the ripples breaking its reflections, the sunset's warm streaks,
+ *  the sun's glints under it. */
+function lakeLights() {
   const r = random(31);
   const breaks = Array.from({ length: 18 }, () => lens(-40 + r() * 600, 372 + r() * 118, 24 + r() * 70, 1)).join("");
   const ripples = Array.from({ length: 26 }, () => lens(L + r() * 1600, 384 + r() * 110, 30 + r() * 90, 1.3)).join("");
@@ -335,6 +332,21 @@ export function lake(skin) {
   ]
     .map(([dx, y, w]) => lens(sx + dx, y, w, 1.6))
     .join("");
+  return { breaks, ripples, warm, glints };
+}
+
+/** The lake d'Ayous: the Ossau and the shores mirrored in it, ripples breaking them, the sun's glints. On paper, its
+ *  golden light (the warm streaks and the glints) is lakeGlow(), apart: it goes with the night. */
+export function lake(skin) {
+  const p = paper(skin);
+  const c = LAKE[p ? "paper" : "poster"];
+  const shore = [[L, WATER], [-300, WATER - 1.2], [0, WATER + 0.8], [300, WATER - 1], [600, WATER + 1], [R + 20, WATER]];
+  const k = 0.5;
+  const ossau = mirror(OSSAU, WATER, k);
+  const hills = mirror(HILL, WATER, k * 1.2);
+  const slope = mirror(SLOPE, WATER, k * 1.4);
+  const massif = mirror([[300, 330], [368, 276], [420, 236], [492, 204], [570, 234], [648, 250], [750, 256], [870, 280], [R, 286]], WATER, k * 0.8);
+  const { breaks, ripples, warm, glints } = lakeLights();
   return sheetOf(
     skin,
     shore,
@@ -347,11 +359,16 @@ export function lake(skin) {
       path(poly([...slope, [R + 20, WATER], [300, WATER]]), c.slope),
       path(breaks, c.breaks),
       path(ripples, c.ripple),
-      path(warm, c.warm),
-      path(glints, c.glint),
+      ...(p ? [] : [path(warm, c.warm), path(glints, c.glint)]),
     ].join(""),
     LAKE_FOOT,
   );
+}
+
+/** The paper lake's golden light, over it: the sunset's warm streaks and the sun's glints. */
+export function lakeGlow() {
+  const { warm, glints } = lakeLights();
+  return path(warm, LAKE.paper.warm) + path(glints, LAKE.paper.glint);
 }
 
 // ── The meadows ─────────────────────────────────────────────
