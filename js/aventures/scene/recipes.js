@@ -1,5 +1,6 @@
-// The intros' recipes (spec § 4): reusable pieces of timeline, each → the moment it ends (s): the trip on a paper map,
-// the vehicle arriving with its people, the walk up a path, and the closing poster (spec § 5, moments 1, 2, 3 and 7).
+// The intros' recipes (spec § 4): reusable pieces of timeline, each → the moment it ends (s): the trip on a paper map
+// and its relay on a map of its own (the canoe's spec, § 4), the vehicle arriving with its people, the walk up a path,
+// and the closing poster (spec § 5, moments 1, 2, 3 and 7). Both maps drive their vehicle along the same road (roadOf).
 import { sfx } from "../../audio.js";
 import { h } from "../../dom.js";
 import { posterize, sheet } from "./decor.js";
@@ -75,38 +76,42 @@ function facesRight(at, along, length, right) {
   return Math.abs(dx) > LOOK * 0.7 ? dx > 0 : right;
 }
 
-/** carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }): from `at` s, the trip on the map. The car
- *  (a vehicle in view « roule », standing on the trip's first point) waits for the map to be seen, then drives along
- *  the road with a bounce and its engine, the dotted line drawn behind it, the camera (on `layers`, the map's)
- *  following it south a little closer; it pulls up by the arrival, the last dots run to it and its pin plops. The names
- *  come from the data: trajet.depart, trajet.etapes (each at its point trajet.etapesAt[k]) and lieu. → its end (s). */
-export function carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }) {
-  const gsap = window.gsap;
-  const road = trajet.points.map(project);
-  const drawn = sheet("st-paper", parseFloat(car.layer.style.width), routeLine(curve(road.map(({ x, y }) => [x, y]))) + names(stops({ trajet, lieu }, project)));
-  car.layer.insertBefore(drawn, car.el); // under the car
-  const end = road.at(-1);
-  const pin = h("div", { class: "st-pin" });
-  pin.innerHTML = PIN;
-  Object.assign(pin.style, HIDDEN, { left: `${layerX(car.layer, end.x - 14)}px`, top: `${end.y - 38}px` });
-  car.layer.append(pin); // over it
-
-  const line = drawn.querySelector(".st-route-path");
-  const holder = drawn.querySelector(".st-route-dots");
-  const right = end.x >= road[0].x; // the trip's heading
-  // the road by its chords, for what is set before anything can be measured: the car's facing at the start, the camera
-  const chords = road.slice(1).map((p, k) => Math.hypot(p.x - road[k].x, p.y - road[k].y));
+/** A road through `points` ([x, y]) by its chords, known before anything is laid out: its length, and its point
+ *  `dist` units along ({ x, y }). */
+function chordsOf(points) {
+  const chords = points.slice(1).map(([x, y], k) => Math.hypot(x - points[k][0], y - points[k][1]));
   const total = chords.reduce((a, b) => a + b, 0);
   const near = (dist) => {
     let k = 0;
     while (k < chords.length - 1 && dist > chords[k]) dist -= chords[k++];
     const f = Math.min(1, dist / chords[k]);
-    return { x: road[k].x + f * (road[k + 1].x - road[k].x), y: road[k].y + f * (road[k + 1].y - road[k].y) };
+    return { x: points[k][0] + f * (points[k + 1][0] - points[k][0]), y: points[k][1] + f * (points[k + 1][1] - points[k][1]) };
   };
-  car.turn.classList.toggle("is-flipped", facesRight(near, 0, total, right));
+  return { total, near };
+}
 
-  // the car along the road, and the dots behind it: getter/setters the timeline tweens, so they hold under seek (an
-  // onUpdate would not); the road is measured on their first use, once it is laid out
+/** A value GSAP can tween (a getter/setter), handed to `set` at each change. */
+function settable(set) {
+  let value = 0;
+  return (next) => (next === undefined ? value : set((value = next)));
+}
+
+/** roadOf({ layer, mover, points, short }) → { progress, tail, length }: the dotted road through `points` ([x, y], stage
+ *  units), drawn in `layer` under `mover` (an actor standing on its first point, its sticker facing left: a vehicle()
+ *  or a paperVehicle()). progress(p) puts the mover p (0 → 1) of the way to `short` units before the end, facing where
+ *  it heads (else the trip's heading), the dots revealed behind it; tail(q) reveals the last dots to the end (0 → 1);
+ *  both are getter/setters the timeline tweens, so they hold under seek (an onUpdate would not). length(): the road's
+ *  length (units). The road is measured on first use, once it is laid out. */
+export function roadOf({ layer, mover, points, short = SHORT }) {
+  const gsap = window.gsap;
+  const drawn = sheet("st-paper", parseFloat(layer.style.width), routeLine(curve(points)));
+  layer.insertBefore(drawn, mover.el); // under the mover
+  const line = drawn.querySelector(".st-route-path");
+  const holder = drawn.querySelector(".st-route-dots");
+  const right = points.at(-1)[0] >= points[0][0]; // the trip's heading
+  const { total, near } = chordsOf(points);
+  mover.turn.classList.toggle("is-flipped", facesRight(near, 0, total, right)); // its facing at the start
+
   let length = 0;
   let dots = [];
   let shown = 0;
@@ -115,8 +120,8 @@ export function carte(tl, at, { stage, layers, car, trajet, lieu, project, durat
     length = line.getTotalLength();
     holder.innerHTML = routeDots(Array.from({ length: Math.floor(length / DOT) + 1 }, (_, k) => line.getPointAtLength(k * DOT)));
     dots = [...holder.children];
-    setX = gsap.quickSetter(car.el, "x", "px");
-    setY = gsap.quickSetter(car.el, "y", "px");
+    setX = gsap.quickSetter(mover.el, "x", "px");
+    setY = gsap.quickSetter(mover.el, "y", "px");
   }
   function reveal(along) {
     const count = along > 0 ? Math.min(dots.length, Math.floor(along / DOT) + 1) : 0;
@@ -125,33 +130,66 @@ export function carte(tl, at, { stage, layers, car, trajet, lieu, project, durat
   }
   function place(p) {
     if (!length) measure();
-    const along = p * (length - SHORT);
+    const along = p * (length - short);
     const here = line.getPointAtLength(along);
-    setX(here.x - car.x);
-    setY(here.y - car.y);
-    car.turn.classList.toggle("is-flipped", facesRight((dist) => line.getPointAtLength(dist), along, length, right));
+    setX(here.x - mover.x);
+    setY(here.y - mover.y);
+    mover.turn.classList.toggle("is-flipped", facesRight((dist) => line.getPointAtLength(dist), along, length, right));
     reveal(along);
   }
-  /** A value GSAP can tween (a getter/setter), handed to `set` at each change. */
-  const settable = (set) => {
-    let value = 0;
-    return (next) => (next === undefined ? value : set((value = next)));
-  };
-  const driver = { progress: settable(place) };
-  // the last dots, to the pin
-  const tail = {
-    progress: settable((q) => {
+  return {
+    progress: settable(place),
+    // the last dots, to the end
+    tail: settable((q) => {
       if (!length) measure();
-      reveal(length - SHORT + q * SHORT);
+      reveal(length - short + q * short);
     }),
+    length() {
+      if (!length) measure();
+      return length;
+    },
   };
+}
+
+/** The pin of an arrival at `point` ({ x, y }, stage units), in `layer` over what it holds, hidden until it plops:
+ *  its tip on the point. */
+function pinAt(layer, point) {
+  const pin = h("div", { class: "st-pin" });
+  pin.innerHTML = PIN;
+  Object.assign(pin.style, HIDDEN, { left: `${layerX(layer, point.x - 14)}px`, top: `${point.y - 38}px` });
+  layer.append(pin);
+  return pin;
+}
+
+/** The pin plopping at `at` s, a pop heard. */
+function plop(tl, at, pin) {
+  tl.call(() => sfx("pop"), null, at + 0.03);
+  tl.fromTo(pin, { autoAlpha: 1, scale: 0, y: -16 }, { scale: 1, y: 0, duration: 0.42, ease: "back.out(3)", immediateRender: false }, at);
+}
+
+/** carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }): from `at` s, the trip on the map. The car
+ *  (a vehicle in view « roule », standing on the trip's first point) waits for the map to be seen, then drives along
+ *  the road with a bounce and its engine, the dotted line drawn behind it (roadOf()), the camera (on `layers`, the
+ *  map's) following it a little closer; it pulls up by the arrival, the last dots run to it and its pin plops. The names
+ *  come from the data: trajet.depart, trajet.etapes (each at its point trajet.etapesAt[k]) and trajet.arrivee, else
+ *  lieu (stops()). → its end (s). */
+export function carte(tl, at, { stage, layers, car, trajet, lieu, project, duration }) {
+  const gsap = window.gsap;
+  const points = trajet.points.map(project).map(({ x, y }) => [x, y]);
+  const road = roadOf({ layer: car.layer, mover: car, points });
+  car.layer.insertBefore(sheet("st-paper", parseFloat(car.layer.style.width), names(stops({ trajet, lieu }, project))), car.el); // over the road, under the car
+  const end = project(trajet.points.at(-1));
+  const pin = pinAt(car.layer, end); // over it
+  const { total, near } = chordsOf(points);
+  const sideways = Math.abs(end.x - points[0][0]) > Math.abs(end.y - points[0][1]); // a trip west to east (stops())
+
   const leave = at + ENTER; // the map seen (at 0, the screen faded in)
   const arrive = at + duration - 0.62; // the pin has plopped before the map leaves
   const ease = "sine.inOut";
   stage.sound(tl, at + 0.3, "engine");
-  tl.to(driver, { progress: 1, duration: arrive - leave, ease }, leave);
+  tl.to(road, { progress: 1, duration: arrive - leave, ease }, leave);
   car.bounce(tl, leave, arrive - leave);
-  // the camera a little closer, after the car south: where it will be (by the chords, as eased) at each step, a little
+  // the camera a little closer, after the car: where it will be (by the chords, as eased) at each step, a little
   // ahead; sideways it follows it only a quarter, so the names and the coast stay whole on a phone
   const zoom = 1.12;
   const steps = [0.5, 0.82, 1];
@@ -159,13 +197,44 @@ export function carte(tl, at, { stage, layers, car, trajet, lieu, project, durat
     const from = k ? steps[k - 1] : 0;
     const there = near(gsap.parseEase(ease)(f) * (total - SHORT));
     const x = CENTRE.x + (there.x - CENTRE.x) / 4;
-    const look = { x, y: f === 1 ? (there.y + end.y) / 2 - 130 : there.y + 40 }; // at the end, the pin and the road behind
+    // at the end of a trip south, the pin and the road behind it; a trip east keeps the road at its height
+    const look = { x, y: f === 1 && !sideways ? (there.y + end.y) / 2 - 130 : there.y + 40 };
     stage.pan(tl, leave + from * (arrive - leave), { x: zoom * (look.x - CENTRE.x), y: zoom * (look.y - CENTRE.y), zoom, duration: (f - from) * (arrive - leave), ease: ["sine.in", "none", "sine.out"][k], only: layers });
   });
   // the last dots run to the arrival, its pin plops
-  tl.to(tail, { progress: 1, duration: 0.2, ease: "power1.out" }, arrive);
-  tl.call(() => sfx("pop"), null, arrive + 0.15);
-  tl.fromTo(pin, { autoAlpha: 1, scale: 0, y: -16 }, { scale: 1, y: 0, duration: 0.42, ease: "back.out(3)", immediateRender: false }, arrive + 0.12);
+  tl.to(road, { tail: 1, duration: 0.2, ease: "power1.out" }, arrive);
+  plop(tl, arrive + 0.12, pin);
+  return at + duration;
+}
+
+const RELAY_SHORT = 30; // units: the relay's vehicle pulls up this short of its arrival
+const DIVE = 4; // the zoom the camera dives to, onto the relay's start
+const CLOSE = 2.4; // the zoom the next map shows at first, on its own start
+
+/** relais(tl, at, { stage, from, layers, vehicle, route, duration }): from `at` s, the trip goes on by another vehicle
+ *  on a map of its own. The camera dives onto the relay's start on the map before (from = { layers, x, y }: its layers'
+ *  elements and that point, stage units) as it fades; the next map (`layers`, its elements, hidden until then: the
+ *  last holds `vehicle`) shows through close on its own start (route[0]), then settles. The vehicle (a paperVehicle()
+ *  standing on route[0]) honks and drives along `route` ([x, y], stage units) with a bounce, its dotted line drawn
+ *  behind it (roadOf()); it pulls up by the arrival, the last dots run to it and its pin plops. → its end (s). */
+export function relais(tl, at, { stage, from, layers, vehicle, route, duration }) {
+  const road = roadOf({ layer: vehicle.layer, mover: vehicle, points: route, short: RELAY_SHORT });
+  const [ex, ey] = route.at(-1);
+  const pin = pinAt(vehicle.layer, { x: ex, y: ey });
+  // the dive, the map before fading as the next one shows through, close on the same place
+  stage.pan(tl, at, { x: DIVE * (from.x - W / 2), y: DIVE * (from.y - H / 2), zoom: DIVE, duration: 0.45, ease: "power2.in", only: from.layers });
+  const [sx, sy] = route[0];
+  stage.pan(tl, at, { x: CLOSE * (sx - W / 2), y: CLOSE * (sy - H / 2), zoom: CLOSE, duration: 0, only: layers });
+  tl.set(layers, { autoAlpha: 1 }, at + 0.05).to(from.layers, { autoAlpha: 0, duration: 0.25, ease: "power1.in" }, at + 0.1);
+  stage.pan(tl, at + 0.3, { duration: 0.8, ease: "power2.inOut", only: layers });
+  // the vehicle honks and drives off, its pin plops
+  const leave = at + 0.5;
+  const arrive = at + duration - 0.62;
+  stage.sound(tl, at + 0.42, "honk");
+  tl.to(road, { progress: 1, duration: arrive - leave, ease: "sine.inOut" }, leave);
+  vehicle.bounce(tl, leave, arrive - leave);
+  tl.to(road, { tail: 1, duration: 0.2, ease: "power1.out" }, arrive);
+  plop(tl, arrive + 0.12, pin);
   return at + duration;
 }
 

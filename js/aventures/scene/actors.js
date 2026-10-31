@@ -1,9 +1,10 @@
 // The intros' actors (spec § 4): stickers standing in the scene. A person has a sticker per side (face, dos) and pose,
-// a vehicle one per view, a sticker of several people together is a plain actor. Each actor holds an <img> per look it
-// uses, all loaded before the intro plays (preload()), and the timeline shows one look at a time (a set: it holds under
-// seek). An actor stands on its point (x, y: the middle of its feet or wheels, in stage units) in its layer; it moves
-// on its own (x, y), turns or flips (scaleX) and hops, sways, leans (y, rotation) in three nested boxes, the last one
-// drawn apart (css/intros.css, st-actor*). Reads `window` only in its functions.
+// a vehicle one per view, a scene sticker (several people drawn together) one per view too; a paper vehicle (the bus)
+// is drawn in code. Each actor holds an <img> per look it uses, all loaded before the intro plays (preload()), and the
+// timeline shows one look at a time (a set: it holds under seek). An actor stands on its point (x, y: the middle of its
+// feet or wheels, in stage units) in its layer; it moves on its own (x, y), turns or flips (scaleX) and hops, sways,
+// leans (y, rotation) in three nested boxes, the last one drawn apart (css/intros.css, st-actor*). Reads `window` only
+// in its functions.
 import { sfx } from "../../audio.js";
 import { content } from "../../content.js";
 import { fallbackUrl, stickerUrl, vehicleFallback, vehicleUrl } from "./urls.js";
@@ -62,6 +63,20 @@ export function actor({ layer, src, fallback, x, y, height }) {
   const self = cast({ layer, x, y, size: height });
   self.look("sticker", src, fallback);
   self.wear("sticker");
+  return self;
+}
+
+/** sceneActor({ layer, who, looks, look, x, y, height }): a scene sticker (the two of them drawn together, or one of
+ *  them in a scene of its own), `height` units tall, with its views: looks = { [key]: { src, fallback } } (sceneUrl(),
+ *  and the stand-in of its main person in the nearest pose, fallbackUrl()); it shows `look` first. SceneActor = Actor +
+ *  { show }. */
+export function sceneActor({ layer, who, looks, look, x, y, height }) {
+  const self = cast({ layer, x, y, size: height });
+  self.el.dataset.who = who;
+  for (const [key, { src, fallback }] of Object.entries(looks)) self.look(key, src, fallback);
+  self.wear(look);
+  /** Into the view `key` at `at` s. */
+  self.show = (tl, at, key) => self.wearAt(tl, at, key);
   return self;
 }
 
@@ -161,6 +176,12 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
   return self;
 }
 
+/** A vehicle's pose (`target`) bumping on the road for `duration` s, by `k` (its width over 150 units). */
+function bumps(tl, target, at, duration, k) {
+  const bump = 0.09;
+  tl.to(target, { y: -2.6 * k, duration: bump, ease: "sine.out", repeat: Math.max(1, Math.round(duration / bump) & ~1) - 1, yoyo: true }, at);
+}
+
 // a puff of paper smoke: three discs, their shadow under them
 const PUFF = `<svg viewBox="-14 -12 28 24" width="28" height="24"><g fill="#3b2a18" fill-opacity=".16" transform="translate(0 2)"><circle cx="-5" cy="2" r="7"/><circle cx="4" cy="0" r="8"/><circle cx="0" cy="-5" r="6"/></g><g fill="#f3ede2"><circle cx="-5" cy="2" r="7"/><circle cx="4" cy="0" r="8"/><circle cx="0" cy="-5" r="6"/></g><path d="M-6-6a6 6 0 0 1 9-3" fill="none" stroke="#fffaf0" stroke-width="1.4" stroke-linecap="round"/></svg>`;
 
@@ -186,10 +207,7 @@ export function vehicle({ layer, name: car, x, y, width, view = "trois-quarts" }
       else tl.fromTo(self.el, { x: fromX - x }, { ...to, immediateRender: false }, at);
     },
     /** Bumps on the road for `duration` s. */
-    bounce(tl, at, duration) {
-      const bump = 0.09;
-      tl.to(self.pose, { y: -2.6 * k, duration: bump, ease: "sine.out", repeat: Math.max(1, Math.round(duration / bump) & ~1) - 1, yoyo: true }, at);
-    },
+    bounce: (tl, at, duration) => bumps(tl, self.pose, at, duration, k),
     /** `puffs` puffs of paper smoke from its back (its right, the stickers facing left), 0.12 s apart. */
     smoke(tl, at, puffs = 3) {
       for (let i = 0; i < puffs; i++) {
@@ -212,6 +230,19 @@ export function vehicle({ layer, name: car, x, y, width, view = "trois-quarts" }
         .to(self.pose, { rotation: 0, scaleY: 1, duration: 0.35, ease: "elastic.out(1.2, 0.45)" }, at + 0.08);
     },
   });
+}
+
+/** paperVehicle({ layer, name, markup, x, y, width }): a vehicle drawn in paper (`markup`: an <svg> of its own, facing
+ *  left like the stickers, shown as an image), `width` units wide; a road (recipes.js) drives it as it drives a
+ *  vehicle(). PaperVehicle = Actor + { bounce }. */
+export function paperVehicle({ layer, name, markup, x, y, width }) {
+  const self = cast({ layer, x, y, size: width, wide: true });
+  self.el.dataset.vehicle = name;
+  self.look("paper", `data:image/svg+xml,${encodeURIComponent(markup)}`);
+  self.wear("paper");
+  /** Bumps on the road for `duration` s. */
+  self.bounce = (tl, at, duration) => bumps(tl, self.pose, at, duration, width / 150);
+  return self;
 }
 
 /** preload(imgs, timeout): resolves once every image has arrived or failed; a failed one goes once to its stand-in

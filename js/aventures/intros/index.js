@@ -15,4 +15,19 @@ export const SCENARIOS = {
       { name: "L'affiche", at: 15.4 },
     ],
   },
+  canoe: {
+    load: () => import("./canoe.js"),
+    beats: [
+      { name: "La carte", at: 0 },
+      { name: "La mise à l'eau", at: 5 },
+      { name: "Les ronds dans l'eau", at: 7 },
+      { name: "La descente", at: 11 },
+      { name: "Le coin perdu", at: 15 },
+      { name: "Le plouf", at: 18 },
+      { name: "L'arrivée", at: 21.2 },
+      { name: "Sarlat", at: 23.2 },
+      { name: "La Roque-Gageac", at: 26.2 },
+      { name: "L'affiche", at: 28.6 },
+    ],
+  },
 };

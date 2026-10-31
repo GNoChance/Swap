@@ -368,6 +368,13 @@ const sounds = {
   horn() {
     [349.2, 352, 440].forEach((freq) => tone({ freq, type: "sawtooth", dur: 0.95, gain: 0.045, attack: 0.03 }));
   },
+  /** A little bus's « pouet »: two short honks, the second higher (~0.35 s). */
+  honk() {
+    [[0, 392], [0.18, 466.2]].forEach(([at, freq]) => {
+      tone({ freq, type: "square", at, dur: 0.15, gain: 0.045, attack: 0.012 });
+      tone({ freq: freq * 1.5, type: "triangle", at, dur: 0.14, gain: 0.03, attack: 0.012 });
+    });
+  },
   /** A crowd roaring in the stands. */
   crowd() {
     for (let i = 0; i < 8; i++) noise({ at: i * 0.16, dur: 0.9, gain: 0.07, filter: 600 + Math.random() * 900, q: 0.35 });

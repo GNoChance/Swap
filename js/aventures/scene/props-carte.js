@@ -46,17 +46,19 @@ const COAST = [
 ];
 const RIVERS = [
   [[45.03, -0.555], [44.837, -0.56], [44.7, -0.42], [44.553, -0.24], [44.42, -0.05], [44.2, 0.62], [43.95, 1.15], [43.6, 1.44], [43.3, 1.0], [43.0, 0.75], [42.7, 0.8]], // the Garonne, from Spain
-  [[45.03, -0.555], [44.97, -0.4], [44.92, -0.24], [44.87, 0.1], [44.85, 0.48], [44.82, 1.0], [44.9, 1.6], [45.0, 2.4], [45.3, 3.4]], // the Dordogne
+  [[45.03, -0.555], [44.97, -0.4], [44.92, -0.24], [44.87, 0.1], [44.85, 0.48], [44.82, 1.0], [44.9, 1.6], [45.0, 2.4], [45.3, 3.4]], // the Dordogne (DORDOGNE)
   [[43.53, -1.52], [43.49, -1.42], [43.6, -1.2], [43.71, -1.05], [43.76, -0.57], [43.7, -0.26], [43.45, 0.0], [43.23, 0.07], [43.0, 0.15], [42.8, 0.15]], // the Adour
   [[43.64, -1.15], [43.49, -0.77], [43.31, -0.45], [43.295, -0.37], [43.2, -0.2], [43.09, -0.05], [42.9, -0.02], [42.72, -0.01]], // the Gave de Pau, from the Adour to Gavarnie
 ];
+const DORDOGNE = 1; // its index in RIVERS
 // the Landes' forest, and the Médoc's: [lat, lon]
 const FOREST = [[45.4, -1.1], [45.3, -0.92], [45.05, -0.9], [44.9, -0.72], [44.6, -0.5], [44.3, -0.36], [44.0, -0.2], [43.78, -0.28], [43.72, -0.7], [43.72, -1.05], [43.68, -1.38], [44.0, -1.3], [44.42, -1.22], [44.75, -1.08], [45.0, -1.16]];
 // the crest of the Pyrenees, and on west the Basque and Cantabrian mountains behind the Spanish coast
 const CREST = [[43.0, -6.6], [43.15, -4.8], [43.05, -3.5], [43.05, -2.4], [43.31, -1.635], [43.1, -1.3], [42.99, -0.99], [42.95, -0.72], [42.84, -0.44], [42.84, -0.29], [42.77, -0.15], [42.85, 0.12], [42.63, 0.66], [42.67, 1.41], [42.52, 2.46], [42.45, 3.15], [42.4, 4.4]];
 const OSSAU_AT = [42.835, -0.3]; // a little east of its true place (42.84, −0.44), clear of the lakes' pin
 
-const pts = (project, list) => list.map((p) => project(p)).map(({ x, y }) => [x, y]);
+/** Real points [lat, lon] on the stage, [x, y]. */
+export const pts = (project, list) => list.map((p) => project(p)).map(({ x, y }) => [x, y]);
 /** Is [x, y] inside the polygon? */
 function inside(list, [x, y]) {
   let odd = false;
@@ -69,7 +71,7 @@ function inside(list, [x, y]) {
 /** The land's outline: the coast, closed far to the south, east and north. */
 const landOf = (project) => [...pts(project, COAST), [-1000, 1600], [1600, 1600], [1600, -700], [-200, -700]];
 /** How far [x, y] is from a line of points. */
-function distance(line, [x, y]) {
+export function distance(line, [x, y]) {
   let best = Infinity;
   for (let i = 1; i < line.length; i++) {
     const [[ax, ay], [bx, by]] = [line[i - 1], line[i]];
@@ -94,11 +96,12 @@ export function ocean(project) {
 }
 
 /** The land, a sheet of paper over the sea (its shadow on the water, its coast lit), with its forests, its fields
- *  inland (east of `road`, its points [x, y]) and its rivers. */
-export function land(project, { road = [] } = {}) {
+ *  inland (east of `road`, its points [x, y]) and its rivers; dordogne: false leaves the Dordogne to a map that draws
+ *  it its own way (props-perigord.js). */
+export function land(project, { road = [], dordogne = true } = {}) {
   const outline = landOf(project);
   const forest = blob(pts(project, FOREST));
-  const rivers = RIVERS.map((river) => curve(pts(project, river))).join("");
+  const rivers = RIVERS.filter((_, k) => dordogne || k !== DORDOGNE).map((river) => curve(pts(project, river))).join("");
   const r = random(65);
   const fields = ["", "", ""];
   for (let i = 0; i < 90; i++) {
@@ -199,13 +202,16 @@ export function pyrenees(project) {
 
 const escape = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** stops({ trajet, lieu }, project): where names are written, [{ name, x, y, kind, side, box }]: the start
- *  (trajet.depart, its first point), each stage (trajet.etapes, at the point of index trajet.etapesAt[k], the nearest
- *  to its town) and the arrival (trajet.arrivee, else lieu; its last point); each name on the side the road does not take. A stage without
- *  its point throws, naming it. */
+/** stops({ trajet, lieu }, project): where names are written, [{ name, x, y, kind, side, gap, tx, ty, anchor, box }]:
+ *  the start (trajet.depart, its first point), each stage (trajet.etapes, at the point of index trajet.etapesAt[k], the
+ *  nearest to its town) and the arrival (trajet.arrivee, else lieu; its last point). On a trip going south, each name on
+ *  the side the road does not take; on a trip going east (further across than down), the start's and the arrival's
+ *  under the road, the first beginning by its point and the last ending by it (in the stage, past the car on the
+ *  start), and each stage's over it. The text at tx, ty, anchored there. A stage without its point throws, naming it. */
 export function stops({ trajet, lieu }, project) {
   const road = pts(project, trajet.points);
   const last = road.length - 1;
+  const sideways = Math.abs(road[last][0] - road[0][0]) > Math.abs(road[last][1] - road[0][1]);
   const etapes = trajet.etapes.map((name, k) => {
     const at = trajet.etapesAt?.[k];
     if (!Number.isInteger(at) || !road[at]) throw new Error(`trajet: no point for the stage « ${name} » (etapesAt[${k}] = ${at})`);
@@ -218,18 +224,24 @@ export function stops({ trajet, lieu }, project) {
     const side = near.reduce((sum, [nx]) => sum + nx, 0) / near.length > x ? "left" : "right";
     const gap = kind === "etape" ? 10 : 34; // the car stands on the start and near the arrival
     const wide = name.length * 8.4;
-    const x0 = side === "left" ? x - gap - wide : x + gap;
-    return { name, x, y, kind, side, gap, box: { x0: x0 - 4, x1: x0 + wide + 4, y0: y - 16, y1: y + 9 } };
+    const [tx, ty, anchor] = !sideways
+      ? [side === "left" ? x - gap : x + gap, y + 5, side === "left" ? "end" : "start"]
+      : kind === "start"
+        ? [x + 16, y + 24, "start"]
+        : kind === "end"
+          ? [x + 14, y + 24, "end"]
+          : [x, y - 11, "middle"];
+    const x0 = anchor === "end" ? tx - wide : anchor === "middle" ? tx - wide / 2 : tx;
+    return { name, x, y, kind, side, gap, tx, ty, anchor, box: { x0: x0 - 4, x1: x0 + wide + 4, y0: ty - 21, y1: ty + 4 } };
   });
 }
 
 /** The stops: a ring at the start, a dot at each stage (the pin marks the arrival), and their names. */
 export function names(list) {
   return list
-    .map(({ name, x, y, kind, side, gap }) => {
+    .map(({ name, x, y, kind, tx, ty, anchor }) => {
       const mark = kind === "start" ? `<circle cx="${n(x)}" cy="${n(y)}" r="5.6" fill="${C.ink}"/><circle cx="${n(x)}" cy="${n(y)}" r="2.8" fill="${C.cream}"/>` : kind === "etape" ? `<circle cx="${n(x)}" cy="${n(y)}" r="3.8" fill="${C.ink}"/><circle cx="${n(x)}" cy="${n(y)}" r="1.6" fill="${C.cream}"/>` : "";
-      const tx = side === "left" ? x - gap : x + gap;
-      return `${mark}<text class="st-name" x="${n(tx)}" y="${n(y + 5)}" text-anchor="${side === "left" ? "end" : "start"}">${escape(name)}</text>`;
+      return `${mark}<text class="st-name" x="${n(tx)}" y="${n(ty)}" text-anchor="${anchor}">${escape(name)}</text>`;
     })
     .join("");
 }
