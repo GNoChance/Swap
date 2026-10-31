@@ -5,7 +5,9 @@
 // zoomed decors on a wide screen, the stickers it loads and a scene sticker's stand-in, its scenario warmed on the
 // passport, in and out of it three times, a touch the first time, « Passer ▸ » in the demo, the browser's back. Needs
 // the site running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-canoe.mjs` (ONLY=1920: a single
-// screen). Stops at the first failure (exit code 1). A check also fails if the page logged an error.
+// screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, and of the map at 1.5 and 4.6 s). Stops at the first failure (exit code 1). A check also fails if the page logged an error.
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
 import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
@@ -13,6 +15,7 @@ import { AVENTURES } from "../../js/aventures/data.js";
 
 // read here rather than imported: without its scenario, the suite still runs and says what fails
 const { stickers } = await import("../../js/aventures/intros/canoe.stickers.js").catch(() => ({ stickers: [] }));
+const SHOTS = process.env.SHOTS;
 const BASE = process.env.BASE || "http://localhost:5173/";
 const CANOE = `${BASE}?demo#/aventures/canoe`;
 const TITLE = "LA DORDOGNE";
@@ -339,6 +342,26 @@ async function suite(page, vp) {
       }
     });
 
+  if (SHOTS) {
+    // the middle of each moment, held still, on this screen (and the phone turned), plus the two maps; the demo banner hidden
+    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [1.5, "00-carte-1-5s"], [RELAY_AT, "00-carte-4-6s"]];
+    for (const [width, height] of vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]]) {
+      await page.resize(width, height);
+      try {
+        for (const [t, file] of stops) {
+          await page.goto(`${BASE}?demo&t=${t}#/aventures/canoe`);
+          await page.waitFor(`innerWidth === ${width} && ${playing}`, 8000);
+          await sleep(250);
+          await page.eval(holdAt(t));
+          await page.eval(`document.querySelectorAll(".demo-badge").forEach((el) => (el.style.display = "none"))`);
+          await page.screenshot(join(SHOTS, `${file}-${width}x${height}.png`));
+        }
+      } finally {
+        await page.resize(vp.width, vp.height);
+      }
+    }
+  }
+
   if (vp === VIEWPORTS[0]) {
     await check(`point 2 : à ?demo&t= ${SPIN.join(", ").replaceAll(".", ",")} (au milieu des demi-tours du canoë, puis reparti), le canoë montre exactement une vue ; à ${String(OFF_AGAIN).replace(".", ",")} s, sa boîte turn a un scaleX de 1 ou de −1 (à 0,01 près) ; et de 0,1 en 0,1 s, en avant puis en arrière, de la mise à l'eau à la descente : jamais deux vues ni aucune pendant les ronds dans l'eau, et le panneau du départ jamais coupé par le bord`, async () => {
       for (const t of SPIN) {
@@ -485,6 +508,7 @@ async function suite(page, vp) {
   }
 }
 
+if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 for (const vp of VIEWPORTS.filter((v) => !process.env.ONLY || v.name.includes(process.env.ONLY))) {
   console.log(`— ${vp.name}`);
   const page = await launch(vp);
