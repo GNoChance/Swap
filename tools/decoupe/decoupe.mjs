@@ -1,9 +1,9 @@
 // Cuts die-cut sticker boards into one WebP per sticker (spec § 7), into assets/aventures/. The pixels go through
 // headless Chrome (the e2e client, no dependency): it decodes the PNG, crops, scales to 300 px (600 for a scene) and encodes the WebP.
-// Run: node tools/decoupe/decoupe.mjs <boards folder of an outing | board.png> [--scene]
+// Run: node tools/decoupe/decoupe.mjs <boards folder of an outing | board.png> [--scene [--count N]]
 //   a folder: its standard boards (« <Who> de face.png », « <Who> de dos.png »), 12 poses each;
 //   a file in planches/voyages/vehicules/: a vehicle, 12 views;
-//   --scene: a scene board, any number of stickers, numbered scene-<board>-01.webp… in reading order.
+//   --scene: a scene board, any number of stickers, numbered scene-<board>-01.webp… in reading order; --count N (with --scene only) expects exactly N and unglues touching ones.
 // A board that does not give the expected stickers is reported and writes nothing; the others go on, and the exit
 // code is 1. A contact sheet of each board lands in tools/decoupe/apercu/ (not in git).
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -75,13 +75,13 @@ const PAGE = `(() => {
 })()`;
 
 /** What to cut in a board file: where it is read from, how many stickers, and the names (under assets/aventures/). */
-function jobOf(file, scene) {
+function jobOf(file, scene, count) {
   const folder = basename(dirname(file));
   const name = basename(file, ".png");
   const outing = outingOf(folder);
   if (scene) {
     const names = (count) => Array.from({ length: count }, (_, i) => `${outing}/scene-${slug(name)}-${String(i + 1).padStart(2, "0")}.webp`);
-    return { file, scene: true, expected: null, names, sheet: `${outing}-scene-${slug(name)}` };
+    return { file, scene: true, expected: count, names, sheet: `${outing}-scene-${slug(name)}` };
   }
   if (folder === "vehicules") {
     if (!VEHICLES[name]) throw new Error(`véhicule inconnu : « ${name} » (voir VEHICLES dans names.mjs)`);
@@ -155,9 +155,12 @@ function boardFiles(target, scene) {
 async function main() {
   const args = process.argv.slice(2);
   const scene = args.includes("--scene");
-  const target = args.find((a) => !a.startsWith("--"));
-  if (!target) throw new Error("usage : node tools/decoupe/decoupe.mjs <dossier de planches | planche.png> [--scene]");
-  const jobs = boardFiles(target, scene).map((file) => jobOf(file, scene));
+  const at = args.indexOf("--count");
+  const count = at < 0 ? null : Number(args[at + 1]);
+  if (at >= 0 && (!scene || !Number.isInteger(count) || count < 1)) throw new Error("--count N (entier) ne va qu'avec --scene");
+  const target = args.find((a, i) => !a.startsWith("--") && i !== at + 1);
+  if (!target) throw new Error("usage : node tools/decoupe/decoupe.mjs <dossier de planches | planche.png> [--scene [--count N]]");
+  const jobs = boardFiles(target, scene).map((file) => jobOf(file, scene, count));
   const page = await launch({ width: 1200, height: 900, mobile: false });
   try {
     await page.eval(PAGE);
