@@ -32,14 +32,15 @@ const CLOUDS = [
   [760, 112, 110],
 ];
 
-/** A summer cloud `w` wide, its top left corner at x, y: puffed white paper, a blue-grey belly (the poster: cream). */
-function cloud(x, y, w, skin) {
+/** A summer cloud `w` wide, its top left corner at x, y: puffed white paper, a blue-grey belly (the poster: cream); on
+ *  paper, `tones` ({ body, belly }) for another light. */
+function cloud(x, y, w, skin, tones = { body: "#fffdf8", belly: "#dde9f2" }) {
   const k = w / 100;
   const at = ([px, py]) => [x + px * k, y + py * k];
   const body = blob([[6, 34], [0, 26], [10, 18], [26, 14], [36, 4], [56, 6], [66, 14], [84, 12], [96, 22], [92, 34]].map(at));
   if (!paper(skin)) return path(body, A.cream);
   const belly = blob([[12, 33], [40, 29], [70, 30], [90, 32], [60, 35.5]].map(at));
-  return piece(skin, body, path(body, "#fffdf8") + path(belly, "#dde9f2"), "", 0.8);
+  return piece(skin, body, path(body, tones.body) + path(belly, tones.belly), "", 0.8);
 }
 
 /** The summer sky: blue paper strips paler down to the hills, white clouds, the sun high on the left (the poster: its
@@ -56,6 +57,23 @@ export function sky(skin) {
     ...STRIPS.map((edge, k) => sheetOf(skin, edge, tones[k + 1], "", WATER_LINE + 10)),
     sun,
     ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, skin)),
+  ].join("");
+}
+
+/** The same sky in the golden light of the afternoon (the plouf; paper only): pale gold up high, warmer strip after
+ *  strip down to the hills, the sun glowing in its halo where the summer sky has it, the clouds cream with peach
+ *  bellies. Drawn over the summer sky, it only fades in. */
+export function cielDore() {
+  const tones = ["#f0dcaa", "#f3cf91", "#f5c17b", "#f6b469"];
+  const [sx, sy] = [-30, 150];
+  const halo = dot(sx, sy, 78);
+  const sun = [[44, "#fff0bf"], [30, "#fff8df"]].map(([r, fill]) => piece("paper", dot(sx, sy, r), path(dot(sx, sy, r), fill), "", 0.5)).join("");
+  return [
+    `<rect x="${L}" y="-30" width="1600" height="${WATER_LINE + 40}" fill="${tones[0]}"/>`,
+    ...STRIPS.map((edge, k) => sheetOf("paper", edge, tones[k + 1], "", WATER_LINE + 10)),
+    `<path d="${halo}" fill="#ffe7a6" fill-opacity=".55"/>`,
+    sun,
+    ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, "paper", { body: "#fff4dc", belly: "#f4c69c" })),
   ].join("");
 }
 
@@ -232,30 +250,49 @@ const pebble = (x, y, s, round) => (round ? blob : poly)([[x - s, y], [x - s * 0
 /** A canoe upside down on the beach, `w` long from x, y (its gunwale on the pebbles). */
 const hull = (x, y, w) => blob([[x, y], [x + w * 0.06, y - w * 0.12], [x + w * 0.5, y - w * 0.17], [x + w * 0.94, y - w * 0.12], [x + w, y], [x + w * 0.5, y + w * 0.02]]);
 
+/** A shore of pebbles along the water's `edge` ([[x, y]], left to right), scattered by `r` (a random()): its wet band
+ *  under the edge (path data), the white foam along the water, and `count` tries at a pebble at `at()` ([x, y]), kept
+ *  `clear` units under the edge and where `keep(x, y)` says, `size(y)` across, in `palette`'s colours in turn (curved
+ *  over `round` units), a lit lip over those over `lip` units, their shadow under all of them at once.
+ *  → { wet, foam, stones } (path data, markup, markup) */
+function shingle(r, edge, { count, at, size, clear = 5, keep = () => true, palette = PEBBLES, round = 5, lip = 3.5 }) {
+  const groups = palette.map(() => "");
+  let lit = "";
+  for (let k = 0; k < count; k++) {
+    const [x, y] = at();
+    if (y < edgeAt(edge, x) + clear || !keep(x, y)) continue;
+    const s = size(y);
+    groups[k % palette.length] += pebble(x, y, s, s > round);
+    if (s > lip) lit += lens(x - s * 0.45, y - s * 0.38, s * 0.6, s * 0.08);
+  }
+  return {
+    wet: poly([...edge, ...[...edge].reverse().map(([x, y]) => [x - 6, y + 14])]),
+    foam: `<path d="${curve(edge.map(([x, y]) => [x + 2, y - 2]))}" fill="none" stroke="#f4fbff" stroke-width="2.2" stroke-dasharray="26 9 12 7" stroke-linecap="round"/>`,
+    // their shadow, once: there are many
+    stones: `<path d="${groups.join("")}" transform="translate(0 1.2)" fill="#3b2a18" fill-opacity=".24"/>` + groups.map((d, k) => path(d, palette[k])).join("") + path(lit, "#e6dfcf"),
+  };
+}
+
+/** The rental's two lime canoes upside down on a beach, the first from x, y (its gunwale on the pebbles), the other
+ *  beside it. → { hulls, keels } (path data) */
+const rentals = (x, y) => ({ hulls: hull(x, y, 120) + hull(x + 120, y + 8, 112), keels: lens(x + 12, y - 14, 96, 2.2) + lens(x + 131, y - 6, 90, 2.2) });
+
 /** The pebble beach at Carsac where the canoes go in (after the photos): grey and beige pebbles bigger nearer, a wet
  *  band and foam along the water, a few big stones, and the rental's lime canoes upside down on the far left. */
 export function plage() {
   const r = random(311);
   const beach = `${curve(SHORE)}L318 800L${L} 800Z`;
-  const wet = poly([...SHORE, ...[...SHORE].reverse().map(([x, y]) => [x - 6, y + 14])]);
-  const groups = PEBBLES.map(() => "");
-  let lit = "";
-  for (let k = 0; k < 260; k++) {
-    const x = 316 - r() ** 1.5 * 910; // thicker towards the water's edge, in sight on a phone
-    const y = 600 + r() ** 0.8 * 190;
-    if (y < edgeAt(SHORE, x) + 5) continue;
-    const s = 1.6 + ((y - 590) / 200) * 6.5 * (0.6 + r() * 0.6);
-    groups[k % PEBBLES.length] += pebble(x, y, s, s > 5);
-    if (s > 3.5) lit += lens(x - s * 0.45, y - s * 0.38, s * 0.6, s * 0.08);
-  }
-  const canoes = [hull(-330, 632, 120), hull(-210, 640, 112)].join("");
-  const keels = [lens(-318, 618, 96, 2.2), lens(-199, 626, 90, 2.2)].join("");
+  const shore = shingle(r, SHORE, {
+    count: 260,
+    at: () => [316 - r() ** 1.5 * 910, 600 + r() ** 0.8 * 190], // thicker towards the water's edge, in sight on a phone
+    size: (y) => 1.6 + ((y - 590) / 200) * 6.5 * (0.6 + r() * 0.6),
+  });
+  const { hulls: canoes, keels } = rentals(-330, 632);
   const paddle = poly([[-100, 646], [-96, 646], [-140, 590], [-143, 592]]) + blob([[-145, 592], [-150, 576], [-143, 566], [-136, 576], [-138, 590]]);
   return [
-    piece("paper", beach, path(beach, "#d6cbb2") + path(wet, "#bbb19c"), curve(SHORE), 0.4),
-    `<path d="${curve(SHORE.map(([x, y]) => [x + 2, y - 2]))}" fill="none" stroke="#f4fbff" stroke-width="2.2" stroke-dasharray="26 9 12 7" stroke-linecap="round"/>`,
-    `<path d="${groups.join("")}" transform="translate(0 1.2)" fill="#3b2a18" fill-opacity=".24"/>`, // their shadow, once: there are many
-    groups.map((d, k) => path(d, PEBBLES[k])).join("") + path(lit, "#e6dfcf"),
+    piece("paper", beach, path(beach, "#d6cbb2") + path(shore.wet, "#bbb19c"), curve(SHORE), 0.4),
+    shore.foam,
+    shore.stones,
     ...[[-46, 772, 44], [150, 790, 56], [-190, 700, 34]].map(([x, y, w]) => rock(x, y, w, "paper")),
     piece("paper", canoes + paddle, path(canoes, "#a6d23a") + path(keels, "#79a520") + path(paddle, "#9cc63a"), "", 0.6),
   ].join("");
@@ -510,17 +547,7 @@ function beached(x, y, w) {
  *  end, and their lime canoe pulled up on it, a paddle beside it. */
 export function graviers() {
   const r = random(401);
-  const wet = poly([...GRAVEL, ...[...GRAVEL].reverse().map(([x, y]) => [x - 4, y + 12])]);
-  const grains = GRAINS.map(() => "");
-  let lit = "";
-  for (let k = 0; k < 300; k++) {
-    const x = L + r() * 1260;
-    const y = 586 + r() ** 0.75 * 214;
-    if (y < edgeAt(GRAVEL, x) + 5) continue;
-    const s = 1.1 + ((y - 580) / 220) * 4 * (0.5 + r() * 0.7);
-    grains[k % GRAINS.length] += pebble(x, y, s, false);
-    if (s > 3.4) lit += lens(x - s * 0.45, y - s * 0.38, s * 0.6, s * 0.08);
-  }
+  const shore = shingle(r, GRAVEL, { count: 300, at: () => [L + r() * 1260, 586 + r() ** 0.75 * 214], size: (y) => 1.1 + ((y - 580) / 220) * 4 * (0.5 + r() * 0.7), palette: GRAINS, round: Infinity, lip: 3.4 });
   // the tree's shade under the table, dappled with sun
   const shade = ellipse(190, 704, 262, 36);
   const dapples = Array.from({ length: 9 }, () => ellipse(-40 + r() * 460, 684 + r() * 40, 6 + r() * 12, 1.6 + r() * 2)).join("");
@@ -534,11 +561,10 @@ export function graviers() {
   const canoe = beached(408, 646, 156);
   const oar = paddleAt(392, 668, 520, 672);
   return [
-    sheetOf("paper", GRAVEL, "#d8cfba", path(wet, "#bdb39e"), 800), // down to the bottom: its shade along its edge only
-    `<path d="${curve(GRAVEL.map(([x, y]) => [x + 2, y - 2]))}" fill="none" stroke="#f4fbff" stroke-width="2" stroke-dasharray="22 8 10 6" stroke-linecap="round"/>`,
+    sheetOf("paper", GRAVEL, "#d8cfba", path(shore.wet, "#bdb39e"), 800), // down to the bottom: its shade along its edge only
+    shore.foam,
     `<path d="${shade}" fill="#3b2a18" fill-opacity=".13"/><path d="${dapples}" fill="#f1e9d6" fill-opacity=".45"/>`,
-    `<path d="${grains.join("")}" transform="translate(0 1)" fill="#3b2a18" fill-opacity=".2"/>`, // their shadow, once: there are many
-    grains.map((d, k) => path(d, GRAINS[k])).join("") + path(lit, "#e8e1d0"),
+    shore.stones,
     path(tufts, "#7f9c5c"),
     piece("paper", log, path(log, "#b9ab96") + path(knots, "#8f8270") + path(lens(-292, 664, 150, 1.4), "#d3c8b6"), "", 0.6),
     ...[[-90, 712, 40], [-430, 640, 52], [590, 780, 46]].map(([x, y, w]) => rock(x, y, w, "paper")),
@@ -611,7 +637,8 @@ export function tablee() {
 
 /** A splash of paper water where someone falls in, `w` units wide, each part an <svg> of its own: its crown (tongues of
  *  water rising round the hole, white-edged, a drop on each tip, foam at its foot; its foot in its bottom middle), the
- *  ring of foam spreading flat on the water (round its middle), a drop flying off (its foot in its bottom middle). */
+ *  ring of foam spreading flat on the water (1.5 w by 0.3 w, round its middle), a drop flying off (its foot in its bottom
+ *  middle). */
 export function gerbe(w) {
   const h = w * 0.8;
   // each tongue: [its foot's x, its height (of h), its lean], higher in the middle, leaning out at the sides
@@ -626,10 +653,10 @@ export function gerbe(w) {
   const tips = tongues.map(([fx, fh, lean]) => dot(fx * w + lean * w * 0.24, -fh * h - w * 0.07, w * 0.032)).join("");
   const foam = blob([[-w * 0.52, 0], [-w * 0.3, -h * 0.09], [0, -h * 0.12], [w * 0.3, -h * 0.09], [w * 0.52, 0], [w * 0.2, h * 0.07], [-w * 0.2, h * 0.07]]);
   const svg = (x, y, width, height, markup) => `<svg viewBox="${n(x)} ${n(y)} ${n(width)} ${n(height)}" width="${n(width)}" height="${n(height)}">${markup}</svg>`;
-  const ring = `${ellipse(0, 0, w * 0.85, w * 0.17)}${ellipse(0, 0, w * 0.62, w * 0.11)}`;
+  const ring = `${ellipse(0, 0, w * 0.75, w * 0.15)}${ellipse(0, 0, w * 0.55, w * 0.1)}`;
   return {
     couronne: svg(-w / 2, -h, w, h, piece("paper", outer + tips, path(outer, "#cfe7f4") + path(inner, "#a6d0e6") + path(tips, "#e6f4fa"), "", 0.7) + `<path d="${outer}" fill="none" stroke="#fff" stroke-width="1.3"/>` + path(foam, "#f6fbfd")),
-    anneau: svg(-w * 0.85, -w * 0.17, w * 1.7, w * 0.34, `<path d="${ring}" fill="#f4fafc" fill-opacity=".9" fill-rule="evenodd"/>`),
+    anneau: svg(-w * 0.75, -w * 0.15, w * 1.5, w * 0.3, `<path d="${ring}" fill="#f4fafc" fill-opacity=".9" fill-rule="evenodd"/>`),
     goutte: svg(-4, -7, 8, 9, `<path d="${drop(0, 0, 2.6, 0)}" fill="#cfe7f4" stroke="#fff" stroke-width="1"/>`),
   };
 }
@@ -700,20 +727,17 @@ function arbre(x, y, h, s, seed) {
  *  parking on it, its wooden posts and its blue P, the trees round it, two tall ones framing the landing. */
 export function herbe() {
   const r = random(431);
-  const wet = poly([...LANDING, ...[...LANDING].reverse().map(([x, y]) => [x - 4, y + 10])]);
   const top = [LAWN[0], ...LANDING.filter(([x]) => x > LAWN[0][0])];
   const lawn = `${curve(top)}L${R} 800${curve([...LAWN].reverse()).replace(/^M/, "L")}Z`;
   const lawnAt = (y) => edgeAt(LAWN.map(([x, ly]) => [ly, x]), y); // the grass's left edge at y
-  const stones = PEBBLES.map(() => "");
-  let lit = "";
-  for (let k = 0; k < 360; k++) {
-    const x = 266 - r() ** 1.3 * 760; // thicker in sight on a phone
-    const y = 552 + r() ** 0.8 * 248;
-    if (y < edgeAt(LANDING, x) + 6 || x > lawnAt(y) - 6) continue;
-    const s = 1.4 + ((y - 540) / 260) * 6 * (0.6 + r() * 0.6);
-    stones[k % PEBBLES.length] += pebble(x, y, s, s > 7);
-    if (s > 3.5) lit += lens(x - s * 0.45, y - s * 0.38, s * 0.6, s * 0.08);
-  }
+  const shore = shingle(r, LANDING, {
+    count: 360,
+    at: () => [266 - r() ** 1.3 * 760, 552 + r() ** 0.8 * 248], // thicker in sight on a phone
+    size: (y) => 1.4 + ((y - 540) / 260) * 6 * (0.6 + r() * 0.6),
+    clear: 6,
+    keep: (x, y) => x <= lawnAt(y) - 6, // on the beach, not on the grass
+    round: 7,
+  });
   let tufts = "";
   const flowers = ["", ""];
   for (let k = 0; k < 150; k++) {
@@ -731,14 +755,12 @@ export function herbe() {
   const sign = poly([[421, 504], [441, 504], [441, 524], [421, 524]]);
   const pole = poly([[430, 574], [430, 524], [432, 524], [432, 574]]);
   const trees = [[476, 560, 34], [606, 562, 30], [726, 566, 36], [862, 562, 32], [966, 570, 28]];
-  const canoes = [hull(-330, 598, 120), hull(-200, 604, 110)].join("");
-  const keels = [lens(-318, 584, 96, 2.2), lens(-189, 590, 88, 2.2)].join("");
+  const { hulls, keels } = rentals(-330, 598);
   return [
-    sheetOf("paper", LANDING, "#d6cbb2", path(wet, "#bbb19c"), 800),
-    `<path d="${curve(LANDING.map(([x, y]) => [x + 2, y - 2]))}" fill="none" stroke="#f4fbff" stroke-width="2.2" stroke-dasharray="26 9 12 7" stroke-linecap="round"/>`,
-    `<path d="${stones.join("")}" transform="translate(0 1.2)" fill="#3b2a18" fill-opacity=".24"/>`, // their shadow, once
-    stones.map((d, k) => path(d, PEBBLES[k])).join("") + path(lit, "#e6dfcf"),
-    piece("paper", canoes, path(canoes, LIME.hull) + path(keels, LIME.dark), "", 0.6),
+    sheetOf("paper", LANDING, "#d6cbb2", path(shore.wet, "#bbb19c"), 800),
+    shore.foam,
+    shore.stones,
+    piece("paper", hulls, path(hulls, LIME.hull) + path(keels, LIME.dark), "", 0.6),
     piece("paper", lawn, path(lawn, "#86ab58") + path(tufts, "#6f9446") + path(flowers[0], "#fbf6ee") + path(flowers[1], "#f2cf5b"), curve(top), 0.6),
     roundTrees(trees),
     arbre(12, 548, 196, 178, 441),

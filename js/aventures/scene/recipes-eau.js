@@ -148,13 +148,13 @@ export function plouf(tl, at, { jumper, to, layer, duration = 0.6 }) {
     splash.append(el);
     return el;
   };
-  const ring = part("st-gerbe__anneau", anneau, -w * 0.85, -w * 0.17);
+  const ring = part("st-gerbe__anneau", anneau, -w * 0.75, -w * 0.15);
   const crown = part("st-gerbe__couronne", couronne, -w / 2, -w * 0.8);
   const drops = Array.from({ length: DROPS }, () => part("st-gerbe__goutte", goutte, -4, -7));
   layer.append(splash);
   const opens = land - 0.03;
   tl.call(() => sfx("splash"), null, land - 0.02);
-  tl.fromTo(ring, { autoAlpha: 0.95, scale: 0.3 }, { scale: 1.25, duration: 0.7, ease: "power2.out", immediateRender: false }, opens).to(ring, { autoAlpha: 0, duration: 0.35, ease: "power1.in" }, opens + 0.4);
+  tl.fromTo(ring, { autoAlpha: 0.95, scale: 0.3 }, { scale: 1.15, duration: 0.7, ease: "power2.out", immediateRender: false }, opens).to(ring, { autoAlpha: 0, duration: 0.35, ease: "power1.in" }, opens + 0.4);
   tl.fromTo(crown, { autoAlpha: 1, scaleX: 0.6, scaleY: 0.1 }, { scaleX: 1, scaleY: 1, duration: 0.2, ease: "back.out(1.6)", immediateRender: false }, opens).to(crown, { scaleX: 1.15, scaleY: 0.25, autoAlpha: 0, duration: 0.4, ease: "power2.in" }, opens + 0.24);
   drops.forEach((drop, k) => {
     const f = k / (DROPS - 1) - 0.5; // −0.5 (left) → 0.5 (right)

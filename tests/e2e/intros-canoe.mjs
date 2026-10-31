@@ -44,6 +44,10 @@ const CAST = {
 };
 // side by side at the table, their gingham cloths meet: their boxes at most this many units apart
 const TABLE = { beat: "Le coin perdu", mates: ["repas-cycy", "repas-kevin"], gap: 6 };
+// in the middle of the plouf, Kevin's splash shows (some of its parts), all of it on screen
+const SPLASHED = "Le plouf";
+// s: the plouf's canoe as Kevin leaves it (into « Cycy seule »), then turning over under the splash
+const PLOUF_VIEWS = [18.65, 19.34];
 const SPIN = [7.5, 7.9, 8.3, 10.6]; // s: in the middle of the canoe's half-turns, then off again after the last one
 const OFF_AGAIN = 10.6; // s: its width whole again
 
@@ -56,7 +60,7 @@ const SHOWS = `(el) => {
 // the words on the wooden signs that show (the start's « Carsac · 28 km »)
 const SIGNS = `[...document.querySelectorAll(".st-sign")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; })`;
 // the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it); the signs' words; the
-// stage's scale (px a unit)
+// parts of a splash that show (plouf()); the stage's scale (px a unit)
 const castBoxes = `(() => {
   const seen = ${sceneBoxes};
   const discs = Object.fromEntries([...document.querySelectorAll(".st-bubble__disc")].map((el) => {
@@ -64,7 +68,8 @@ const castBoxes = `(() => {
     return [el.closest(".st-actor").dataset.who, { left: r.left, top: r.top, right: r.right, bottom: r.bottom }];
   }));
   const scale = document.querySelector(".st-world").getBoundingClientRect().height / 760;
-  return { ...seen, actors: seen.actors.map((b) => (discs[b.what] ? { what: b.what, ...discs[b.what] } : b)), signs: ${SIGNS}, scale };
+  const splash = [...document.querySelectorAll(".st-gerbe > span")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.className, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; });
+  return { ...seen, actors: seen.actors.map((b) => (discs[b.what] ? { what: b.what, ...discs[b.what] } : b)), signs: ${SIGNS}, splash, scale };
 })()`;
 // the canoe's looks that show (one at a time: never two views, never none) and its turn box's scaleX (its width); the
 // signs' words, with the screen's size
@@ -219,7 +224,7 @@ async function suite(page, vp) {
 
   /** In the middle of each moment after the map, held there: exactly those it shows (CAST), each entirely on screen;
    *  the words of a sign that shows, whole (never cut by the screen's edge); at the table, the two of them side by side,
-   *  their cloths meeting. */
+   *  their cloths meeting; in the plouf, Kevin's splash on screen. */
   async function scenes(where) {
     for (const [name, needs] of Object.entries(CAST)) {
       const t = beat[name].mid;
@@ -228,6 +233,11 @@ async function suite(page, vp) {
       if (JSON.stringify(who) !== JSON.stringify([...needs].sort())) throw new Error(`${where}, « ${name} » à ${t} s : à l'écran ${JSON.stringify(who)}`);
       const off = outside(now.screen, [...now.actors, ...now.signs]);
       if (off.length) throw new Error(`${where}, « ${name} » à ${t} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
+      if (name === SPLASHED) {
+        if (!now.splash.length) throw new Error(`${where}, « ${name} » à ${t} s : pas de gerbe`);
+        const cut = outside(now.screen, now.splash);
+        if (cut.length) throw new Error(`${where}, « ${name} » à ${t} s : la gerbe hors de l'écran ${JSON.stringify(cut.map(round))}`);
+      }
       if (name === TABLE.beat) {
         const [a, b] = TABLE.mates.map((mate) => now.actors.find((box) => box.what === mate));
         if (gap(a, b) >= TABLE.gap * now.scale) throw new Error(`${where}, « ${name} » à ${t} s : les nappes à ${(gap(a, b) / now.scale).toFixed(1)} unités l'une de l'autre ${JSON.stringify([a, b].map(round))}`);
@@ -243,7 +253,7 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, les nappes vichy de ${TABLE.mates.join(" et ")} à moins de ${TABLE.gap} unités l'une de l'autre, et les panneaux entiers quand ils se montrent`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, les nappes vichy de ${TABLE.mates.join(" et ")} à moins de ${TABLE.gap} unités l'une de l'autre, la gerbe du plouf dans l'écran, et les panneaux entiers quand ils se montrent`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 
@@ -318,6 +328,20 @@ async function suite(page, vp) {
         if (t >= rounds && now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${OFF_AGAIN} s) : ${now.looks} vue(s) du canoë`);
         const cut = outside(now.screen, now.signs);
         if (cut.length) throw new Error(`à ${t} s : le panneau coupé par le bord ${JSON.stringify(cut.map(round))}`);
+      }
+    });
+
+    await check(`le plouf : à ?demo&t= ${PLOUF_VIEWS.join(", ").replaceAll(".", ",")} (Kevin quitte le canoë, puis le canoë se retourne sous la gerbe), le canoë montre exactement une vue ; et de 0,1 en 0,1 s, en avant puis en arrière, de ${String(beat["Le plouf"].at).replace(".", ",")} à ${String(beat["L'arrivée"].at).replace(".", ",")} s : toujours exactement une`, async () => {
+      for (const t of PLOUF_VIEWS) {
+        const now = await heldAt(t, canoeSeen);
+        if (now.looks !== 1) throw new Error(`à ${t} s : ${now.looks} vue(s) du canoë`);
+      }
+      const [plouf, arrival] = [beat["Le plouf"].at, beat["L'arrivée"].at];
+      const times = Array.from({ length: Math.round((arrival - plouf) / 0.1) - 1 }, (_, k) => +(plouf + 0.1 + k * 0.1).toFixed(2));
+      for (const t of [...times, ...[...times].reverse()]) {
+        await page.eval(holdAt(t));
+        const now = await page.eval(canoeSeen);
+        if (now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${PLOUF_VIEWS.at(-1)} s) : ${now.looks} vue(s) du canoë`);
       }
     });
 

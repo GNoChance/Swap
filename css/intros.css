@@ -448,12 +448,11 @@
   background: linear-gradient(to bottom, rgba(255, 168, 96, 0.05), rgba(255, 140, 84, 0.3) 300px, rgba(232, 112, 104, 0.26) 440px, rgba(200, 96, 110, 0.2));
 }
 
-/* the golden light of the afternoon on the Dordogne (canoe.js: the plouf, the arrival): a glow round the sun, high on
-   the left (its layer's x 645: the stage's 40), and the warmth down to the far hills, fainter over the water */
+/* the golden light of the afternoon on the Dordogne's land and water (canoe.js: the plouf, the arrival), under a sky
+   of its own (the plouf's golden sky): clear over the sky, warmest on the castles and the far hills, fainter on the
+   water */
 .st-veil--dore {
-  background:
-    radial-gradient(ellipse 560px 330px at 645px 170px, rgba(255, 236, 176, 0.45), rgba(255, 226, 160, 0)),
-    linear-gradient(to bottom, rgba(255, 176, 96, 0.06), rgba(255, 178, 104, 0.3) 260px, rgba(255, 184, 116, 0.56) 400px, rgba(255, 176, 104, 0.36) 452px, rgba(255, 172, 100, 0.12) 486px, rgba(250, 168, 100, 0.08));
+  background: linear-gradient(to bottom, rgba(255, 184, 104, 0), rgba(255, 184, 104, 0) 240px, rgba(255, 182, 104, 0.22) 380px, rgba(255, 178, 100, 0.16) 452px, rgba(250, 170, 98, 0.08) 530px, rgba(246, 166, 98, 0.05));
 }
 
 .st-veil--nuit {
