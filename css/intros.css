@@ -377,6 +377,38 @@
   fill: #3b2a18;
 }
 
+/* the gabare's name on its black hull (props-roque.js), in cream italics */
+.st-sign--gabare {
+  font: italic 600 17px var(--serif);
+  letter-spacing: 0.05em;
+  fill: #f4ecd8;
+}
+
+/* ── Sarlat (canoe.js): a lantern's light over the unlit one, the halo of the lantern on the knight's sticker, the paper
+   sparkles round him; GSAP fades the lights (each drawn apart) and grows, turns and twinkles the sparkles ── */
+.st-lumiere,
+.st-halo,
+.st-sparkle {
+  position: absolute;
+  display: block;
+}
+
+.st-lumiere,
+.st-halo {
+  will-change: opacity;
+}
+
+.st-sparkle {
+  will-change: transform;
+}
+
+.st-lumiere svg,
+.st-halo svg,
+.st-sparkle svg {
+  display: block;
+  overflow: visible;
+}
+
 /* a puff of paper smoke from a vehicle's back (smoke()) */
 .st-puff {
   position: absolute;

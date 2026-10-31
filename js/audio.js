@@ -392,6 +392,13 @@ const sounds = {
     tone({ freq: 120, glideTo: 42, dur: 0.28, gain: 0.26 });
     tone({ freq: 420, glideTo: 150, at: 0.02, dur: 0.14, gain: 0.06 });
   },
+  /** Sparkles: three little high « ting » rising, each ringing out (~0.5 s). */
+  twinkle() {
+    [[0, 2637], [0.11, 3136], [0.22, 3951]].forEach(([at, freq]) => {
+      tone({ freq, at, dur: 0.26, gain: 0.035, attack: 0.003 });
+      tone({ freq: freq * 2.01, at, dur: 0.12, gain: 0.01, attack: 0.003 });
+    });
+  },
   /** A crowd roaring in the stands. */
   crowd() {
     for (let i = 0; i < 8; i++) noise({ at: i * 0.16, dur: 0.9, gain: 0.07, filter: 600 + Math.random() * 900, q: 0.35 });

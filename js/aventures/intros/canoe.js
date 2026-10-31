@@ -6,19 +6,25 @@
 // and Montfort far off, under Vitrac's bridge; lunch side by side at a table under a tree on a gravel bank, their views
 // changing together; in the golden light between Castelnaud and Beynac, Kevin jumps out of the canoe into the river,
 // splash, Cycy laughing, and another canoe at the back laughing too; at Port d'Enveaux, thumbs up by the finish board,
-// the C3 all hearts, and off they go; the river on a summer day under Beynac's cliff, then the closing poster
-// « LA DORDOGNE » on the river, the canoe in front of the cliff. Its moments are the beats of intros/index.js; its
-// stickers, canoe.stickers.js. The river is the plouf's decor, and shows alone from Sarlat to the poster.
+// the C3 all hearts, and off they go; in Sarlat in the evening the camera glides alone down the street of the garlands
+// as its lanterns light up, and comes to the knight, the two of them in their life jackets looking up at him, sparkles
+// round him and his lantern shining; La Roque-Gageac by night, its cliff and village lit, the gabare moored, the
+// lights trembling on the river, the two of them from the back on the quay, crickets; then the closing poster « LA
+// DORDOGNE » on the river by day, Beynac and the canoe in front of the cliff. Its moments are the beats of
+// intros/index.js; its stickers, canoe.stickers.js. The river is the plouf's decor and the poster's.
 import { content } from "../../content.js";
 import { createStage, ENTER, HIDDEN, layerX } from "../scene/stage.js";
-import { grain, paperLayer } from "../scene/decor.js";
-import { faceBubble, paperVehicle, preload, sceneActor, vehicle } from "../scene/actors.js";
+import { grain, paperLayer, sheet } from "../scene/decor.js";
+import { faceBubble, paperVehicle, person, preload, sceneActor, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
 import { fallbackUrl, sceneUrl } from "../scene/urls.js";
 import * as carte from "../scene/props-carte.js";
 import * as perigord from "../scene/props-perigord.js";
 import * as riviere from "../scene/props-riviere.js";
 import * as chateaux from "../scene/props-chateaux.js";
+import * as rue from "../scene/props-sarlat.js";
+import * as roque from "../scene/props-roque.js";
+import * as lac from "../scene/props-lac.js";
 import * as recipes from "../scene/recipes.js";
 import * as eau from "../scene/recipes-eau.js";
 import { SCENARIOS } from "./index.js";
@@ -111,6 +117,30 @@ const ARRIVAL = [
 const LANDED = { x: 125, y: 712, height: 175 };
 const PARKED = { x: 292, y: 615, width: 130 };
 const FINISH = { x: 172, y: 552 };
+// Sarlat in the evening (paper only): the street's slices by distance (props-sarlat.js, TRANCHES), each by its depth,
+// the far end gliding least, the near houses passing by on the sides; the camera down the street until GLIDE.until,
+// then creeping on. On a phone held sideways, framed between the action band and the whole stage: the garlands show
+const STREET = { fond: 0.35, rue: 1, devant: 1.9 };
+const GLIDE = { zoom: 1.6, until: 24.45, creep: 1.025 };
+const STREET_FRAME = 0.5;
+// the knight's sticker, standing on the paving in the middle (clear of « Passer ▸ » on a phone), unfolding at `at`;
+// the lantern on his sticker (its share of its width and height), its halo `halo` units round
+const KNIGHT = { x: 195, y: 676, height: 390, at: 24.3, lantern: { x: 0.842, y: 0.261 }, halo: 46 };
+// the paper sparkles round him: [x, y, size]
+const SPARKLES = [[50, 380, 30], [338, 350, 34], [100, 292, 22], [296, 276, 24], [42, 520, 24], [350, 498, 26], [154, 258, 18], [244, 248, 20], [62, 632, 19], [330, 612, 20]];
+// La Roque-Gageac by night, back to front (paper only): the bivouac's night sky and its stars, the hills, the cliff and
+// its village, the river (the lights' reflections on it, on sheets of their own); then the gabare, the quay
+const NIGHT = [
+  ["roque-ciel", 0.04, lac.nightSky],
+  ["roque-collines", 0.1, roque.collines],
+  ["roque-falaise", 0.15, roque.falaise],
+  ["roque-eau", 0.3, roque.eau],
+];
+// the two of them from the back on the quay, looking at the gabare and the village (Cycy on the right, her hand in her
+// hair, as in the photo), their feet clear of « Passer ▸ » on a phone: [who, pose, x, height]
+const ON_QUAY = [["kevin", "joie", 130, 146], ["cycy", "question", 262, 164]];
+const QUAY_FEET = 676;
+const NIGHT_FRAME = 0.7; // on a phone held sideways: the moon, the mast's top and some stars in sight
 
 /** mount(host, { aventure }): its scenes on a stage in `host` (the map on show, the others hidden until their moment),
  *  and its paused timeline (intros/index.js). */
@@ -127,8 +157,9 @@ export function mount(host, { aventure }) {
     return el;
   };
 
-  // back to front: the river (with the plouf), the arrival, the lunch, the launch, the descent, the valley's map, the
-  // South-West's map (each hidden under the one before it, until it leaves); a scene is the list of its layers' elements
+  // back to front: the river (with the plouf), La Roque-Gageac, Sarlat, the arrival, the lunch, the launch, the descent,
+  // the valley's map, the South-West's map (each hidden under the one before it, until it leaves); a scene is the list
+  // of its layers' elements
   // 1. the river and the canoe in front of Beynac's cliff for the poster; among its layers, each at its depth's place,
   // those of the plouf: its golden sky over the summer one, Castelnaud on its hill behind Beynac's village, and on the
   // far water (behind the near banks) the laughing canoe and the islet it comes out from behind
@@ -167,7 +198,41 @@ export function mount(host, { aventure }) {
   const ploufScene = [...ploufMoved, golden];
   const fading = [gold, golden]; // the golden light comes
 
-  // 3. the arrival at Port d'Enveaux: the shore, the grass and the parking, the finish board; the two of them thumbs up
+  // 3. La Roque-Gageac by night: the sky and its stars, the hills, the cliff and its village, the river and the lights'
+  // reflections trembling on it, the gabare, the quay; the two of them from the back on it
+  const nightLayers = draw(NIGHT);
+  const starry = lac.stars({ layer: nightLayers[0].el });
+  const shimmer = [0, 1].map((k) => nightLayers[3].el.appendChild(sheet("st-paper st-glow", 1600, roque.reflets(k)))); // each drawn apart: only faded
+  const nightDecor = [
+    ...nightLayers.map((layer) => layer.el),
+    paperLayer({ stage, name: "roque-gabare", depth: 0.45, paper: roque.gabare(content.aventures.intros.canoe.gabare) }).el,
+    paperLayer({ stage, name: "roque-quai", depth: 0.6, paper: roque.quai() }).el,
+  ];
+  const nightCrowd = stage.layer("roque-gens", { depth: 0.6 });
+  const onQuay = ON_QUAY.map(([who, pose, x, height]) => person({ layer: nightCrowd, outing: aventure.id, who, x, y: QUAY_FEET, height, side: "dos", pose }));
+  const nightScene = [...nightDecor, nightCrowd];
+
+  // 4. Sarlat in the evening: its sky, the street's slices (nearest last) and the lanterns to light on them; the knight,
+  // the halo of the lantern on his sticker, the sparkles round him, in front
+  const streetDecor = [
+    paperLayer({ stage, name: "sarlat-ciel", depth: 0.03, paper: rue.ciel() }).el,
+    ...rue.TRANCHES.map(([name]) => paperLayer({ stage, name: `sarlat-${name}`, depth: STREET[name], paper: rue.tranche(name) }).el),
+  ];
+  const sliceOf = (name) => streetDecor.find((el) => el.dataset.layer === `sarlat-${name}`);
+  const lanterns = [...rue.LANTERNES]
+    .sort((a, b) => a.size - b.size) // far ones first
+    .map(({ slice, x, y, size }) => {
+      const layer = sliceOf(slice);
+      return layer.appendChild(placed(span("st-lumiere", rue.lumiere(size)), layerX(layer, x) - size * rue.GLOW, y - size * rue.GLOW));
+    });
+  const streetCrowd = stage.layer("sarlat-gens");
+  const knight = sceneActor({ layer: streetCrowd, who: "chevalier", looks: { chevalier: scene("sarlat-le-chevalier", 1, "kevin", "surprise") }, look: "chevalier", x: KNIGHT.x, y: KNIGHT.y, height: KNIGHT.height });
+  const shine = knight.pose.appendChild(span("st-halo", rue.halo(KNIGHT.halo))); // over his lantern, wherever his sticker is drawn
+  Object.assign(shine.style, { left: `calc(${KNIGHT.lantern.x * 100}% - ${KNIGHT.halo}px)`, top: `calc(${KNIGHT.lantern.y * 100}% - ${KNIGHT.halo}px)` });
+  const sparkles = SPARKLES.map(([x, y, size]) => streetCrowd.appendChild(placed(span("st-sparkle", rue.etincelle(size)), layerX(streetCrowd, x) - size * 0.6, y - size * 0.6)));
+  const streetScene = [...streetDecor, streetCrowd];
+
+  // 5. the arrival at Port d'Enveaux: the shore, the grass and the parking, the finish board; the two of them thumbs up
   // on the pebbles, the C3 all hearts on the parking (facing right, the way it leaves); the golden light, fainter
   const arrivalDecor = [...draw(ARRIVAL).map((layer) => layer.el), paperLayer({ stage, name: "arrivee-sol", depth: 0.6, paper: riviere.herbe() + riviere.pancarte(FINISH.x, FINISH.y, content.aventures.intros.canoe.arrivee) }).el];
   const arrivalCrowd = stage.layer("arrivee-gens", { depth: 0.6 });
@@ -177,7 +242,7 @@ export function mount(host, { aventure }) {
   const dusk = veil("arrivee-dore");
   const arrivalScene = [...arrivalDecor, arrivalCrowd];
 
-  // 4. the lunch on a gravel bank, the table under its tree; the two of them side by side at it
+  // 6. the lunch on a gravel bank, the table under its tree; the two of them side by side at it
   const lunchDecor = draw(LUNCH).map((layer) => layer.el);
   const lunchCrowd = stage.layer("coin-gens", { depth: 0.6 });
   const meal = (who, k) => scene(`${who}-qui-mange`, k, who);
@@ -186,7 +251,7 @@ export function mount(host, { aventure }) {
   );
   const lunchScene = [...lunchDecor, lunchCrowd];
 
-  // 5. the launch at Carsac: the beach and its sign; the two of them with their paddles, then getting in, then the canoe
+  // 7. the launch at Carsac: the beach and its sign; the two of them with their paddles, then getting in, then the canoe
   // on the water from the front and the back; their heads in bubbles over it
   const launchDecor = draw(LAUNCH).map((layer) => layer.el);
   const launchCrowd = stage.layer("depart-gens", { depth: 0.6 }); // settles with the beach, then stays
@@ -203,7 +268,7 @@ export function mount(host, { aventure }) {
   launchDecor.push(paperLayer({ stage, name: "depart-arbres", paper: riviere.trees("paper") }).el); // leaning over them, in front
   const launchScene = [...launchDecor, launchCrowd];
 
-  // 6. the descent: the river going away to its bend, the canoe from the back; in front of it Vitrac's bridge, and in
+  // 8. the descent: the river going away to its bend, the canoe from the back; in front of it Vitrac's bridge, and in
   // front of all the trees leaning over the river (passing by on the sides)
   const descentDecor = draw(DESCENT).map((layer) => layer.el);
   const descentCrowd = stage.layer("descente-gens", { depth: 0 });
@@ -212,7 +277,7 @@ export function mount(host, { aventure }) {
   const trees = paperLayer({ stage, name: "descente-arbres", depth: 1.5, paper: riviere.penches() }).el;
   const descentScene = [...descentDecor, descentCrowd, bridge, trees];
 
-  // 7. the valley's map from Port d'Enveaux to Carsac, its road for the bus
+  // 9. the valley's map from Port d'Enveaux to Carsac, its road for the bus
   const valley = [
     paperLayer({ stage, name: "vallee-carte", paper: perigord.valleyMap({ depart: trajet.arrivee, arrivee: relais.arrivee, noms: relais.noms }) }).el,
     stage.layer("vallee-trajet"),
@@ -220,7 +285,7 @@ export function mount(host, { aventure }) {
   const [bx, by] = perigord.VALLEY_ROUTE[0];
   const bus = paperVehicle({ layer: valley[1], name: relais.transport, markup: perigord.BUS, x: bx, y: by, width: 58 });
 
-  // 8. the South-West's map, on east to the Périgord: its vines and woods, the Dordogne, the P at the arrival
+  // 10. the South-West's map, on east to the Périgord: its vines and woods, the Dordogne, the P at the arrival
   const road = trajet.points.map(project).map(({ x, y }) => [x, y]);
   const clear = carte.stops({ trajet, lieu }, project).map((s) => s.box);
   const end = project(trajet.points.at(-1));
@@ -238,7 +303,7 @@ export function mount(host, { aventure }) {
   const start = project(trajet.points[0]);
   const c3 = vehicle({ stage, layer: map[1], name: "c3", x: start.x, y: start.y, width: 60, view: "roule" });
 
-  hide([...river, castle, ...ploufScene, boat, jumper.el, ...arrivalScene, dusk, ...lunchScene, ...launchScene, ...descentScene, ...valley, duo.el]);
+  hide([...river, castle, ...ploufScene, boat, jumper.el, ...nightScene, ...streetScene, ...lanterns, knight.el, shine, ...sparkles, ...arrivalScene, dusk, ...lunchScene, ...launchScene, ...descentScene, ...valley, duo.el]);
   stage.el.style.setProperty("--st-whole", "1"); // the maps in the whole height (a phone held sideways): it starts there
   const texture = grain(stage);
   document.fonts?.load('600 26px "Cormorant Garamond"').catch(() => {}); // the names' and the lettering's font, on its way early
@@ -359,17 +424,60 @@ export function mount(host, { aventure }) {
   waiting.smoke(timeline, leave + 0.05, 3);
   stage.sound(timeline, leave, "engine", sarlat + 0.1);
 
-  // 8 and 9. the river on a summer day, framed on the action band, until Sarlat and La Roque-Gageac come in front of it
-  timeline.set(river, { autoAlpha: 1 }, sarlat);
+  // 8. Sarlat in the evening, under the arrival as it goes (framed so the garlands show on a phone held sideways): the
+  // camera glides alone down the street, its lanterns light up one after another, far ones first; it comes to the
+  // knight, who unfolds from the paving like a pop-up, rustling; sparkles twinkle round him, ting, his lantern shines;
+  // the camera creeps on
+  const night = beat("La Roque-Gageac");
+  timeline.set(streetScene, { autoAlpha: 1 }, sarlat);
   timeline.to([...arrivalScene, dusk], { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, sarlat);
+  stage.frame(timeline, sarlat, { whole: STREET_FRAME, duration: 0.5 });
+  stage.pan(timeline, sarlat, { zoom: GLIDE.zoom, focus: rue.FOND, duration: GLIDE.until - sarlat, ease: "power1.inOut", only: streetDecor });
+  lanterns.forEach((el, k) => timeline.fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, ease: "power1.out", immediateRender: false }, sarlat + 0.35 + k * 0.09));
+  stage.sound(timeline, KNIGHT.at, "paper");
+  timeline.set(knight.el, { autoAlpha: 1 }, KNIGHT.at);
+  timeline.fromTo(knight.pose, { scaleY: 0.04, scaleX: 0.86, skewX: -12 }, { scaleY: 1, scaleX: 1, skewX: 0, duration: 0.34, ease: "back.out(1.7)", immediateRender: false }, KNIGHT.at);
+  const twinkle = KNIGHT.at + 0.32;
+  sparkles.forEach((el, k) => {
+    const at = twinkle + (k % 5) * 0.06 + (k >= 5 ? 0.7 : 0); // two flurries
+    timeline.fromTo(el, { autoAlpha: 1, scale: 0, rotation: -45 }, { scale: 1, rotation: 0, duration: 0.3, ease: "back.out(2.6)", immediateRender: false }, at);
+    // twinkling till the end, an even count of halves (whole again then); none without room (a repeat of −1 is endless)
+    const blinks = Math.floor((night - at - 0.35) / 0.2) & ~1;
+    if (blinks) timeline.fromTo(el, { scale: 1 }, { scale: 0.45, duration: 0.2, ease: "sine.inOut", yoyo: true, repeat: blinks - 1, immediateRender: false }, at + 0.32);
+  });
+  stage.sound(timeline, twinkle, "twinkle");
+  stage.sound(timeline, twinkle + 0.7, "twinkle");
+  const lit = twinkle + 0.08;
+  timeline.fromTo(shine, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: "power1.out", immediateRender: false }, lit);
+  timeline.fromTo(shine, { opacity: 1 }, { opacity: 0.7, duration: 0.24, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, lit + 0.3);
+  stage.pan(timeline, GLIDE.until, { zoom: GLIDE.zoom * GLIDE.creep, focus: rue.FOND, duration: night - GLIDE.until, ease: "sine.out", only: streetDecor });
+  stage.pan(timeline, GLIDE.until, { zoom: 1.02, focus: rue.FOND, duration: night - GLIDE.until, ease: "sine.out", only: [streetCrowd] });
 
-  // 10. the poster on the river: Beynac on its cliff, the canoe gliding in front of it
+  // 9. La Roque-Gageac by night, under Sarlat as it goes (framed so the mast's top and some stars show on a phone held
+  // sideways), the camera drifting: the stars come out, the crickets sing, the lights tremble on the river (two sheets of
+  // reflections fading into each other, out of step); Kevin hops for joy
   const poster = beat("L'affiche");
+  timeline.set(nightScene, { autoAlpha: 1 }, night);
+  timeline.to(streetScene, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, night);
+  stage.frame(timeline, night, { whole: NIGHT_FRAME, duration: 0.4 });
+  stage.pan(timeline, night, { x: 8, zoom: 1.04, focus: { x: 195, y: 520 }, duration: poster - night, ease: "sine.inOut", only: nightScene });
+  starry.light(timeline, night + 0.2);
+  stage.sound(timeline, night + 0.15, "crickets", poster);
+  stage.sound(timeline, night + 1.25, "crickets", poster);
+  timeline.fromTo(shimmer[0], { autoAlpha: 1 }, { autoAlpha: 0.3, duration: 0.21, ease: "sine.inOut", yoyo: true, repeat: 11, immediateRender: false }, night);
+  timeline.fromTo(shimmer[1], { autoAlpha: 0.35 }, { autoAlpha: 1, duration: 0.29, ease: "sine.inOut", yoyo: true, repeat: 7, immediateRender: false }, night);
+  const [kevinOnQuay] = onQuay;
+  kevinOnQuay.hop(timeline, night + 0.7, 10);
+  kevinOnQuay.hop(timeline, night + 1.75, 8);
+
+  // 10. the poster on the river by day, under the night as it goes: Beynac on its cliff, the canoe gliding in front of it
+  timeline.set(river, { autoAlpha: 1 }, poster);
+  timeline.to(nightScene, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, poster);
   timeline.fromTo(duo.el, { autoAlpha: 0, x: -60 }, { autoAlpha: 1, x: 0, duration: 0.6, ease: "power2.out", immediateRender: false }, poster);
   timeline.fromTo(duo.pose, { y: 0 }, { y: -3, duration: 0.5, ease: "sine.inOut", repeat: 3, yoyo: true, immediateRender: false }, poster + 0.3); // afloat
   recipes.affiche(timeline, poster, { stage, layers: riverLayers, aventure, grain: texture, only: river });
 
-  const actors = [c3, bus, canoe, cycy, kevin, away, ...diners, afloat, jumper, waiting, landed, duo];
+  const actors = [c3, bus, canoe, cycy, kevin, away, ...diners, afloat, jumper, waiting, landed, knight, ...onQuay, duo];
   return {
     timeline,
     ready: preload(actors.flatMap((a) => a.imgs)),

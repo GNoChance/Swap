@@ -23,4 +23,7 @@ export const stickers = [
   "canoe/scene-cycy-et-kevin-en-canoe-04", // the splash: Kevin in the water, Cycy laughing
   "canoe/scene-cycy-et-kevin-en-canoe-08", // thumbs up in front of the canoe, on the pebbles
   "vehicules/c3-coeurs", // waiting for them, all hearts
+  "canoe/scene-sarlat-le-chevalier-01", // Sarlat's knight, the two of them looking up at him
+  "canoe/kevin-dos-joie", // on La Roque-Gageac's quay, from the back
+  "canoe/cycy-dos-question", // her hand in her hair
 ];

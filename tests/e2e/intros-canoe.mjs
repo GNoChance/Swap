@@ -1,11 +1,11 @@
 // End-to-end checks of the Premier canoë's intro (js/aventures/intros/canoe.js), in headless Chrome, on the kit's
 // screens (intro-kit.mjs) and the first phone turned sideways: its length and its closing poster « LA DORDOGNE », its
 // map in two steps (the C3 from Bordeaux to Port d'Enveaux, then the bus up the valley to Carsac), who shows in each of
-// its moments, the canoe spinning round (one view at a time, whole again after) and the phone turned meanwhile, the
-// stickers it loads and a scene sticker's stand-in, its scenario warmed on the passport, a touch the first time,
-// « Passer ▸ » in the demo, the browser's back. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
-// `node tests/e2e/intros-canoe.mjs` (ONLY=1920: a single screen). Stops at the first failure (exit code 1). A check also
-// fails if the page logged an error.
+// its moments, the canoe spinning round (one view at a time, whole again after) and the phone turned meanwhile, its
+// zoomed decors on a wide screen, the stickers it loads and a scene sticker's stand-in, its scenario warmed on the
+// passport, in and out of it three times, a touch the first time, « Passer ▸ » in the demo, the browser's back. Needs
+// the site running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-canoe.mjs` (ONLY=1920: a single
+// screen). Stops at the first failure (exit code 1). A check also fails if the page logged an error.
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
 import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
@@ -32,8 +32,9 @@ const SARLAT = "Sarlat";
 const BIVOUAC_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), stamped: ["bivouac-1"] };
 const SCENE = "canoe/scene-cycy-et-kevin-en-canoe-11"; // the canoe in front of the cliff, on the poster
 const beat = beatsOf("canoe");
-// who shows in the middle of each moment after the map (spec § 2), all of them entirely on screen: the two of them in a
-// scene sticker (« duo »), their heads in bubbles, each of them at the table, the C3
+// who shows in the middle of each of the 9 moments after the map (spec § 2), all of them entirely on screen: the two of
+// them in a scene sticker (« duo »), their heads in bubbles, each of them at the table, the C3, Sarlat's knight, the two
+// of them from the back on La Roque-Gageac's quay
 const CAST = {
   "La mise à l'eau": ["duo"],
   "Les ronds dans l'eau": ["duo", "bulle-cycy", "bulle-kevin"],
@@ -41,6 +42,9 @@ const CAST = {
   "Le coin perdu": ["repas-cycy", "repas-kevin"],
   "Le plouf": ["duo"],
   "L'arrivée": ["duo", "c3"],
+  Sarlat: ["chevalier"],
+  "La Roque-Gageac": ["cycy", "kevin"],
+  "L'affiche": ["duo"],
 };
 // side by side at the table, their gingham cloths meet: their boxes at most this many units apart
 const TABLE = { beat: "Le coin perdu", mates: ["repas-cycy", "repas-kevin"], gap: 6 };
@@ -57,7 +61,7 @@ const SHOWS = `(el) => {
   for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
   return true;
 }`;
-// the words on the wooden signs that show (the start's « Carsac · 28 km »)
+// the words that show on the wooden signs (the start's « Carsac · 28 km », the finish board's) and on the gabare's hull
 const SIGNS = `[...document.querySelectorAll(".st-sign")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; })`;
 // the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it); the signs' words; the
 // parts of a splash that show (plouf()); the stage's scale (px a unit)
@@ -81,6 +85,18 @@ const canoeSeen = `(() => {
   return { looks: looks.length, scaleX: !turn ? null : transform === "none" ? 1 : new DOMMatrix(transform).a, signs: ${SIGNS}, screen: { width: innerWidth, height: innerHeight } };
 })()`;
 const BRIDGE_PASSING = 13.8; // s: Vitrac's bridge near, the leaning trees over the canoe (Review Focus 5's screen)
+// s: the zoomed decors (Review Focus 5), the descent, Sarlat's street, La Roque-Gageac by night; each scene's layers
+// named so (data-layer), one of them at least on show
+const ZOOMED = [[13, "descente-"], [24, "sarlat-"], [27.4, "roque-"]];
+// the stage's layers that show, with their boxes (px)
+const layersSeen = `(() => {
+  const shows = ${SHOWS};
+  return [...document.querySelectorAll(".st-layer")].filter(shows).map((el) => { const r = el.getBoundingClientRect(); return { name: el.dataset.layer, left: r.left, right: r.right }; });
+})()`;
+// s: in and out of the canoe's intro three times from the passport (Review Focus 4), the last in La Roque-Gageac's
+// night (the crickets)
+const EXITS = [5, 15, 27];
+const NIGHT = "La Roque-Gageac";
 // the descent's layers, in paint order (the world's children, none with a z-index), with whether each shows
 const descentOrder = `(() => {
   const shows = ${SHOWS};
@@ -253,7 +269,7 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, les nappes vichy de ${TABLE.mates.join(" et ")} à moins de ${TABLE.gap} unités l'une de l'autre, la gerbe du plouf dans l'écran, et les panneaux entiers quand ils se montrent`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, les nappes vichy de ${TABLE.mates.join(" et ")} à moins de ${TABLE.gap} unités l'une de l'autre, la gerbe du plouf dans l'écran, et les panneaux et le nom de la gabare entiers quand ils se montrent`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 
@@ -263,6 +279,16 @@ async function suite(page, vp) {
       const order = ["descente-gens", "descente-pont", "descente-arbres"].map((name) => layers.findIndex((l) => l.name === name));
       const wrong = order.some((k, i) => k < 0 || !layers[k].shows || layers[k].z !== "auto" || (i && k < order[i - 1]));
       if (wrong) throw new Error(`l'ordre des couches de la descente ${JSON.stringify(layers)}`);
+    });
+
+  if (vp.width === 1920)
+    await check(`1920 × 1080 (point 5) : à ?t= ${ZOOMED.map(([t]) => String(t).replace(".", ",")).join(", ")} (la descente, Sarlat, La Roque-Gageac : des décors zoomés), chaque couche visible couvre toute la largeur de l'écran`, async () => {
+      for (const [t, scene] of ZOOMED) {
+        const layers = await heldAt(t, layersSeen);
+        if (!layers.some((l) => l.name.startsWith(scene))) throw new Error(`à ${t} s : aucune couche « ${scene}* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
+        const bare = layers.filter((l) => l.left > 0.5 || l.right < vp.width - 0.5);
+        if (bare.length) throw new Error(`à ${t} s : bord vide ${JSON.stringify(bare.map((l) => ({ ...l, left: Math.round(l.left), right: Math.round(l.right) })))}`);
+      }
     });
 
   if (vp.turned)
@@ -408,6 +434,35 @@ async function suite(page, vp) {
       if (now.hash !== "#/aventures" || now.stages || now.intro || now.slot !== "open") throw new Error(JSON.stringify({ ...now, save: undefined }));
       if (now.save?.pending?.includes("canoe") || now.save?.stamped?.includes("canoe")) throw new Error(`enregistré : ${JSON.stringify(now.save)}`);
       await page.goto("about:blank");
+    });
+
+    await check(`point 4 : sur le passeport, entrer dans l'intro du canoë et en sortir trois fois de suite par le retour du navigateur, à ?demo&t= ${EXITS.join(", ")} (la dernière dans la nuit de ${NIGHT}, les grillons) : gsap.globalTimeline.getChildren() revient à son compte de départ et aucune .st-stage ne reste`, async () => {
+      await page.goto(`${BASE}?demo&t=${EXITS[0]}#/aventures`);
+      const still = `${atPassport} && !document.querySelector(".screen-intro") && document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
+      const count = `gsap.globalTimeline.getChildren().length`;
+      /** The count of GSAP's children once the passport is still: only its own endless loops left (no screen fading, no
+       *  timeline still going: a timeline left behind keeps this false). */
+      const steady = async () => {
+        await page.waitFor(still, 8000);
+        await page.waitFor(`gsap.globalTimeline.getChildren().every((child) => child.repeat() === -1)`, 8000);
+        return page.eval(count);
+      };
+      const before = await steady();
+      const night = beat[NIGHT];
+      for (const t of EXITS) {
+        await page.eval(`history.replaceState(null, "", "?demo&t=${t}#/aventures")`); // where the next one starts
+        await page.eval(`location.hash = "#/aventures/canoe"`);
+        await page.waitFor(`${playing} && ${timeline}.time() >= ${t}`, 8000);
+        await sleep(700);
+        // the last one in the night: its scene on show, its crickets heard by now
+        const now = await page.eval(`({ t: ${timeline}.time(), night: [...document.querySelectorAll('.st-layer[data-layer^="roque-"]')].some(${SHOWS}) })`);
+        if (t === EXITS.at(-1) && !(now.t > night.at && now.t < beat["L'affiche"].at && now.night)) throw new Error(`à ${now.t.toFixed(2)} s, pas dans la nuit de ${NIGHT} ${JSON.stringify(now)}`);
+        await page.eval(`history.back()`);
+        await page.waitFor(still, 8000);
+      }
+      const after = await steady();
+      const stages = await page.eval(`document.querySelectorAll(".st-stage").length`);
+      if (after !== before || stages) throw new Error(`compte ${before} au départ, ${after} après ; ${stages} .st-stage`);
     });
 
     await check("?demo (tamponné) : « Passer ▸ » au début de « La descente » la termine, sa timeline s'arrête au toucher, et ramène au passeport", async () => {
