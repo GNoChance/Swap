@@ -48,12 +48,42 @@ const SEED = `{
     history.replaceState(null, "", location.pathname + location.hash);
   }
 }`;
+// ?decodage-rejete: decode() rejects on Cycy's front sticker in joy once it has arrived (as WebKit can, for another
+// reason than a missing file); __rejected, how many times
+const REJECT = `if (location.search.includes("decodage-rejete")) {
+  const decode = HTMLImageElement.prototype.decode;
+  HTMLImageElement.prototype.decode = function () {
+    return decode.call(this).then(() => {
+      if (!this.src.includes("/cycy-face-joie.webp")) return;
+      window.__rejected = (window.__rejected || 0) + 1;
+      throw new DOMException("The source image cannot be decoded.", "EncodingError");
+    });
+  };
+}`;
+// __landedAt: when the passport's book first rests open, its arrival over (performance.now() ms)
+const LANDING = `new MutationObserver((_, watch) => {
+  if (!document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]')) return;
+  window.__landedAt = performance.now();
+  watch.disconnect();
+}).observe(document, { subtree: true, attributes: true, attributeFilter: ["class", "data-open"] });`;
+const WELCOMED = { welcomed: true, known: AVENTURES.map((a) => a.id) }; // a save whose welcome is seen, nothing lived
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const length = `Number(document.querySelector(".screen-intro")?.dataset.length)`; // ms, as the intro says
 const atPassport = `location.hash === "#/aventures" && document.querySelector(".screen-passport")`;
-// the intro mounted, its stickers arrived (or their stand-ins): its timeline plays
-const loaded = `document.querySelector(".screen-intro .st-stage") && ${length} > 0 && [...document.querySelectorAll(".st-actor__img")].every((img) => img.complete)`;
+/** The passport open on page `n`, landed, its screen fully in: a touch counts. */
+const settled = (n) => `document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"][data-page="${n}"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
+/** « Passer ▸ » fully shown, or gone (hidden). */
+const skipIs = (state) => `(() => {
+  const el = document.querySelector(".screen-intro .intro-skip");
+  const style = el && getComputedStyle(el);
+  return Boolean(style) && (${state === "shown" ? `style.visibility === "visible" && style.opacity === "1"` : `style.visibility === "hidden"`});
+})()`;
+// the requests for the bivouac's scenario file
+const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => new URL(e.name).pathname === "/js/aventures/intros/bivouac-1.js")`;
+// the intro mounted, each of its stickers loaded or failed (img.complete); its timeline may still wait for them to be
+// decoded (playing)
+const loaded =`document.querySelector(".screen-intro .st-stage") && ${length} > 0 && [...document.querySelectorAll(".st-actor__img")].every((img) => img.complete)`;
 // the poster in place: its line and every letter of its title fully shown
 const built = `(() => {
   const parts = [...document.querySelectorAll(".af-title .af-letter, .af-line")];
@@ -239,36 +269,41 @@ async function suite(page, vp) {
     });
 
   if (vp.turned)
-    await check("point 2 : le téléphone tourné au milieu de la montée (portrait → paysage, puis 1 s plus tard → portrait) : la même intro, sa timeline avance tout du long, et à chaque arrêt Cycy et Kevin sont entièrement dans l'écran", async () => {
+    await check("point 2 : le téléphone tourné pendant la montée (portrait → paysage, puis 1 s plus tard → portrait) : la même intro, sa timeline avance tout du long (au moins 0,7 fois l'horloge entre les deux arrêts), et à chaque arrêt exactement Cycy et Kevin, entièrement dans l'écran", async () => {
       const montee = beat["La montée"];
-      const from = +(montee.mid - 0.4).toFixed(2);
+      const from = +(montee.at + 0.2).toFixed(2); // the climb lasts 2.8 s: room for the two stops
       await page.goto(`${BASE}?demo&t=${from}#/aventures/bivouac-1`);
-      await page.waitFor(`${loaded} && ${timeline}?.time() > ${from + 0.05}`, 8000); // playing
+      await page.waitFor(playing, 8000); // turned at once: the climb is short
       await page.eval(`void (window.__intro = document.querySelector(".screen-intro"))`);
-      /** At a stop on a width × height screen: the intro still the same, its timeline going on (read twice: the first
-       *  frame on the new screen draws it all again, slow on this machine), and Cycy and Kevin entirely on screen. */
+      const valleyGone = montee.at + 0.35; // s: the valley faded out (0.3 s)
+      /** At a stop on a width × height screen, read on a frame after the resize (its stage refitted), the valley gone: the
+       *  intro still the same, still climbing, and exactly Cycy and Kevin on screen, entirely. → its timeline's time and
+       *  the clock's. */
       const stop = async (width, height) => {
         await page.resize(width, height);
         await page.waitFor(`innerWidth === ${width}`, 2000);
-        const t0 = await page.eval(`${timeline}.time()`);
-        await page.waitFor(`${timeline}.time() > ${t0 + 0.1}`, 3000).catch(async () => {
-          throw new Error(`${width} × ${height} : la timeline n'avance plus (${t0} puis ${await page.eval(`${timeline}.time()`)})`);
-        });
-        const now = await page.eval(`({ same: window.__intro === document.querySelector(".screen-intro"), t: ${timeline}?.time(), seen: ${sceneBoxes} })`);
+        const now = await page.eval(`new Promise((resolve) => {
+          const tl = ${timeline};
+          const look = () => (tl.time() < ${valleyGone} ? requestAnimationFrame(look) : resolve({ same: window.__intro === document.querySelector(".screen-intro"), t: tl.time(), clock: performance.now() / 1000, seen: ${sceneBoxes} }));
+          requestAnimationFrame(look);
+        })`);
         if (!now.same) throw new Error(`${width} × ${height} : l'intro a changé`);
-        const people = now.seen.actors.filter((b) => b.what === "cycy" || b.what === "kevin");
-        if (people.length !== 2) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : à l'écran ${JSON.stringify(now.seen.actors.map((b) => b.what))}`);
-        const off = outside(now.seen.screen, people);
+        if (now.t >= beat["En haut"].at) throw new Error(`${width} × ${height} : arrêt après la montée (à ${now.t.toFixed(2)} s), trop tard pour compter Cycy et Kevin`);
+        const who = now.seen.actors.map((b) => b.what).sort();
+        if (JSON.stringify(who) !== JSON.stringify(["cycy", "kevin"])) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : à l'écran ${JSON.stringify(who)}`);
+        const off = outside(now.seen.screen, now.seen.actors);
         if (off.length) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
-        return now.t;
+        return now;
       };
       try {
         const turned = Date.now();
         const sideways = await stop(852, 393);
         await sleep(Math.max(0, 1000 - (Date.now() - turned)));
         const back = await stop(vp.width, vp.height);
-        if (sideways < montee.at || sideways > beat["En haut"].at) throw new Error(`tourné à ${sideways.toFixed(2)} s, pas pendant la montée`);
-        if (!(back > sideways)) throw new Error(`la timeline est repartie en arrière : ${sideways.toFixed(2)} s puis ${back.toFixed(2)} s`); // never restarted
+        if (sideways.t < montee.at) throw new Error(`tourné à ${sideways.t.toFixed(2)} s, pas pendant la montée`);
+        // never restarted nor held: the timeline keeps the clock's time
+        const [played, spent] = [back.t - sideways.t, back.clock - sideways.clock];
+        if (played < 0.7 * spent) throw new Error(`la timeline a avancé de ${played.toFixed(2)} s en ${spent.toFixed(2)} s (${sideways.t.toFixed(2)} s puis ${back.t.toFixed(2)} s)`);
       } finally {
         await page.resize(vp.width, vp.height);
       }
@@ -377,6 +412,109 @@ async function suite(page, vp) {
       const went = await page.eval(lagged);
       if (went > 0.3) throw new Error(`le lissage de GSAP coupé : une image de 0,8 s a avancé de ${went.toFixed(2)} s`);
     });
+
+    await check("le téléphone verrouillé (page gelée), puis une autre app devant (page cachée qui tourne), pendant le chargement des stickers de la première fois (retenus 1,5 s ; cachée avant leur arrivée, de nouveau visible 3 s après) : l'intro part du début (sa timeline à moins de 0,5 s), et la sortie reste à vivre", async () => {
+      for (const away of ["lock", "hide"]) {
+        await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(WELCOMED))}#/aventures`);
+        await page.waitFor(`${settled(1)} && document.querySelector('.pp-slot[data-id="bivouac-1"][data-status="open"]')`, 8000);
+        const held = 1500;
+        await page.hold(["*/assets/aventures/*.webp"], held);
+        try {
+          await page.tap('.pp-slot[data-id="bivouac-1"]');
+          await page.waitFor(`document.querySelector(".screen-intro .st-stage") && [...document.querySelectorAll(".st-actor__img")].some((img) => !img.complete)`, 6000);
+          const mounted = Date.now();
+          await page.eval(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve))))`); // its mount drawn: the page free to hide
+          await page[away](held + 3000 - (Date.now() - mounted));
+          await page.waitFor(`document.visibilityState === "visible" && ${timeline}?.time() > 0`, 3000); // its first frame back
+          const now = await page.eval(`({ t: ${timeline}.time(), hash: location.hash, save: JSON.parse(localStorage.getItem("${KEY}")) })`);
+          if (now.t >= 0.5) throw new Error(`${away} : la timeline à ${now.t.toFixed(2)} s dès le retour`);
+          if (now.hash !== "#/aventures/bivouac-1" || now.save?.pending?.includes("bivouac-1")) throw new Error(`${away} : ${JSON.stringify({ ...now, save: now.save?.pending })}`);
+        } finally {
+          await page.hold([]);
+          await page.goto("about:blank");
+        }
+      }
+    });
+
+    await check("?demo (Premier bivouac tamponné), ses stickers retenus 3 s : « Passer ▸ » se montre avant que sa timeline ne parte", async () => {
+      await page.goto(`${BASE}?demo#/aventures`);
+      await page.waitFor(settled(0), 8000);
+      await page.hold(["*/assets/aventures/*.webp"], 3000);
+      try {
+        await page.eval(`location.hash = "#/aventures/bivouac-1"`);
+        await page.waitFor(skipIs("shown"), 2500).catch(() => {
+          throw new Error("pas de « Passer ▸ » pendant le chargement des stickers");
+        });
+        const now = await page.eval(`({ paused: ${timeline}?.paused(), loading: [...document.querySelectorAll(".st-actor__img")].filter((img) => !img.complete).length })`);
+        if (!now.paused || !now.loading) throw new Error(`plus en chargement : ${JSON.stringify(now)}`);
+      } finally {
+        await page.hold([]);
+        await page.goto("about:blank");
+      }
+    });
+
+    await check(`?demo&t=${beat["La voiture"].at} : « Passer ▸ » avant les « Meuh ! » et le « Ouaf ! » : sa timeline s'arrête au toucher, plus rien n'en part ; puis le passeport`, async () => {
+      await page.goto(`${BASE}?demo&t=${beat["La voiture"].at}#/aventures/bivouac-1`);
+      await page.waitFor(`${playing} && ${skipIs("shown")}`, 8000);
+      // just after the touch (the screen's own listener has run), and 250 ms later: the screen still there till then
+      await page.eval(`(() => {
+        const tl = ${timeline};
+        document.addEventListener("click", () => {
+          window.__skipped = { paused: tl.paused(), t: tl.time() };
+          setTimeout(() => (window.__later = tl.time()), 250);
+        }, { once: true });
+      })()`);
+      await page.tap(".intro-skip");
+      await page.waitFor(`window.__later !== undefined`, 2000);
+      const now = await page.eval(`({ ...window.__skipped, later: window.__later })`);
+      if (!now.paused || now.later !== now.t) throw new Error(`la timeline continue après le toucher : ${JSON.stringify(now)}`);
+      await page.waitFor(atPassport, 3000);
+    });
+
+    const posterAt = beat["L'affiche"].at;
+    const onPoster = +(posterAt + 0.3).toFixed(2); // s, a moment just into it
+    await check(`?demo : « Passer ▸ » s'efface quand l'affiche commence (${posterAt} s), et ?demo&t= sur l'affiche la montre sans lui ; un toucher n'importe où passe toujours l'intro`, async () => {
+      await page.goto(`${BASE}?demo&t=${+(posterAt - 2).toFixed(2)}#/aventures/bivouac-1`);
+      await page.waitFor(`${playing} && ${skipIs("shown")}`, 8000);
+      const before = await page.eval(`${timeline}.time()`);
+      if (before >= posterAt) throw new Error(`déjà à ${before.toFixed(2)} s quand « Passer ▸ » se montre`);
+      await page.waitFor(`${timeline}.time() > ${posterAt + 0.5}`, 5000);
+      if (!(await page.eval(skipIs("gone")))) throw new Error("« Passer ▸ » toujours là sur l'affiche");
+      await page.goto(`${BASE}?demo&t=${onPoster}#/aventures/bivouac-1`);
+      await page.waitFor(playing, 8000);
+      await sleep(1300); // past the time it would have come in
+      if (!(await page.eval(skipIs("gone")))) throw new Error(`?demo&t=${onPoster} : « Passer ▸ » sur l'affiche`);
+      const t = await page.eval(`${timeline}.time()`);
+      if (t > (await page.eval(length)) / 1000 - 0.3) throw new Error(`l'intro déjà finie (${t.toFixed(2)} s) : le toucher ne dirait rien`);
+      await page.tap(".screen-intro");
+      await page.waitFor(atPassport, 3000);
+    });
+
+    await check("?decodage-rejete : decode() rejeté sur un sticker pourtant arrivé (Cycy de face en joie) : il garde son sticker, pas son remplaçant", async () => {
+      await page.goto(`${BASE}?demo&decodage-rejete#/aventures/bivouac-1`);
+      await page.waitFor(playing, 8000);
+      const now = await page.eval(`({ rejected: window.__rejected ?? 0, looks: [...document.querySelectorAll('.st-actor[data-who="cycy"] .st-actor__img')].map((img) => ({ src: new URL(img.src).pathname, fell: img.dataset.fell ?? null })) })`);
+      if (!now.rejected) throw new Error("aucun decode() rejeté");
+      const wrong = now.looks.filter((look) => look.fell || !look.src.startsWith("/assets/aventures/bivouac-1/cycy-"));
+      if (wrong.length) throw new Error(`sur son remplaçant : ${JSON.stringify(wrong)}`);
+      await page.goto("about:blank");
+    });
+
+    await check("le passeport posé (une visite suivante, Premier bivouac à vivre) : le fichier de son scénario est déjà demandé, une fois le livre arrivé ; le toucher sur Premier bivouac ne le redemande pas", async () => {
+      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(WELCOMED))}#/aventures`);
+      await page.waitFor(`window.__landedAt`, 8000);
+      await page.waitFor(`${scenarioAsked}.length === 1`, 3000).catch(async () => {
+        throw new Error(`demandé ${await page.eval(`${scenarioAsked}.length`)} fois, le passeport posé`);
+      });
+      const after = await page.eval(`${scenarioAsked}[0].startTime - window.__landedAt`);
+      if (after < -20) throw new Error(`demandé ${Math.round(-after)} ms avant que le livre soit posé`); // a frame's leeway
+      await page.waitFor(settled(1), 8000);
+      await page.tap('.pp-slot[data-id="bivouac-1"]');
+      await page.waitFor(loaded, 8000);
+      const asked = await page.eval(`${scenarioAsked}.length`);
+      await page.goto("about:blank");
+      if (asked !== 1) throw new Error(`redemandé au toucher : ${asked} demandes`);
+    });
   }
 
   // Chrome logs nothing for a file the bench blocks (a real 404 logs the network's failure): at most that one error
@@ -441,6 +579,8 @@ for (const vp of VIEWPORTS.filter((v) => !process.env.ONLY || v.name.includes(pr
   console.log(`— ${vp.name}`);
   const page = await launch(vp);
   await page.beforeLoad(SEED);
+  await page.beforeLoad(REJECT);
+  await page.beforeLoad(LANDING);
   await suite(page, vp);
   await page.close();
 }

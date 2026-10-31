@@ -16,7 +16,7 @@ const CHROMES = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** A headless Chrome page: { goto, reload, eval, waitFor, tap, tapAt, doubleTap, swipe, mouse, resize, lock, beforeLoad, screenshot, errors, close }. */
+/** A headless Chrome page: { goto, reload, eval, waitFor, tap, tapAt, doubleTap, swipe, mouse, resize, lock, hide, beforeLoad, screenshot, errors, close }. */
 export async function launch({ width = 393, height = 852, mobile = true } = {}) {
   const chrome = CHROMES.find((p) => p && existsSync(p));
   if (!chrome) throw new Error("Chrome introuvable : indiquer son chemin dans la variable CHROME");
@@ -195,10 +195,18 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
     /** The phone locked for `ms`, then unlocked: the page hidden and frozen (no timer, no frame), then running again,
      *  its overdue timers at once. Chrome leaves it hidden once active: focus emulation (left on) shows it again. */
     async lock(ms) {
+      await cmd("Emulation.setFocusEmulationEnabled", { enabled: false }); // left on by a lock before: it would keep the page shown
       await cmd("Page.setWebLifecycleState", { state: "frozen" });
       await sleep(ms);
       await cmd("Page.setWebLifecycleState", { state: "active" });
-      await cmd("Emulation.setFocusEmulationEnabled", { enabled: false }); // already on (a second lock): off, then on
+      await cmd("Emulation.setFocusEmulationEnabled", { enabled: true });
+    },
+    /** Another app in front for `ms`: the page hidden but running (its timers and loads, no frame), then shown again. */
+    async hide(ms) {
+      await cmd("Emulation.setFocusEmulationEnabled", { enabled: false });
+      await cmd("Page.setWebLifecycleState", { state: "frozen" });
+      await cmd("Page.setWebLifecycleState", { state: "active" }); // left hidden
+      await sleep(ms);
       await cmd("Emulation.setFocusEmulationEnabled", { enabled: true });
     },
     beforeLoad: (source) => cmd("Page.addScriptToEvaluateOnNewDocument", { source }),

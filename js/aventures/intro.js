@@ -23,17 +23,18 @@ export async function loadScenario(id) {
 
 /** GSAP drops the time of any frame over 0.5 s (its lag smoothing): on a slow device the intro would end late. While
  *  an intro plays its timeline keeps the clock's time, all but the time the page is hidden (a locked phone): that
- *  frame back is dropped as before, which holds the intro where it was. → the function that puts it back. */
+ *  frame back is dropped as before, which holds the intro where it was. Its first frame too: the page may be hidden
+ *  as it starts (locked while its stickers came), or shown again without a frame yet. → the function that puts it back. */
 function keepTime() {
   const { ticker } = gsap;
   let live = true;
   const again = () => live && ticker.lagSmoothing(0);
-  const seen = () => (document.hidden ? ticker.lagSmoothing(500, 33) : ticker.add(again, true)); // once the frame back has dropped it
-  ticker.lagSmoothing(0);
+  const next = () => ticker.add(again, true); // once its next frame has dropped what it must
+  const seen = () => (document.hidden ? ticker.lagSmoothing(500, 33) : next());
+  next();
   document.addEventListener("visibilitychange", seen);
   return () => {
-    live = false; // a frame back still to come must not turn it off again
-    ticker.remove(again);
+    live = false; // a frame still to come must not turn it off again
     document.removeEventListener("visibilitychange", seen);
     ticker.lagSmoothing(500, 33); // GSAP's own
   };
@@ -57,6 +58,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
 
   let played = null; // the scenario on screen: { timeline, ready, dispose }
   let release = null; // keepTime()'s undoing
+  let appear = null; // « Passer ▸ » coming in: its own tween, not its timeline's (it shows while the stickers come)
   let finished = false;
   const stop = () => (finished = true);
   // The browser's back or forward can leave its address while it plays (it stays on screen until the next screen is
@@ -69,6 +71,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
   function finish() {
     if (finished) return;
     stop();
+    played?.timeline.pause(); // nothing more of it (a sound, a bubble) while the screen goes
     if (here()) onDone();
   }
   // a touch anywhere (the button included) ends a skippable intro; the first time, a touch does nothing
@@ -88,9 +91,12 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
       const { timeline, ready } = played;
       const end = timeline.duration(); // s
       el.dataset.length = String(Math.round(end * 1000));
+      // its own scenario ends on its poster (its last beat): « Passer ▸ » goes as the poster comes, off its frame
+      const poster = scenario === provisoire ? undefined : SCENARIOS[aventure.id]?.beats.at(-1).at;
       if (skip) {
         gsap.set(skip, { autoAlpha: 0, y: 12 });
-        timeline.to(skip, { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.5);
+        appear = gsap.to(skip, { autoAlpha: 1, y: 0, duration: 0.4, delay: 0.5, ease: "power2.out" });
+        if (poster !== undefined) timeline.call(() => appear.kill(), null, poster).to(skip, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, poster);
       }
       // it ends on its own timeline, not by a timer: a locked phone (a hidden page) holds it where it was, so the
       // first time it is seen in full (keepTime() drops the time it was hidden, and only that)
@@ -99,6 +105,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
       if (finished) return; // left (or skipped) while it was getting ready
       const start = startAt();
       if (start >= end) return finish(); // ?t= past its end: over at once, not frozen on its last frame
+      if (start >= poster) appear?.kill(); // ?t= on its poster: without « Passer ▸ »
       release = keepTime(); // only now: the heavy frames after its mount kept GSAP's smoothing for the screen's fade-in
       timeline.seek(start).play(); // a seek fires none of the callbacks it passes
     },
@@ -106,6 +113,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
       stop();
       removeEventListener("popstate", left);
       release?.();
+      appear?.kill();
       played?.dispose();
     },
   };

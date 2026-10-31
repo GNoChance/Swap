@@ -15,6 +15,7 @@ import { AVENTURES } from "./data.js";
 import { addedSince, isComplete, live, monthYear, nextToLive, pageOf, passportPages, stamp, statuses } from "./logic.js";
 import { createPassport } from "./passport.js";
 import { introScreen, loadScenario } from "./intro.js";
+import { SCENARIOS } from "./intros/index.js";
 import { refused } from "./route.js";
 import { createStamper } from "./stamper.js";
 
@@ -27,6 +28,7 @@ const NUDGE = 6000; // ms without a touch, the rubber stamp waiting, before Mini
 const LIT = 550; // ms after the contact: the stamp has flown, the next slot lights up
 const NEXT_PAGE = 800; // ms after the contact: the next slot's page turns, if it is another
 const OWN = 1000; // ms after the contact when a touch on the slot just stamped is still the stamp's (not its intro)
+const FADE_IN = 600; // ms the screen takes to come in (main.js, show())
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** No break before « : ! ? » (French spacing), after a number (« 15 sorties »), nor inside an outing's name. */
@@ -162,6 +164,13 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     idle();
   }
 
+  /** The scenario of the outing to live, imported once the book rests (never during its flight): its touch then plays
+   *  it at once. An outing without one imports nothing; a failure is left to that touch (the provisional intro). */
+  function warm() {
+    const id = nextToLive(AVENTURES, progress);
+    if (id) SCENARIOS[id]?.load().catch(() => {});
+  }
+
   /** The rubber stamp goes, untouched (its page turned, or leaving): it comes back with its page. */
   function withdraw() {
     clearTimeout(quiet);
@@ -275,6 +284,7 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     // the whole welcome seen: saved at once (leaving now does not bring it back)
     progress = { ...progress, welcomed: true, known: ids };
     saveAventures(progress);
+    warm();
     await sleep(LANDED);
     if (buddy.stopped) return;
     welcoming = false;
@@ -291,6 +301,7 @@ export async function aventuresWorld({ id, from, open, done, back }) {
     passport.arriveAt(start).then(() => {
       arrived = true;
       offer(); // an outing whose stamp waits: its rubber stamp, once landed
+      warm();
     });
   }
 
@@ -357,6 +368,7 @@ export async function aventuresWorld({ id, from, open, done, back }) {
       if (returning) {
         arrived = true;
         passport.openAt(pageOf(AVENTURES, returning));
+        later(FADE_IN, warm); // open at once: once its screen is in
         return;
       }
       const begin = welcoming ? welcome : greet;

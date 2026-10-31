@@ -225,10 +225,11 @@ export function preload(imgs, timeout = 4000) {
     img.src = img.dataset.fallback;
     return true;
   };
+  const there = (img) => img.complete && img.naturalWidth > 0; // a decode() can fail on an image that did arrive (WebKit)
   const arrive = (img) =>
     img
       .decode()
-      .catch(() => (swap(img) ? img.decode().catch(() => {}) : undefined))
+      .catch(() => (!there(img) && swap(img) ? img.decode().catch(() => {}) : undefined))
       .then(() => late.delete(img));
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
