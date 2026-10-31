@@ -37,3 +37,6 @@ export function fileNames(board) {
   if (board.vehicle) return VIEWS.map((view) => `vehicules/${board.vehicle}-${view}.webp`);
   return POSES.map((pose) => `${board.outing}/${board.who}-${board.side}-${pose}.webp`);
 }
+
+/** The width in px of a cut sticker: a scene is shown big, so it keeps 600; a standard one 300. */
+export const stickerWidth = ({ scene }) => (scene ? 600 : 300);

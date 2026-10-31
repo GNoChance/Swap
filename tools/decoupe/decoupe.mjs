@@ -1,5 +1,5 @@
 // Cuts die-cut sticker boards into one WebP per sticker (spec § 7), into assets/aventures/. The pixels go through
-// headless Chrome (the e2e client, no dependency): it decodes the PNG, crops, scales to 300 px and encodes the WebP.
+// headless Chrome (the e2e client, no dependency): it decodes the PNG, crops, scales to 300 px (600 for a scene) and encodes the WebP.
 // Run: node tools/decoupe/decoupe.mjs <boards folder of an outing | board.png> [--scene]
 //   a folder: its standard boards (« <Who> de face.png », « <Who> de dos.png »), 12 poses each;
 //   a file in planches/voyages/vehicules/: a vehicle, 12 views;
@@ -11,15 +11,15 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch } from "../../tests/e2e/cdp.mjs";
 import { SPECK, cutStickers, padBox } from "./islands.mjs";
-import { VEHICLES, boardOf, fileNames, outingOf, slug } from "./names.mjs";
+import { VEHICLES, boardOf, fileNames, outingOf, slug, stickerWidth } from "./names.mjs";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const ASSETS = here("../../assets/aventures/");
 const SHEETS = here("./apercu/");
-const WIDTH = 300; // px, a cut sticker
 const MARGIN = 6; // px kept around a sticker: its white outline must stay whole
 const WHITE = 225; // a pixel with red, green and blue all above this is part of a white outline
-const WEBP_KB = [10, 60]; // a sticker's expected weight
+const WEBP_KB = [10, 60]; // a standard sticker's expected weight
+const SCENE_KB = [30, 180]; // a scene sticker's
 
 // Runs in the page: keeps the board on a canvas, hands back its alpha and which pixels are white (an outline), crops
 // stickers (keeping only the pixels of a mask).
@@ -81,7 +81,7 @@ function jobOf(file, scene) {
   const outing = outingOf(folder);
   if (scene) {
     const names = (count) => Array.from({ length: count }, (_, i) => `${outing}/scene-${slug(name)}-${String(i + 1).padStart(2, "0")}.webp`);
-    return { file, expected: null, names, sheet: `${outing}-scene-${slug(name)}` };
+    return { file, scene: true, expected: null, names, sheet: `${outing}-scene-${slug(name)}` };
   }
   if (folder === "vehicules") {
     if (!VEHICLES[name]) throw new Error(`véhicule inconnu : « ${name} » (voir VEHICLES dans names.mjs)`);
@@ -107,7 +107,7 @@ async function cutBoard(page, job) {
     const rect = padBox(box, MARGIN, width, height);
     const mask = new Uint8Array(rect.w * rect.h); // 1 where the pixel is this sticker's own
     for (let y = 0; y < rect.h; y++) for (let x = 0; x < rect.w; x++) mask[y * rect.w + x] = owner[(rect.y + y) * width + rect.x + x] === i + 1 ? 1 : 0;
-    const webp = await page.eval(`cut.crop(${JSON.stringify(rect)}, ${WIDTH}, "${Buffer.from(mask).toString("base64")}")`);
+    const webp = await page.eval(`cut.crop(${JSON.stringify(rect)}, ${stickerWidth({ scene: job.scene })}, "${Buffer.from(mask).toString("base64")}")`);
     files.push({ name: names[i], bytes: Buffer.from(webp.split(",")[1], "base64") });
   }
   return files;
@@ -116,11 +116,12 @@ async function cutBoard(page, job) {
 const kb = (bytes) => Math.round(bytes.length / 1024);
 
 /** The contact sheet: each sticker on a coloured ground (the white outline shows), with its name and weight. */
-function sheetHtml(title, files) {
+function sheetHtml(title, files, scene) {
+  const range = scene ? SCENE_KB : WEBP_KB;
   const figures = files
     .map(({ name, bytes }, i) => {
-      const odd = kb(bytes) < WEBP_KB[0] || kb(bytes) > WEBP_KB[1];
-      return `<figure><img src="../../../assets/aventures/${name}" alt=""><figcaption>${String(i + 1).padStart(2, "0")} · ${name}<br><b${odd ? ' class="odd"' : ""}>${kb(bytes)} Ko</b></figcaption></figure>`;
+      const odd = kb(bytes) < range[0] || kb(bytes) > range[1];
+      return `<figure><img src="../../../assets/aventures/${name}" alt=""${scene ? ' class="scene"' : ""}><figcaption>${String(i + 1).padStart(2, "0")} · ${name}<br><b${odd ? ' class="odd"' : ""}>${kb(bytes)} Ko</b></figcaption></figure>`;
     })
     .join("\n");
   return `<!doctype html>
@@ -131,6 +132,7 @@ function sheetHtml(title, files) {
   main { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
   figure { margin: 0; text-align: center; }
   img { width: 100%; max-height: 300px; object-fit: contain; }
+  img.scene { width: auto; max-width: 100%; } /* a scene at its own size, up to 300 px high */
   figcaption { margin-top: 4px; }
   .odd { color: #ffd166; }
 </style>
@@ -168,7 +170,7 @@ async function main() {
           writeFileSync(`${ASSETS}${name}`, bytes);
         }
         mkdirSync(SHEETS, { recursive: true });
-        writeFileSync(`${SHEETS}${job.sheet}.html`, sheetHtml(label, files));
+        writeFileSync(`${SHEETS}${job.sheet}.html`, sheetHtml(label, files, job.scene));
         console.log(`${label} : ${files.length} stickers, planche de contrôle tools/decoupe/apercu/${job.sheet}.html`);
         for (const { name, bytes } of files) console.log(`  ${name}  ${kb(bytes)} Ko`);
       } catch (error) {

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cutStickers, findStickers, padBox } from "../tools/decoupe/islands.mjs";
-import { boardOf, outingOf, fileNames } from "../tools/decoupe/names.mjs";
+import { boardOf, outingOf, fileNames, stickerWidth } from "../tools/decoupe/names.mjs";
 
 const W = 400;
 const H = 330;
@@ -173,4 +173,9 @@ test("decoupe: names", () => {
   assert.equal(views.length, 12);
   assert.equal(views[0], "vehicules/seat-trois-quarts.webp");
   assert.equal(views[9], "vehicules/seat-roule.webp");
+});
+
+test("decoupe: a scene sticker is 600 px wide, a standard one 300", () => {
+  assert.equal(stickerWidth({ scene: true }), 600);
+  assert.equal(stickerWidth({ scene: false }), 300);
 });
