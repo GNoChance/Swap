@@ -162,7 +162,7 @@ export function mount(host, { aventure }) {
   };
   const [[, dx, dy, scale], [aboard, ...where]] = ON_BEACH;
   timeline.set(canoe.el, { x: dx, y: dy, scale }, launch);
-  const getIn = launch + 0.95;
+  const getIn = launch + 1.1; // the beach settled, the two of them standing still in the middle of the moment
   flip(getIn, aboard);
   timeline.to(canoe.el, { x: where[0], y: where[1], scale: where[2], duration: 0.3, ease: "power2.out" }, getIn);
   stage.sound(timeline, getIn + 0.12, "paddle");
