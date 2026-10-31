@@ -2,8 +2,10 @@
 // also turned sideways) and two PCs: the Premier bivouac's length, its map and each of its moments with their actors on
 // screen, the phone turned while it plays, the stickers it loads (and their stand-ins), its closing poster and its
 // framing, its scenario file missing, leaving at once, entering and leaving three times, ?demo&t=. Needs the site
-// running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros.mjs` (ONLY=1920: a single screen). Stops
+// running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen). Stops
 // at the first failure (exit code 1). A check also fails if the page logged an error.
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
@@ -11,6 +13,7 @@ import { SCENARIOS } from "../../js/aventures/intros/index.js";
 import { stickers } from "../../js/aventures/intros/bivouac-1.stickers.js";
 
 const BASE = process.env.BASE || "http://localhost:5173/";
+const SHOTS = process.env.SHOTS;
 const VIEWPORTS = [
   { name: "iPhone 393 × 852 (puis tourné en 852 × 393)", width: 393, height: 852, mobile: true, turned: true },
   { name: "petit iPhone 375 × 667", width: 375, height: 667, mobile: true },
@@ -395,6 +398,26 @@ async function suite(page, vp) {
     if (errors.length > 1 || errors.some((e) => !e.includes("intros/bivouac-1.js"))) throw new Error(`erreurs : ${JSON.stringify(errors)}`);
   }, { allowErrors: true });
 
+  if (SHOTS) {
+    // the middle of each moment, held still, on this screen (and the phone turned); the demo banner hidden
+    const turned = vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]];
+    for (const [width, height] of turned) {
+      await page.resize(width, height);
+      try {
+        for (const [name, { mid }] of Object.entries(beat)) {
+          await page.goto(`${BASE}?demo&t=${mid}#/aventures/bivouac-1`);
+          await page.waitFor(`innerWidth === ${width} && ${playing}`, 8000);
+          await sleep(250);
+          await page.eval(holdAt(mid));
+          await page.eval(`document.querySelectorAll(".demo-badge").forEach((el) => (el.style.display = "none"))`);
+          await page.screenshot(join(SHOTS, `${String(Object.keys(beat).indexOf(name) + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}-${width}x${height}.png`));
+        }
+      } finally {
+        await page.resize(vp.width, vp.height);
+      }
+    }
+  }
+
   await check("?demo&t=99 (après la fin de l'intro) : retour au passeport, sans rester figé sur la dernière image", async () => {
     await page.goto(`${BASE}?demo&t=99#/aventures/bivouac-1`);
     await page.waitFor(atPassport, 5000);
@@ -413,6 +436,7 @@ async function suite(page, vp) {
   });
 }
 
+if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 for (const vp of VIEWPORTS.filter((v) => !process.env.ONLY || v.name.includes(process.env.ONLY))) {
   console.log(`— ${vp.name}`);
   const page = await launch(vp);

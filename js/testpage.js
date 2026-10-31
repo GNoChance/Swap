@@ -5,6 +5,7 @@ import { content } from "./content.js";
 import { h } from "./dom.js";
 import { AVENTURES } from "./aventures/data.js";
 import { formatRange, passportPages } from "./aventures/logic.js";
+import { SCENARIOS } from "./aventures/intros/index.js";
 
 export function testScreen() {
   const link = (label, href, note) => h("a", { class: "test-link", href }, h("span", {}, label), note && h("small", {}, note));
@@ -37,7 +38,11 @@ export function testScreen() {
       ]),
       group(
         "Les intros",
-        outings.map((a, i) => link(`${i + 1}. ${a.name}`, `?demo#/aventures/${a.id}`, formatRange(a.from, a.to))),
+        // an outing with its own scenario: marked new, then a link to each of its beats
+        outings.flatMap((a, i) => [
+          link(`${i + 1}. ${a.name}`, `?demo#/aventures/${a.id}`, SCENARIOS[a.id] ? `nouvelle · ${formatRange(a.from, a.to)}` : formatRange(a.from, a.to)),
+          ...(SCENARIOS[a.id]?.beats ?? []).map(({ name, at }) => link(name, `?demo&t=${at}#/aventures/${a.id}`, `à ${at} s`)),
+        ]),
       ),
       group("Début", [link("Intro et choix des chips", "?demo&scene=intro")]),
       group(

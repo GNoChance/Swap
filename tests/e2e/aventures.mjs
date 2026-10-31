@@ -1277,8 +1277,18 @@ async function suite(page, vp) {
     const want = ["./#/aventures", "?demo#/aventures", "?demo&accueil#/aventures", "?demo&tampon=bivouac-1#/aventures", "?reset#/aventures"];
     if (ours.join(" ") !== want.join(" ")) throw new Error(`« Nos aventures » : ${JSON.stringify(ours)}`);
     const intros = groups.find((g) => g.title === "Les intros")?.hrefs ?? [];
-    const each = passportPages(AVENTURES).flatMap((p) => p.ids || []).map((id) => `?demo#/aventures/${id}`);
+    // one per outing in passport order; right after each outing with a scenario, one per beat (?demo&t=<at>)
+    const each = passportPages(AVENTURES).flatMap((p) => p.ids || []).flatMap((id) => [
+      `?demo#/aventures/${id}`,
+      ...(SCENARIOS[id]?.beats ?? []).map(({ at }) => `?demo&t=${at}#/aventures/${id}`),
+    ]);
     if (intros.join(" ") !== each.join(" ")) throw new Error(`« Les intros » : ${JSON.stringify(intros)}`);
+    const links = await page.eval(`[...[...document.querySelectorAll(".test-group")].find((g) => g.querySelector("h2").textContent === "Les intros").querySelectorAll("a")].map((a) => ({ label: a.querySelector("span").textContent, note: a.querySelector("small")?.textContent ?? "" }))`);
+    const first = links.findIndex((l) => l.label.endsWith(AVENTURES.find((a) => a.id === "bivouac-1").name));
+    const beats = SCENARIOS["bivouac-1"].beats.map((b) => b.name);
+    if (first < 0 || !/nouvelle/i.test(links[first].note)) throw new Error(`pas de mention « nouvelle » sur le Premier bivouac : ${JSON.stringify(links[first])}`);
+    if (links.slice(first + 1, first + 1 + beats.length).map((l) => l.label).join("|") !== beats.join("|")) throw new Error(`les temps : ${JSON.stringify(links.slice(first + 1, first + 1 + beats.length))}`);
+    if (links.filter((l) => /nouvelle/i.test(l.note)).length !== 1) throw new Error("« nouvelle » ailleurs que sur le Premier bivouac");
     const elsewhere = groups.filter((g) => !["Nos aventures", "Les intros"].includes(g.title)).flatMap((g) => g.hrefs).filter((href) => href.includes("#/aventures"));
     if (elsewhere.length) throw new Error(`ailleurs sur la page : ${elsewhere.join(", ")}`);
   });
