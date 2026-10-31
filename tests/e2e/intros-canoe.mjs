@@ -33,12 +33,17 @@ const BIVOUAC_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), sta
 const SCENE = "canoe/scene-cycy-et-kevin-en-canoe-11"; // the canoe in front of the cliff, on the poster
 const beat = beatsOf("canoe");
 // who shows in the middle of each moment after the map (spec § 2), all of them entirely on screen: the two of them in a
-// scene sticker (« duo »), their heads in bubbles
+// scene sticker (« duo »), their heads in bubbles, each of them at the table, the C3
 const CAST = {
   "La mise à l'eau": ["duo"],
   "Les ronds dans l'eau": ["duo", "bulle-cycy", "bulle-kevin"],
   "La descente": ["duo"],
+  "Le coin perdu": ["repas-cycy", "repas-kevin"],
+  "Le plouf": ["duo"],
+  "L'arrivée": ["duo", "c3"],
 };
+// side by side at the table, their gingham cloths meet: their boxes at most this many units apart
+const TABLE = { beat: "Le coin perdu", mates: ["repas-cycy", "repas-kevin"], gap: 6 };
 const SPIN = [7.5, 7.9, 8.3, 10.6]; // s: in the middle of the canoe's half-turns, then off again after the last one
 const OFF_AGAIN = 10.6; // s: its width whole again
 
@@ -50,14 +55,16 @@ const SHOWS = `(el) => {
 }`;
 // the words on the wooden signs that show (the start's « Carsac · 28 km »)
 const SIGNS = `[...document.querySelectorAll(".st-sign")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; })`;
-// the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it); the signs' words
+// the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it); the signs' words; the
+// stage's scale (px a unit)
 const castBoxes = `(() => {
   const seen = ${sceneBoxes};
   const discs = Object.fromEntries([...document.querySelectorAll(".st-bubble__disc")].map((el) => {
     const r = el.getBoundingClientRect();
     return [el.closest(".st-actor").dataset.who, { left: r.left, top: r.top, right: r.right, bottom: r.bottom }];
   }));
-  return { ...seen, actors: seen.actors.map((b) => (discs[b.what] ? { what: b.what, ...discs[b.what] } : b)), signs: ${SIGNS} };
+  const scale = document.querySelector(".st-world").getBoundingClientRect().height / 760;
+  return { ...seen, actors: seen.actors.map((b) => (discs[b.what] ? { what: b.what, ...discs[b.what] } : b)), signs: ${SIGNS}, scale };
 })()`;
 // the canoe's looks that show (one at a time: never two views, never none) and its turn box's scaleX (its width); the
 // signs' words, with the screen's size
@@ -211,7 +218,8 @@ async function suite(page, vp) {
   }
 
   /** In the middle of each moment after the map, held there: exactly those it shows (CAST), each entirely on screen;
-   *  the words of a sign that shows, whole (never cut by the screen's edge). */
+   *  the words of a sign that shows, whole (never cut by the screen's edge); at the table, the two of them side by side,
+   *  their cloths meeting. */
   async function scenes(where) {
     for (const [name, needs] of Object.entries(CAST)) {
       const t = beat[name].mid;
@@ -220,6 +228,10 @@ async function suite(page, vp) {
       if (JSON.stringify(who) !== JSON.stringify([...needs].sort())) throw new Error(`${where}, « ${name} » à ${t} s : à l'écran ${JSON.stringify(who)}`);
       const off = outside(now.screen, [...now.actors, ...now.signs]);
       if (off.length) throw new Error(`${where}, « ${name} » à ${t} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
+      if (name === TABLE.beat) {
+        const [a, b] = TABLE.mates.map((mate) => now.actors.find((box) => box.what === mate));
+        if (gap(a, b) >= TABLE.gap * now.scale) throw new Error(`${where}, « ${name} » à ${t} s : les nappes à ${(gap(a, b) / now.scale).toFixed(1)} unités l'une de l'autre ${JSON.stringify([a, b].map(round))}`);
+      }
     }
   }
 
@@ -231,7 +243,7 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, et le panneau du départ entier quand il se montre`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran, les nappes vichy de ${TABLE.mates.join(" et ")} à moins de ${TABLE.gap} unités l'une de l'autre, et les panneaux entiers quand ils se montrent`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 

@@ -98,9 +98,11 @@ export function createStage(host) {
     frame(tl, at, { whole = true, duration = 0.6, ease = "power2.inOut" } = {}) {
       tl.to(el, { "--st-whole": typeof whole === "number" ? whole : whole ? 1 : 0, duration, ease }, at);
     },
-    /** The sound `name` at `at` s (sfx()); a long one (the engine, the crickets) stops with the stage. */
-    sound(tl, at, name) {
-      tl.call(() => voices.add(sfx(name)), null, at);
+    /** The sound `name` at `at` s (sfx()); a long one (the engine, the crickets) stops with the stage, or at `until` s. */
+    sound(tl, at, name, until) {
+      let voice = null;
+      tl.call(() => voices.add((voice = sfx(name))), null, at);
+      if (until !== undefined) tl.call(() => voice?.stop(), null, until);
     },
     dispose() {
       removeEventListener("resize", place);

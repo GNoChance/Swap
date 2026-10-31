@@ -380,6 +380,18 @@ const sounds = {
     noise({ dur: 0.08, gain: 0.1, filter: 1200 + Math.random() * 500, q: 1.1 });
     tone({ freq: 1300 + Math.random() * 300, glideTo: 2200, at: 0.03, dur: 0.09, gain: 0.04 });
   },
+  /** Two glasses clinking: two high sines, a hair apart, ringing out (~0.4 s). */
+  clink() {
+    tone({ freq: 2489, dur: 0.4, gain: 0.05, attack: 0.002 });
+    tone({ freq: 3322, at: 0.014, dur: 0.34, gain: 0.035, attack: 0.002 });
+  },
+  /** « Plouf »: someone falls into the river: a low rush of water, a dull thump and its bloop (~0.5 s). */
+  splash() {
+    noise({ dur: 0.5, gain: 0.32, filter: 480, q: 0.6 });
+    noise({ at: 0.03, dur: 0.28, gain: 0.1, filter: 1600, q: 0.7 });
+    tone({ freq: 120, glideTo: 42, dur: 0.28, gain: 0.26 });
+    tone({ freq: 420, glideTo: 150, at: 0.02, dur: 0.14, gain: 0.06 });
+  },
   /** A crowd roaring in the stands. */
   crowd() {
     for (let i = 0; i < 8; i++) noise({ at: i * 0.16, dur: 0.9, gain: 0.07, filter: 600 + Math.random() * 900, q: 0.35 });

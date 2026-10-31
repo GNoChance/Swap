@@ -3,11 +3,14 @@
 // honks and drives up it to Carsac); the camera dives onto Carsac's beach, where the two of them stand with their
 // paddles by the sign and Kevin helps Cycy in; the canoe paddles off and spins round and round, Cycy puzzled then
 // cross and Kevin in tears in their bubbles, then it goes off straight; down the river under the leaning trees, Domme
-// and Montfort far off, under Vitrac's bridge; the river on a summer day under Beynac's cliff, then the closing poster
+// and Montfort far off, under Vitrac's bridge; lunch side by side at a table under a tree on a gravel bank, their views
+// changing together; in the golden light between Castelnaud and Beynac, Kevin jumps out of the canoe into the river,
+// splash, Cycy laughing, and another canoe at the back laughing too; at Port d'Enveaux, thumbs up by the finish board,
+// the C3 all hearts, and off they go; the river on a summer day under Beynac's cliff, then the closing poster
 // « LA DORDOGNE » on the river, the canoe in front of the cliff. Its moments are the beats of intros/index.js; its
-// stickers, canoe.stickers.js. The river shows alone from the lunch to the poster: the day's scenes come in front of it.
+// stickers, canoe.stickers.js. The river is the plouf's decor, and shows alone from Sarlat to the poster.
 import { content } from "../../content.js";
-import { createStage, ENTER, HIDDEN } from "../scene/stage.js";
+import { createStage, ENTER, HIDDEN, layerX } from "../scene/stage.js";
 import { grain, paperLayer } from "../scene/decor.js";
 import { faceBubble, paperVehicle, preload, sceneActor, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
@@ -27,6 +30,13 @@ const beat = (name) => SCENARIOS.canoe.beats.find((b) => b.name === name).at;
 const MAP = { at: { x: 50, y: 330 }, unitsPerDegree: 230 }; // Bordeaux (its first point) there, 230 units a degree
 const RELAY = 2.9; // s: the C3 at Port d'Enveaux, the bus's turn
 const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
+/** A <span> of class `cls` holding `markup`. */
+const span = (cls, markup = "") => Object.assign(document.createElement("span"), { className: cls, innerHTML: markup });
+/** `el` at left, top (px in its box). → el */
+function placed(el, left, top) {
+  Object.assign(el.style, { left: `${left}px`, top: `${top}px` });
+  return el;
+}
 /** A scene sticker of the canoe's boards (`board`, its number `k`), and its stand-in: its main person from the front in
  *  the nearest pose (spec § 3). */
 const scene = (board, k, who = "cycy", pose = "joie") => ({ src: sceneUrl("canoe", board, k), fallback: fallbackUrl(who, "face", pose) });
@@ -68,6 +78,38 @@ const BUBBLES = [
   ["bulle-kevin", { x: 300, y: 400 }, { x: 251, y: 480 }],
 ];
 const BRIDGE = { from: 0.5, to: 7 }; // the zoom of Vitrac's bridge, far off at the start of the descent, passing over at its end
+// the lunch, back to front (paper only); the two of them stand on the table's front edge (riviere.TABLE)
+const LUNCH = [
+  ["coin-ciel", 0.04, riviere.sky],
+  ["coin-fond", 0.12, () => riviere.hills("paper", false)], // its trees light to draw
+  ["coin-eau", 0.3, () => riviere.water("paper")],
+  ["coin-rive", 0.6, () => riviere.graviers() + riviere.tablee()],
+];
+// side by side at the table, as wide as each other (their stickers of other shapes), their gingham cloths meeting:
+// [who, x, height]
+const AT_TABLE = [["cycy", 120, 160], ["kevin", 270, 226]];
+// their views at the same time, about every 0.7 s from the lunch's start: [view, s, Cycy's sticker, Kevin's] (the bite,
+// a fry, the empty plate and thumbs up, the hand on the belly); none turning over in the moment's middle
+const MEAL = [["croc", 0, 1, 2], ["frite", 0.6, 3, 3], ["assiette", 1.25, 11, 11], ["ventre", 1.95, 10, 10]];
+const TABLE_FOCUS = { x: 195, y: 640 };
+// the plouf, on the river between Castelnaud and Beynac: the canoe in front of the cliff, Kevin's leap from his seat
+// into the river, the canoe drifting right, the laughing canoe on the far water out from behind the islet; on a phone
+// held sideways, the frame between the action band and the whole stage (both castles whole)
+const AFLOAT = { x: 165, y: 700, height: 210 };
+const LEAP = { x: 200, y: 640, height: 140, to: { x: 268, y: 716 } };
+const ADRIFT = 38;
+const GALLERY = { y: 478, from: 520, to: -170 };
+const GOLDEN_FRAME = 0.35;
+// the arrival at Port d'Enveaux, back to front (paper only): the two of them on the pebbles, the C3 on the parking,
+// the finish board between them
+const ARRIVAL = [
+  ["arrivee-ciel", 0.04, riviere.sky],
+  ["arrivee-fond", 0.12, () => riviere.hills("paper", false)],
+  ["arrivee-eau", 0.3, () => riviere.water("paper")],
+];
+const LANDED = { x: 125, y: 712, height: 175 };
+const PARKED = { x: 292, y: 615, width: 130 };
+const FINISH = { x: 172, y: 552 };
 
 /** mount(host, { aventure }): its scenes on a stage in `host` (the map on show, the others hidden until their moment),
  *  and its paused timeline (intros/index.js). */
@@ -77,16 +119,69 @@ export function mount(host, { aventure }) {
   const stage = createStage(host);
   const project = projection({ origin: trajet.points[0], ...MAP });
   const draw = (list, skins) => list.map(([name, depth, markup]) => paperLayer({ stage, name, depth, paper: markup("paper"), poster: skins ? markup("poster") : undefined }));
+  /** The golden light over what is under it (its layer `name`, the camera never moves it): GSAP fades it. */
+  const veil = (name) => {
+    const el = stage.layer(name, { depth: 0 });
+    el.classList.add("st-veil", "st-veil--dore");
+    return el;
+  };
 
-  // back to front: the river, the launch, the descent, the valley's map, the South-West's map (each hidden under the one
-  // before it, until it leaves); a scene is the list of its layers' elements
-  // 1. the river, and the canoe in front of Beynac's cliff for the poster
-  const riverLayers = draw(RIVER, true);
+  // back to front: the river (with the plouf), the arrival, the lunch, the launch, the descent, the valley's map, the
+  // South-West's map (each hidden under the one before it, until it leaves); a scene is the list of its layers' elements
+  // 1. the river, Castelnaud on its hill behind Beynac's village (for the plouf only), and the canoe in front of
+  // Beynac's cliff for the poster
+  const riverBack = draw(RIVER.slice(0, 2), true);
+  const castle = paperLayer({ stage, name: "riviere-castelnaud", depth: 0.15, paper: chateaux.castelnaud() }).el;
+  const riverLayers = [...riverBack, ...draw(RIVER.slice(2), true)];
   const crowd = stage.layer("riviere-gens", { depth: 0.7 });
   const duo = sceneActor({ layer: crowd, who: "duo", looks: { falaise: scene("cycy-et-kevin-en-canoe", 11) }, look: "falaise", x: 195, y: 716, height: 240 });
   const river = [...riverLayers.map((layer) => layer.el), crowd];
+  const vest = (who, k, pose) => scene(`${who}-en-gilet-de-sauvetage`, k, who, pose);
 
-  // 2. the launch at Carsac: the beach and its sign; the two of them with their paddles, then getting in, then the canoe
+  // 2. the plouf on the river (its leaning trees left out): the laughing canoe on the far water, out from behind the
+  // islet; the canoe in front of the cliff, then Cycy alone in it, then the splash scene; Kevin in his life jacket
+  // jumping in; the golden light over all
+  const galleryLayer = stage.layer("plouf-galerie", { depth: 0.3 });
+  const islet = paperLayer({ stage, name: "plouf-ilot", depth: 0.3, paper: riviere.ilot() }).el;
+  const ploufCrowd = stage.layer("plouf-gens", { depth: 0.7 });
+  const afloat = sceneActor({
+    layer: ploufCrowd,
+    who: "duo",
+    looks: { falaise: scene("cycy-et-kevin-en-canoe", 11), seule: vest("cycy", 10, "joie"), eclaboussure: scene("cycy-et-kevin-en-canoe", 4) },
+    look: "falaise",
+    ...AFLOAT,
+  });
+  const jumper = sceneActor({ layer: ploufCrowd, who: "kevin", looks: { surprise: vest("kevin", 9, "surprise") }, look: "surprise", ...LEAP });
+  const golden = veil("plouf-dore");
+  // the laughing canoe: its laughers on their seats (6 units over its keel), its hull in front of them
+  const gallery = riviere.galerie();
+  const laughers = gallery.laughers.map((markup, k) => placed(span("st-galerie__rieur", markup), gallery.seats[k] - 14, -38));
+  const boat = placed(span("st-galerie"), layerX(galleryLayer, GALLERY.from), GALLERY.y);
+  boat.append(...laughers, placed(span("st-galerie__coque", gallery.hull), -48, -18));
+  galleryLayer.append(boat);
+  const ploufMoved = [...river.filter((el) => el !== riverLayers.at(-1).el && el !== crowd), castle, galleryLayer, islet, ploufCrowd]; // its leaning trees left out
+  const ploufScene = [...ploufMoved, golden];
+
+  // 3. the arrival at Port d'Enveaux: the shore, the grass and the parking, the finish board; the two of them thumbs up
+  // on the pebbles, the C3 all hearts on the parking (facing right, the way it leaves); the golden light, fainter
+  const arrivalDecor = [...draw(ARRIVAL).map((layer) => layer.el), paperLayer({ stage, name: "arrivee-sol", depth: 0.6, paper: riviere.herbe() + riviere.pancarte(FINISH.x, FINISH.y, content.aventures.intros.canoe.arrivee) }).el];
+  const arrivalCrowd = stage.layer("arrivee-gens", { depth: 0.6 });
+  const waiting = vehicle({ layer: arrivalCrowd, name: "c3", ...PARKED, view: "coeurs" });
+  waiting.turn.classList.add("is-flipped");
+  const landed = sceneActor({ layer: arrivalCrowd, who: "duo", looks: { pouces: scene("cycy-et-kevin-en-canoe", 8) }, look: "pouces", ...LANDED });
+  const dusk = veil("arrivee-dore");
+  const arrivalScene = [...arrivalDecor, arrivalCrowd];
+
+  // 4. the lunch on a gravel bank, the table under its tree; the two of them side by side at it
+  const lunchDecor = draw(LUNCH).map((layer) => layer.el);
+  const lunchCrowd = stage.layer("coin-gens", { depth: 0.6 });
+  const meal = (who, k) => scene(`${who}-qui-mange`, k, who);
+  const diners = AT_TABLE.map(([who, x, height]) =>
+    sceneActor({ layer: lunchCrowd, who: `repas-${who}`, looks: Object.fromEntries(MEAL.map(([view, , c, k]) => [view, meal(who, who === "cycy" ? c : k)])), look: MEAL[0][0], x, y: riviere.TABLE.y, height }),
+  );
+  const lunchScene = [...lunchDecor, lunchCrowd];
+
+  // 5. the launch at Carsac: the beach and its sign; the two of them with their paddles, then getting in, then the canoe
   // on the water from the front and the back; their heads in bubbles over it
   const launchDecor = draw(LAUNCH).map((layer) => layer.el);
   const launchCrowd = stage.layer("depart-gens", { depth: 0.6 }); // settles with the beach, then stays
@@ -98,13 +193,12 @@ export function mount(host, { aventure }) {
     ...LAUNCH_SPOT,
     height: CANOE,
   });
-  const vest = (who, k, pose) => scene(`${who}-en-gilet-de-sauvetage`, k, who, pose);
   const faces = { "bulle-cycy": { question: vest("cycy", 5, "question"), colere: vest("cycy", 2, "colere") }, "bulle-kevin": { pleurs: vest("kevin", 3, "pleurs") } };
   const [cycy, kevin] = BUBBLES.map(([who, at, tail]) => faceBubble({ layer: launchCrowd, who, looks: faces[who], look: Object.keys(faces[who])[0], ...at, size: 84, tail }));
   launchDecor.push(paperLayer({ stage, name: "depart-arbres", paper: riviere.trees("paper") }).el); // leaning over them, in front
   const launchScene = [...launchDecor, launchCrowd];
 
-  // 3. the descent: the river going away to its bend, the canoe from the back; in front of it Vitrac's bridge, and in
+  // 6. the descent: the river going away to its bend, the canoe from the back; in front of it Vitrac's bridge, and in
   // front of all the trees leaning over the river (passing by on the sides)
   const descentDecor = draw(DESCENT).map((layer) => layer.el);
   const descentCrowd = stage.layer("descente-gens", { depth: 0 });
@@ -113,7 +207,7 @@ export function mount(host, { aventure }) {
   const trees = paperLayer({ stage, name: "descente-arbres", depth: 1.5, paper: riviere.penches() }).el;
   const descentScene = [...descentDecor, descentCrowd, bridge, trees];
 
-  // 4. the valley's map from Port d'Enveaux to Carsac, its road for the bus
+  // 7. the valley's map from Port d'Enveaux to Carsac, its road for the bus
   const valley = [
     paperLayer({ stage, name: "vallee-carte", paper: perigord.valleyMap({ depart: trajet.arrivee, arrivee: relais.arrivee, noms: relais.noms }) }).el,
     stage.layer("vallee-trajet"),
@@ -121,7 +215,7 @@ export function mount(host, { aventure }) {
   const [bx, by] = perigord.VALLEY_ROUTE[0];
   const bus = paperVehicle({ layer: valley[1], name: relais.transport, markup: perigord.BUS, x: bx, y: by, width: 58 });
 
-  // 5. the South-West's map, on east to the Périgord: its vines and woods, the Dordogne, the P at the arrival
+  // 8. the South-West's map, on east to the Périgord: its vines and woods, the Dordogne, the P at the arrival
   const road = trajet.points.map(project).map(({ x, y }) => [x, y]);
   const clear = carte.stops({ trajet, lieu }, project).map((s) => s.box);
   const end = project(trajet.points.at(-1));
@@ -139,7 +233,7 @@ export function mount(host, { aventure }) {
   const start = project(trajet.points[0]);
   const c3 = vehicle({ stage, layer: map[1], name: "c3", x: start.x, y: start.y, width: 60, view: "roule" });
 
-  hide([...river, ...launchScene, ...descentScene, ...valley, duo.el]);
+  hide([...river, castle, ...ploufScene, boat, jumper.el, ...arrivalScene, dusk, ...lunchScene, ...launchScene, ...descentScene, ...valley, duo.el]);
   stage.el.style.setProperty("--st-whole", "1"); // the maps in the whole height (a phone held sideways): it starts there
   const texture = grain(stage);
   document.fonts?.load('600 26px "Cormorant Garamond"').catch(() => {}); // the names' and the lettering's font, on its way early
@@ -195,9 +289,74 @@ export function mount(host, { aventure }) {
   stage.pan(timeline, descent, { zoom: BRIDGE.from, focus: riviere.BEND, duration: 0, only: [bridge] });
   stage.pan(timeline, descent, { zoom: BRIDGE.to, focus: riviere.BEND, duration: lunch - descent, ease: "power3.in", only: [bridge] });
 
-  // 5 to 9. the river on a summer day, framed on the action band; the day's scenes come in front of it
-  timeline.set(river, { autoAlpha: 1 }, lunch);
+  // 5. the lunch: the gravel bank and the table under its tree, the glasses clink; the two of them side by side, the
+  // bite, a fry, the empty plate and thumbs up, the hand on the belly, both at once, a little hop at each; the camera
+  // closes in slowly on the table
+  const plouf = beat("Le plouf");
+  timeline.set(lunchScene, { autoAlpha: 1 }, lunch);
   timeline.to(descentScene, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, lunch);
+  stage.pan(timeline, lunch, { zoom: 1.05, focus: TABLE_FOCUS, duration: plouf - lunch, ease: "sine.inOut", only: lunchScene });
+  stage.sound(timeline, lunch + 0.35, "clink");
+  for (const [view, at] of MEAL.slice(1))
+    for (const diner of diners) {
+      diner.flip(timeline, lunch + at, view);
+      timeline.fromTo(diner.pose, { y: 0 }, { y: -6, duration: 0.12, ease: "power2.out", immediateRender: false }, lunch + at + 0.18).to(diner.pose, { y: 0, duration: 0.14, ease: "power2.in" }, lunch + at + 0.3);
+    }
+
+  // 6. the plouf, on the river in the golden light (framed so that both castles show on a phone held sideways), the
+  // camera drifting: the canoe glides in in front of the cliff; Kevin jumps out of it in his life jacket, surprised, as
+  // it shows Cycy alone; splash, and under the splash it turns into the scene of Kevin in the water and Cycy laughing,
+  // drifting right; at the back, the laughing canoe comes out from behind the islet and goes by
+  const arrival = beat("L'arrivée");
+  timeline.set(ploufScene.filter((el) => el !== golden), { autoAlpha: 1 }, plouf);
+  timeline.fromTo(golden, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.8, ease: "sine.inOut", immediateRender: false }, plouf);
+  timeline.to(lunchScene, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, plouf);
+  stage.frame(timeline, plouf, { whole: GOLDEN_FRAME, duration: 0.5 });
+  stage.pan(timeline, plouf, { x: 8, zoom: 1.04, focus: { x: 195, y: 560 }, duration: arrival - plouf, ease: "sine.inOut", only: ploufMoved });
+  const jump = plouf + 0.6;
+  timeline.fromTo(afloat.el, { x: -40 }, { x: 0, duration: 0.6, ease: "power2.out", immediateRender: false }, plouf);
+  eau.flotte(timeline, plouf, { actor: afloat, duration: jump - plouf });
+  afloat.show(timeline, jump, "seule");
+  eau.plouf(timeline, jump, { jumper, to: LEAP.to, layer: ploufCrowd });
+  const splashed = jump + 0.65; // under the splash
+  afloat.flip(timeline, splashed, "eclaboussure");
+  eau.flotte(timeline, jump, { actor: afloat, duration: arrival - jump, strokes: false });
+  timeline.fromTo(afloat.el, { x: 0 }, { x: ADRIFT, duration: arrival - splashed, ease: "sine.inOut", immediateRender: false }, splashed);
+  const laugh = plouf + 1.4;
+  const covered = arrival + 0.3; // the plouf hidden under the arrival
+  timeline.set(boat, { autoAlpha: 1 }, laugh);
+  timeline.fromTo(boat, { x: 0 }, { x: GALLERY.to - GALLERY.from, duration: covered - laugh, ease: "none", immediateRender: false }, laugh);
+  timeline.fromTo(boat, { y: 0 }, { y: -1.6, duration: 0.42, ease: "sine.inOut", repeat: 4, yoyo: true, immediateRender: false }, laugh);
+  laughers.forEach((el, k) => timeline.fromTo(el, { rotation: k ? 14 : -12 }, { rotation: k ? -12 : 14, duration: 0.17, ease: "sine.inOut", repeat: 11, yoyo: true, immediateRender: false }, laugh));
+
+  // 7. the arrival: the landing at Port d'Enveaux settles over the plouf, framed on the action band, in a fainter golden
+  // light; the two of them thumbs up by their canoe, the finish board; the C3 pops up all hearts and bounces; they hop
+  // into it and off it goes to the right, its engine purring. The river behind, back at rest for the poster
+  const sarlat = beat("Sarlat");
+  timeline.fromTo(arrivalScene, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, ease: "power1.out", immediateRender: false }, arrival);
+  timeline.fromTo(dusk, { autoAlpha: 0 }, { autoAlpha: 0.6, duration: 0.3, ease: "power1.out", immediateRender: false }, arrival);
+  timeline.set([...ploufScene, boat], { autoAlpha: 0 }, covered);
+  stage.pan(timeline, covered, { duration: 0, only: ploufMoved });
+  stage.frame(timeline, arrival, { whole: false, duration: 0.4 });
+  stage.pan(timeline, arrival, { zoom: 1.06, duration: 0, only: arrivalScene });
+  stage.pan(timeline, arrival, { zoom: 1, duration: 0.8, ease: "power2.out", only: arrivalScene });
+  const hearts = arrival + 0.35;
+  timeline.fromTo(waiting.pose, { scale: 0.8 }, { scale: 1, duration: 0.4, ease: "back.out(3)", immediateRender: false }, hearts);
+  waiting.bounce(timeline, hearts, 0.36);
+  stage.sound(timeline, hearts, "pop");
+  const hop = arrival + 1.06; // after the moment's middle
+  timeline.fromTo(landed.pose, { y: 0 }, { y: -12, duration: 0.12, ease: "power2.out", immediateRender: false }, hop).to(landed.pose, { y: 0, duration: 0.1, ease: "power2.in" }, hop + 0.12);
+  timeline.fromTo(landed.el, { x: 0, y: 0, scale: 1, autoAlpha: 1 }, { x: (PARKED.x - LANDED.x) * 0.8, y: PARKED.y - LANDED.y - 20, scale: 0.35, autoAlpha: 0, duration: 0.22, ease: "power2.in", immediateRender: false }, hop + 0.16); // into the car
+  const leave = arrival + 1.4;
+  waiting.view(timeline, leave, "roule");
+  waiting.drive(timeline, leave, { fromX: PARKED.x, toX: PARKED.x + 640, duration: 0.7, ease: "power2.in" });
+  waiting.bounce(timeline, leave, 0.6);
+  waiting.smoke(timeline, leave + 0.05, 3);
+  stage.sound(timeline, leave, "engine", sarlat + 0.1);
+
+  // 8 and 9. the river on a summer day, framed on the action band, until Sarlat and La Roque-Gageac come in front of it
+  timeline.set(river, { autoAlpha: 1 }, sarlat);
+  timeline.to([...arrivalScene, dusk], { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, sarlat);
 
   // 10. the poster on the river: Beynac on its cliff, the canoe gliding in front of it
   const poster = beat("L'affiche");
@@ -205,7 +364,7 @@ export function mount(host, { aventure }) {
   timeline.fromTo(duo.pose, { y: 0 }, { y: -3, duration: 0.5, ease: "sine.inOut", repeat: 3, yoyo: true, immediateRender: false }, poster + 0.3); // afloat
   recipes.affiche(timeline, poster, { stage, layers: riverLayers, aventure, grain: texture, only: river });
 
-  const actors = [c3, bus, canoe, cycy, kevin, away, duo];
+  const actors = [c3, bus, canoe, cycy, kevin, away, ...diners, afloat, jumper, waiting, landed, duo];
   return {
     timeline,
     ready: preload(actors.flatMap((a) => a.imgs)),

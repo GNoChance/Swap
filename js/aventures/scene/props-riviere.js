@@ -2,11 +2,13 @@
 // trees, the selfie in the canoe): the blue sky and its clouds, the far hills, the wooded south bank, the water in bands
 // with the cliff's and the woods' reflections, the near banks, and the trees leaning over the water in front (each takes
 // its skin, "paper" or "poster": props.js); the launch at Carsac (its far bank, its pebble beach, its signpost), the
-// eddies, dizzy spiral and paddle drops of a boat on the water, and the descent (the river going away to its bend
-// between its wooded banks, the trees leaning over it, Vitrac's bridge), paper only. Its layers are 1600 units wide (x
-// −605 to 995), the stage's middle clear for the canoe. Pure: markup only, the same for the same arguments.
+// eddies, dizzy spiral and paddle drops of a boat on the water, the descent (the river going away to its bend between
+// its wooded banks, the trees leaning over it, Vitrac's bridge), the lunch (a gravel bank, the table under its tree),
+// the splash, the islet and the laughing canoe of the plouf, and the arrival (the shore, the grass and the parking, the
+// finish board), paper only. Its layers are 1600 units wide (x −605 to 995), the stage's middle clear for the canoe.
+// Pure: markup only, the same for the same arguments.
 import { AFFICHE as A } from "./decor.js";
-import { blob, curve, dot, edgeAt, lens, mirror, path, poly, random, topEdge, tuft } from "./geom.js";
+import { blob, curve, dot, edgeAt, lens, mirror, n, path, poly, random, speck, topEdge, tuft } from "./geom.js";
 import { paper, piece, rock, roundTrees, row, sheetOf, slab, strata } from "./props.js";
 import { house } from "./props-chateaux.js";
 
@@ -63,16 +65,16 @@ const FAR = [[L, 392], [-460, 372], [-300, 386], [-160, 366], [-40, 380], [60, 3
 const BANK = [[L, 404], [-440, 396], [-300, 410], [-180, 398], [-60, 414], [40, 404], [110, 420], [170, 440], [200, WATER_LINE + 4]];
 
 /** The far hills along the river, pale with the distance, and the south bank on the left: a wooded slope down to the
- *  water, its trees in rows. */
-export function hills(skin) {
+ *  water, its trees in rows (smooth: curved, else small polygons, far lighter to draw: roundTrees()). */
+export function hills(skin, smooth = true) {
   const p = paper(skin);
   const c = p ? { far: "#a5bdae", farLit: "#b9cdbd", bank: "#6a9150" } : { far: "#4f8a7a", farLit: "#5f9a88", bank: A.grass };
   const farLit = poly([...FAR, ...[...FAR].reverse().map(([x, y]) => [x, y + 8])]);
   return [
     sheetOf(skin, FAR, c.far, path(farLit, c.farLit), WATER_LINE + 10),
-    roundTrees(row(FAR, L, R, 30, [7, 11], 6, 181), { skin, tint: p ? { crown: "#7d9b7a", lit: "#91ad8a", trunk: "#7d9b7a" } : { crown: "#3f7a66", lit: "#4f8a72", trunk: "#3f7a66" } }),
+    roundTrees(row(FAR, L, R, 30, [7, 11], 6, 181), { skin, tint: p ? { crown: "#7d9b7a", lit: "#91ad8a", trunk: "#7d9b7a" } : { crown: "#3f7a66", lit: "#4f8a72", trunk: "#3f7a66" }, smooth }),
     sheetOf(skin, BANK, c.bank, "", WATER_LINE + 10),
-    roundTrees([...row(BANK, L, 196, 22, [14, 22], 10, 183), ...row(BANK, L, 150, 26, [16, 26], 26, 185)], { skin }),
+    roundTrees([...row(BANK, L, 196, 22, [14, 22], 10, 183), ...row(BANK, L, 150, 26, [16, 26], 26, 185)], { skin, smooth }),
   ].join("");
 }
 
@@ -150,6 +152,17 @@ function foliage(r) {
     top: ([x, y, s]) => blob([[x - s * 0.8, y - s * 0.1], [x - s * 0.5, y - s * 0.66], [x + s * 0.1, y - s * 0.84], [x + s * 0.5, y - s * 0.5], [x, y - s * 0.3]]),
     droop: ([x, y, s]) => blob([[x - s * 0.5, y], [x, y - s * 0.3], [x + s * 0.5, y], [x + s * 0.4, y + s * 1.2], [x, y + s * 2], [x - s * 0.4, y + s * 1.2]]),
   };
+}
+
+/** A mass of leaves round cx, cy, rx by ry: an ellipse, its edge puffed out by `count` round bumps (their sizes
+ *  scattered by `r`, a random()). Path data. */
+function scallop(cx, cy, rx, ry, count, r) {
+  const bumps = Array.from({ length: count }, (_, k) => {
+    const a = (k / count) * 2 * Math.PI + r() * 0.2;
+    const size = Math.min(rx, ry) * (0.32 + r() * 0.12);
+    return dot(cx + Math.cos(a) * (rx - size * 0.7), cy + Math.sin(a) * (ry - size * 0.7), size);
+  });
+  return ellipse(cx, cy, rx * 0.82, ry * 0.82) + bumps.join("");
 }
 
 /** The trees leaning over the water in front, framing the scene (after the photo of the river under the trees): on the
@@ -301,9 +314,11 @@ export function tournis() {
   return `<svg viewBox="-26 -22 52 44" width="52" height="44"><path d="${d}" transform="translate(0 1.8)" fill="none" stroke="#3b2a18" stroke-opacity=".22" stroke-width="4.6" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#fffaf0" stroke-width="3.2" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#7aa9cf" stroke-width="1.2" stroke-linecap="round"/><path d="${stars}" fill="#f6c453" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 }
 
+/** A drop of water at x, y (its round bottom's middle a little lower), `s` across, its tip leaning by `lean`. */
+const drop = (x, y, s, lean) => `M${x} ${y - s * 1.6}C${x + s * 0.4 + lean} ${y - s * 0.7} ${x + s} ${y - s * 0.2} ${x + s} ${y + s * 0.3}A${s} ${s} 0 0 1 ${x - s} ${y + s * 0.3}C${x - s} ${y - s * 0.2} ${x - s * 0.4 + lean} ${y - s * 0.7} ${x} ${y - s * 1.6}Z`;
+
 /** A paddle's splash (an <svg> 28 × 22, its foot in its bottom middle): three drops fanning up, white-edged. */
 export function gouttes() {
-  const drop = (x, y, s, lean) => `M${x} ${y - s * 1.6}C${x + s * 0.4 + lean} ${y - s * 0.7} ${x + s} ${y - s * 0.2} ${x + s} ${y + s * 0.3}A${s} ${s} 0 0 1 ${x - s} ${y + s * 0.3}C${x - s} ${y - s * 0.2} ${x - s * 0.4 + lean} ${y - s * 0.7} ${x} ${y - s * 1.6}Z`;
   const drops = [drop(-8, -5, 2.6, -1), drop(0, -10, 3.2, 0), drop(8, -4, 2.4, 1)].join("");
   return `<svg viewBox="-14 -18 28 22" width="28" height="22"><path d="${drops}" fill="#bfe3f3" stroke="#fff" stroke-width="1.4"/><path d="${[dot(-8.8, -6, 0.7), dot(-0.8, -11, 0.9), dot(7.3, -5, 0.6)].join("")}" fill="#fff"/></svg>`;
 }
@@ -457,5 +472,301 @@ export function pont() {
     path(stones, "#c9b48e") + path(voussoirs, "#b9a37c"),
     piece("paper", cutwaters, path(cutwaters, "#e2d2b0") + path(shadeCut, "#b9a37c"), "", 0.6),
     piece("paper", poly(parapet) + cornice, path(poly(parapet), "#e6d7b6") + path(cornice, "#bda882"), topEdge(parapet), 0.8),
+  ].join("");
+}
+
+// ── The lunch, somewhere along the way (paper only) ─────────
+
+// the gravel bank's edge along the water, from the far left to where the river comes down to the bottom on the right
+const GRAVEL = [[L, 574], [-440, 568], [-300, 576], [-160, 584], [-40, 592], [80, 598], [200, 602], [320, 606], [430, 614], [520, 632], [590, 664], [640, 712], [668, 800]];
+const GRAINS = ["#b8ad98", "#a39a8a", "#cbc1ac", "#958d81", "#c0b399"];
+const LIME = { hull: "#a6d23a", dark: "#79a520", lit: "#c4e36a", shaft: "#2d2b2a" };
+
+/** An ellipse round cx, cy (path data). */
+const ellipse = (cx, cy, rx, ry) => `M${n(cx - rx)} ${n(cy)}a${n(rx)} ${n(ry)} 0 1 0 ${n(2 * rx)} 0a${n(rx)} ${n(ry)} 0 1 0 ${n(-2 * rx)} 0`;
+
+/** A paddle lying from x0, y0 to x1, y1: its black shaft, a lime blade at each end. → { shaft, blades } (path data). */
+function paddleAt(x0, y0, x1, y1) {
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const [ux, uy] = [(x1 - x0) / len, (y1 - y0) / len];
+  const [nx, ny] = [-uy * 1.2, ux * 1.2];
+  const shaft = poly([[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]]);
+  const blade = (x, y, s) => blob([[x, y], [x - uy * 4 + ux * s * 7, y + ux * 4 + uy * s * 7], [x + ux * s * 15, y + uy * s * 15], [x + uy * 4 + ux * s * 7, y - ux * 4 + uy * s * 7]]);
+  return { shaft, blades: blade(x0, y0, -1) + blade(x1, y1, 1) };
+}
+
+/** Their lime canoe pulled up on the shore, `w` long from x, its keel at y, seen from the side and a little from above:
+ *  its hull, the inside between its gunwales, its two seats, a light along its side. → { hull, markup } */
+function beached(x, y, w) {
+  const at = (fx, fy) => [x + fx * w, y - fy * w];
+  const hull = blob([at(0, 0.16), at(0.5, 0.14), at(1, 0.16), at(0.92, 0.05), at(0.5, 0), at(0.08, 0.05)]);
+  const inside = blob([at(0.03, 0.155), at(0.5, 0.142), at(0.97, 0.155), at(0.5, 0.104)]);
+  const seats = [0.32, 0.66].map((f) => poly([at(f, 0.142), at(f + 0.035, 0.142), at(f + 0.035, 0.112), at(f, 0.112)])).join("");
+  return { hull, markup: path(hull, LIME.hull) + path(inside, LIME.dark) + path(seats, "#3f3b36") + path(lens(x + 0.12 * w, y - 0.06 * w, 0.72 * w, 1.1), LIME.lit) };
+}
+
+/** The gravel bank where they had lunch, out of the way: fine gravel in greys and beiges down to the water, its wet
+ *  edge and its foam, the shade of the tree over the table, big stones, a log of bleached driftwood, grass at its far
+ *  end, and their lime canoe pulled up on it, a paddle beside it. */
+export function graviers() {
+  const r = random(401);
+  const wet = poly([...GRAVEL, ...[...GRAVEL].reverse().map(([x, y]) => [x - 4, y + 12])]);
+  const grains = GRAINS.map(() => "");
+  let lit = "";
+  for (let k = 0; k < 300; k++) {
+    const x = L + r() * 1260;
+    const y = 586 + r() ** 0.75 * 214;
+    if (y < edgeAt(GRAVEL, x) + 5) continue;
+    const s = 1.1 + ((y - 580) / 220) * 4 * (0.5 + r() * 0.7);
+    grains[k % GRAINS.length] += pebble(x, y, s, false);
+    if (s > 3.4) lit += lens(x - s * 0.45, y - s * 0.38, s * 0.6, s * 0.08);
+  }
+  // the tree's shade under the table, dappled with sun
+  const shade = ellipse(190, 704, 262, 36);
+  const dapples = Array.from({ length: 9 }, () => ellipse(-40 + r() * 460, 684 + r() * 40, 6 + r() * 12, 1.6 + r() * 2)).join("");
+  const log = poly(limb([[-300, 668], [-240, 660], [-176, 662], [-120, 654]], 13, 8)) + poly(limb([[-210, 661], [-196, 640], [-186, 632]], 5, 3));
+  const knots = [ellipse(-232, 662, 3, 2), ellipse(-150, 658, 2.4, 1.6)].join("");
+  let tufts = "";
+  for (let k = 0; k < 40; k++) {
+    const x = L + r() * 420;
+    tufts += tuft(x, edgeAt(GRAVEL, x) + 8 + r() * 60, 3 + r() * 3.5);
+  }
+  const canoe = beached(408, 646, 156);
+  const oar = paddleAt(392, 668, 520, 672);
+  return [
+    sheetOf("paper", GRAVEL, "#d8cfba", path(wet, "#bdb39e"), 800), // down to the bottom: its shade along its edge only
+    `<path d="${curve(GRAVEL.map(([x, y]) => [x + 2, y - 2]))}" fill="none" stroke="#f4fbff" stroke-width="2" stroke-dasharray="22 8 10 6" stroke-linecap="round"/>`,
+    `<path d="${shade}" fill="#3b2a18" fill-opacity=".13"/><path d="${dapples}" fill="#f1e9d6" fill-opacity=".45"/>`,
+    `<path d="${grains.join("")}" transform="translate(0 1)" fill="#3b2a18" fill-opacity=".2"/>`, // their shadow, once: there are many
+    grains.map((d, k) => path(d, GRAINS[k])).join("") + path(lit, "#e8e1d0"),
+    path(tufts, "#7f9c5c"),
+    piece("paper", log, path(log, "#b9ab96") + path(knots, "#8f8270") + path(lens(-292, 664, 150, 1.4), "#d3c8b6"), "", 0.6),
+    ...[[-90, 712, 40], [-430, 640, 52], [590, 780, 46]].map(([x, y, w]) => rock(x, y, w, "paper")),
+    piece("paper", canoe.hull, canoe.markup, "", 0.7),
+    piece("paper", oar.shaft + oar.blades, path(oar.shaft, LIME.shaft) + path(oar.blades, LIME.hull), "", 0.4),
+  ].join("");
+}
+
+// the table's front edge (the two of them stand on it, at their gingham cloths), from x0 to x1
+export const TABLE = { y: 668, x0: 0, x1: 390 };
+const CHECK = 8; // units: a gingham check
+
+/** The tree over the table and the table under it: an old trunk rising from the gravel on the left, its limbs spreading
+ *  over the table, its leaves in clumps along the top and hanging from the limbs; the wooden table on two trestles, laid
+ *  with a red gingham cloth (its checks narrowing to the back) hanging over its front edge in soft folds; a carafe and
+ *  two glasses at its ends. */
+export function tablee() {
+  const { y, x0, x1 } = TABLE;
+  // the tree: its crown two masses of leaves, the big one over its trunk, the other at the end of its limb over the table
+  const r = random(411);
+  const trunk = limb([[-14, 724], [-6, 620], [6, 520], [22, 420], [38, 340], [52, 262]], 46, 18);
+  const bark = limb([[-4, 724], [3, 620], [14, 520], [30, 420], [45, 340], [56, 264]], 11, 4);
+  const roots = [poly([[-54, 728], [-26, 702], [-14, 722]]), poly([[18, 726], [-2, 704], [4, 724]])].join("");
+  const limbs = [
+    limb([[34, 344], [100, 296], [170, 262], [240, 234]], 18, 6),
+    limb([[20, 400], [-50, 340], [-130, 300], [-210, 282]], 16, 5),
+    limb([[48, 280], [60, 200], [50, 120]], 13, 6),
+  ];
+  const masses = scallop(-70, 150, 270, 130, 18, r) + scallop(252, 198, 96, 62, 11, r);
+  const { clump, puff, top, droop } = foliage(r);
+  const back = [...clump(-80, 140, 470, 220, 24), ...clump(252, 194, 160, 96, 9)];
+  const front = [...clump(-40, 214, 260, 84, 10), ...clump(252, 228, 150, 46, 6, 10), ...clump(40, 86, 220, 80, 7)];
+  const hanging = [[150, 272, 8], [204, 258, 8], [258, 262, 7], [304, 254, 7], [-60, 302, 9], [-132, 298, 8], [16, 294, 8]];
+  const all = (list, shape) => list.map(shape).join("");
+  const wood = [trunk, ...limbs].map(poly).join("") + roots;
+
+  // the table: its cloth's top seen from above a little (from y − 28 at the back), its flap down the front to the hem
+  const back0 = y - 28;
+  const side = (f) => [x0 + 22 * (1 - f), x1 - 22 * (1 - f)]; // the cloth's sides, f of the way from the back to the front
+  const hem = (x) => y + 26 + 2.4 * Math.sin(x / 17);
+  const hemLine = (from, to) => Array.from({ length: 25 }, (_, k) => from + (k * (to - from)) / 24).map((x) => [x, hem(x)]);
+  const flap = poly([[x0 - 2, y], [x1 + 2, y], ...hemLine(x1 + 4, x0 - 4)]);
+  const clothTop = poly([[side(0)[0], back0], [side(0)[1], back0], [x1 + 2, y], [x0 - 2, y]]);
+  const backX = (v) => side(0)[0] + ((v - x0) * (side(0)[1] - side(0)[0])) / (x1 - x0);
+  let along = "";
+  for (let x = x0; x < x1; x += 2 * CHECK) along += poly([[backX(x), back0], [backX(x + CHECK), back0], [x + CHECK, y], [x, y]]) + poly([[x, y], [x + CHECK, y], [x + CHECK, hem(x + CHECK)], [x, hem(x)]]);
+  const band = (ya, yb) => poly([[side((ya - back0) / 28)[0], ya], [side((ya - back0) / 28)[1], ya], [side((yb - back0) / 28)[1], yb], [side((yb - back0) / 28)[0], yb]]);
+  const flapBand = (ya) => poly([[x0 - 2, ya], [x1 + 2, ya], ...hemLine(x1 + 2, x0 - 2).map(([x, yh]) => [x, Math.min(ya + CHECK, yh)])]);
+  const across = band(back0 + 4, back0 + 10) + band(back0 + 16, back0 + 22.5) + flapBand(y + 4) + flapBand(y + 20);
+  const folds = [36, 104, 172, 236, 300, 356].map((x) => poly([[x, y + 1], [x + 3, y + 1], [x + 6, hem(x + 6)], [x - 1, hem(x - 1)]])).join("");
+  // its trestles under the cloth, a stretcher between them
+  const legs = [44, 346].flatMap((cx) => [limb([[cx - 6, y + 22], [cx - 22, y + 82]], 7, 6), limb([[cx + 6, y + 22], [cx + 22, y + 82]], 7, 6), [[cx - 17, y + 58], [cx + 17, y + 58], [cx + 17, y + 63], [cx - 17, y + 63]]]).map(poly).join("");
+  const stretcher = poly([[44, y + 44], [346, y + 44], [346, y + 50], [44, y + 50]]);
+  // the carafe and the glasses on its ends, either side of the two of them
+  const glass = (gx, gy) => poly([[gx - 4, gy - 13], [gx + 4, gy - 13], [gx + 3, gy], [gx - 3, gy]]);
+  const glasses = glass(14, y - 3) + glass(372, y - 2);
+  const carafe = blob([[384, y - 3], [378, y - 12], [381, y - 22], [381, y - 28], [387, y - 28], [387, y - 22], [390, y - 12]]);
+  const water = poly([[11, y - 7], [17, y - 7], [16.6, y - 4], [11.4, y - 4]]) + poly([[369, y - 6], [375, y - 6], [374.6, y - 3], [369.4, y - 3]]) + blob([[379, y - 5], [379, y - 11], [389, y - 11], [389, y - 5]]);
+  return [
+    piece("paper", wood, path(wood, "#5b4430") + path(poly(bark), "#7d6246"), "", 1),
+    piece("paper", masses + all(back, puff), path(masses, "#2c4f27") + path(all(back, puff), "#33582d") + path(all(back, top), "#3f6a35"), "", 1),
+    piece("paper", all(front, puff) + all(hanging, droop), path(all(front, puff) + all(hanging, droop), "#3f6a35") + path(all(front, top), "#5f8c45"), "", 0.8),
+    piece("paper", stretcher + legs, path(stretcher, "#6b4b2e") + path(legs, "#8a6643"), "", 0.6),
+    piece("paper", clothTop + flap, path(clothTop + flap, "#fbf4ee") + `<path d="${along + across}" fill="#d63a32" fill-opacity=".72"/>` + `<path d="${folds}" fill="#3b2a18" fill-opacity=".07"/>`, "", 0.7),
+    piece("paper", glasses + carafe, `<path d="${glasses + carafe}" fill="#eaf5f9" fill-opacity=".85" stroke="#fff" stroke-width=".8"/>` + path(water, "#a9d2e6"), "", 0.4),
+  ].join("");
+}
+
+// ── The plouf: the splash, the islet, the laughing canoe (paper only) ──
+
+/** A splash of paper water where someone falls in, `w` units wide, each part an <svg> of its own: its crown (tongues of
+ *  water rising round the hole, white-edged, a drop on each tip, foam at its foot; its foot in its bottom middle), the
+ *  ring of foam spreading flat on the water (round its middle), a drop flying off (its foot in its bottom middle). */
+export function gerbe(w) {
+  const h = w * 0.8;
+  // each tongue: [its foot's x, its height (of h), its lean], higher in the middle, leaning out at the sides
+  const tongues = [[-0.4, 0.38, -0.55], [-0.27, 0.62, -0.32], [-0.12, 0.84, -0.1], [0.03, 1, 0.04], [0.17, 0.8, 0.16], [0.3, 0.58, 0.36], [0.42, 0.36, 0.56]];
+  const tongue = ([fx, fh, lean], k = 1) => {
+    const [x, s, top] = [fx * w, w * 0.075 * k, -fh * h * (0.35 + 0.65 * k)];
+    const tip = x + lean * w * 0.24;
+    return blob([[x - s, 0], [x - s * 0.8, top * 0.45], [tip - s * 0.42, top], [tip, top - s * 0.3], [tip + s * 0.42, top], [x + s * 0.8, top * 0.45], [x + s, 0]]);
+  };
+  const outer = tongues.map((t) => tongue(t)).join("");
+  const inner = tongues.map((t) => tongue(t, 0.55)).join("");
+  const tips = tongues.map(([fx, fh, lean]) => dot(fx * w + lean * w * 0.24, -fh * h - w * 0.07, w * 0.032)).join("");
+  const foam = blob([[-w * 0.52, 0], [-w * 0.3, -h * 0.09], [0, -h * 0.12], [w * 0.3, -h * 0.09], [w * 0.52, 0], [w * 0.2, h * 0.07], [-w * 0.2, h * 0.07]]);
+  const svg = (x, y, width, height, markup) => `<svg viewBox="${n(x)} ${n(y)} ${n(width)} ${n(height)}" width="${n(width)}" height="${n(height)}">${markup}</svg>`;
+  const ring = `${ellipse(0, 0, w * 0.85, w * 0.17)}${ellipse(0, 0, w * 0.62, w * 0.11)}`;
+  return {
+    couronne: svg(-w / 2, -h, w, h, piece("paper", outer + tips, path(outer, "#cfe7f4") + path(inner, "#a6d0e6") + path(tips, "#e6f4fa"), "", 0.7) + `<path d="${outer}" fill="none" stroke="#fff" stroke-width="1.3"/>` + path(foam, "#f6fbfd")),
+    anneau: svg(-w * 0.85, -w * 0.17, w * 1.7, w * 0.34, `<path d="${ring}" fill="#f4fafc" fill-opacity=".9" fill-rule="evenodd"/>`),
+    goutte: svg(-4, -7, 8, 9, `<path d="${drop(0, 0, 2.6, 0)}" fill="#cfe7f4" stroke="#fff" stroke-width="1"/>`),
+  };
+}
+
+/** A gravel islet in the middle of the far water (the laughing canoe comes out from behind it): its willows and bushes,
+ *  pale gravel with its wet edge, a drift log, the willows' dark reflection under it. */
+export function ilot() {
+  const bar = blob([[394, 477], [440, 467], [520, 463], [604, 467], [652, 475], [604, 481], [500, 483], [430, 482]]);
+  const shadow = blob([[404, 481], [520, 486], [640, 480], [608, 496], [490, 500], [428, 493]]);
+  const willows = [[432, 472, 12], [458, 470, 17], [490, 468, 22], [526, 468, 20], [560, 469, 16], [592, 471, 13], [622, 473, 10]];
+  const bushes = [[420, 478, 6], [470, 479, 7], [548, 479, 8], [610, 478, 6]];
+  const log = poly(limb([[506, 479], [546, 476], [572, 478]], 3.4, 2.2));
+  return [
+    path(shadow, "#6f9a91"),
+    piece("paper", bar, path(bar, "#dcd2ba") + path(lens(398, 478, 250, 2.4), "#bfb59f"), "", 0.4),
+    roundTrees(willows, { tint: { crown: "#6f9550", lit: "#8fb06a", trunk: "#6b5a44" }, smooth: false }),
+    roundTrees(bushes, { tint: { crown: "#5d8a42", lit: "#79a356" }, lift: 0.3, smooth: false }),
+    piece("paper", log, path(log, "#b9ab96"), "", 0.3),
+  ].join("");
+}
+
+/** A paper silhouette sitting, doubled up with laughter (an <svg>, its seat in its bottom middle): its head, its body
+ *  bent, its arms (one on its belly, one slapping the air), three little laugh lines by its head; `bun`: its hair up. */
+function rieur(fill, bun) {
+  const body = blob([[-6, 0], [-6.5, -9], [-4, -16], [3, -17], [6.5, -9], [6, 0]]);
+  const arms = poly(limb([[-4, -14], [-9, -9], [-3, -6]], 2.8, 2.4)) + poly(limb([[4, -15], [9, -20], [10, -27]], 2.8, 2.2));
+  const head = dot(1, -22, 4.8) + (bun ? dot(-3.4, -25.6, 2.4) : "");
+  const d = body + arms + head;
+  return `<svg viewBox="-14 -32 28 32" width="28" height="32">${piece("paper", d, path(d, fill), "", 0.5)}<path d="M8-27l3-2M8.6-23.4h3.4M8-19.6l3 1.6" fill="none" stroke="${fill}" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+}
+
+/** The canoe of « la galerie », another rental's, orange-red, about 80 units long (an <svg>, its keel's middle in its
+ *  bottom middle): its hull, its gunwale lit, a paddle across it, the foam at its bow (it goes left); and the two paper
+ *  silhouettes sitting in it, apart to rock with laughter, at `seats` (x from the hull's middle, their seats at y −6).
+ *  → { hull, laughers, seats } */
+export function galerie() {
+  const hull = blob([[-40, -12], [-20, -7], [20, -7], [40, -12], [33, -3], [0, 0], [-33, -3]]);
+  const band = blob([[-37, -9], [0, -5.5], [37, -9], [32, -6], [0, -3], [-32, -6]]);
+  const oar = paddleAt(-26, -15, 24, -4);
+  const bow = blob([[-46, -1], [-38, -5], [-30, -2], [-36, 1]]);
+  return {
+    hull: `<svg viewBox="-48 -18 96 20" width="96" height="20">${piece("paper", oar.shaft + oar.blades, path(oar.shaft, "#2d2b2a") + path(oar.blades, "#f0c24a"), "", 0.4)}${piece("paper", hull, path(hull, "#e0663c") + path(band, "#b84a2b") + path(lens(-34, -10.4, 68, 0.9), "#f7a77a"), "", 0.6)}${path(bow, "#f4fbff")}</svg>`,
+    laughers: [rieur("#34405a", false), rieur("#5b3c56", true)],
+    seats: [-13, 12],
+  };
+}
+
+// ── The arrival at Port d'Enveaux (paper only) ──────────────
+
+// the near shore along the water, left to right; the grass's left edge, from the shore down (the beach left of it)
+const LANDING = [[L, 540], [-360, 534], [-160, 540], [0, 546], [130, 551], [250, 548], [400, 542], [580, 538], [780, 542], [R, 538]];
+const LAWN = [[150, 551], [184, 574], [216, 608], [244, 652], [262, 704], [270, 800]];
+
+/** A tall leafy tree at x, y (its foot), `h` high to the middle of its crown, `s` across, scattered by `seed`: its
+ *  trunk leaning a little, the scalloped mass of its crown, clumps of leaves on it lit on top. */
+function arbre(x, y, h, s, seed) {
+  const r = random(seed);
+  const [cx, cy] = [x + (r() - 0.5) * s * 0.3, y - h];
+  const wood = poly(limb([[x, y], [(x + cx) / 2, y - h * 0.5], [cx, cy + s * 0.1]], s * 0.13, s * 0.06));
+  const mass = scallop(cx, cy, s / 2, s * 0.4, 9, r);
+  const { clump, puff, top } = foliage(r);
+  const leaves = clump(cx, cy - s * 0.04, s * 0.78, s * 0.5, 10, s * 0.08);
+  return piece("paper", wood, path(wood, "#5b4430"), "", 0.8) + piece("paper", mass + leaves.map(puff).join(""), path(mass, "#2c4f27") + path(leaves.map(puff).join(""), "#3f6a35") + path(leaves.map(top).join(""), "#5f8c45"), "", 1);
+}
+
+/** The arrival at Port d'Enveaux's landing, where the C3 waits: the pebble beach along the water on the left (the
+ *  rental's lime canoes upside down on it), the grass coming down on the right with its tufts and flowers, the gravel
+ *  parking on it, its wooden posts and its blue P, the trees round it, two tall ones framing the landing. */
+export function herbe() {
+  const r = random(431);
+  const wet = poly([...LANDING, ...[...LANDING].reverse().map(([x, y]) => [x - 4, y + 10])]);
+  const top = [LAWN[0], ...LANDING.filter(([x]) => x > LAWN[0][0])];
+  const lawn = `${curve(top)}L${R} 800${curve([...LAWN].reverse()).replace(/^M/, "L")}Z`;
+  const lawnAt = (y) => edgeAt(LAWN.map(([x, ly]) => [ly, x]), y); // the grass's left edge at y
+  const stones = PEBBLES.map(() => "");
+  let lit = "";
+  for (let k = 0; k < 360; k++) {
+    const x = 266 - r() ** 1.3 * 760; // thicker in sight on a phone
+    const y = 552 + r() ** 0.8 * 248;
+    if (y < edgeAt(LANDING, x) + 6 || x > lawnAt(y) - 6) continue;
+    const s = 1.4 + ((y - 540) / 260) * 6 * (0.6 + r() * 0.6);
+    stones[k % PEBBLES.length] += pebble(x, y, s, s > 7);
+    if (s > 3.5) lit += lens(x - s * 0.45, y - s * 0.38, s * 0.6, s * 0.08);
+  }
+  let tufts = "";
+  const flowers = ["", ""];
+  for (let k = 0; k < 150; k++) {
+    const y = 556 + r() ** 0.9 * 240;
+    const x = lawnAt(y) + 8 + r() * (R - lawnAt(y));
+    if (r() < 0.6) tufts += tuft(x, y, 2.6 + ((y - 540) / 260) * 4);
+    else flowers[k % 2] += speck(x, y, 1.5 + ((y - 540) / 260) * 1.6);
+  }
+  const lot = [[236, 574], [660, 568], [742, 668], [276, 676]];
+  const ruts = lens(300, 640, 380, 2) + lens(290, 608, 340, 1.6);
+  const posts = Array.from({ length: 13 }, (_, k) => {
+    const x = 290 + k * 36;
+    return blob([[x - 4, 690], [x - 4, 678], [x, 674], [x + 4, 678], [x + 4, 690]]);
+  }).join("");
+  const sign = poly([[421, 504], [441, 504], [441, 524], [421, 524]]);
+  const pole = poly([[430, 574], [430, 524], [432, 524], [432, 574]]);
+  const trees = [[476, 560, 34], [606, 562, 30], [726, 566, 36], [862, 562, 32], [966, 570, 28]];
+  const canoes = [hull(-330, 598, 120), hull(-200, 604, 110)].join("");
+  const keels = [lens(-318, 584, 96, 2.2), lens(-189, 590, 88, 2.2)].join("");
+  return [
+    sheetOf("paper", LANDING, "#d6cbb2", path(wet, "#bbb19c"), 800),
+    `<path d="${curve(LANDING.map(([x, y]) => [x + 2, y - 2]))}" fill="none" stroke="#f4fbff" stroke-width="2.2" stroke-dasharray="26 9 12 7" stroke-linecap="round"/>`,
+    `<path d="${stones.join("")}" transform="translate(0 1.2)" fill="#3b2a18" fill-opacity=".24"/>`, // their shadow, once
+    stones.map((d, k) => path(d, PEBBLES[k])).join("") + path(lit, "#e6dfcf"),
+    piece("paper", canoes, path(canoes, LIME.hull) + path(keels, LIME.dark), "", 0.6),
+    piece("paper", lawn, path(lawn, "#86ab58") + path(tufts, "#6f9446") + path(flowers[0], "#fbf6ee") + path(flowers[1], "#f2cf5b"), curve(top), 0.6),
+    roundTrees(trees),
+    arbre(12, 548, 196, 178, 441),
+    arbre(352, 562, 262, 196, 443),
+    piece("paper", poly(lot), path(poly(lot), "#d9ceb4") + path(ruts, "#c4b89c"), topEdge(lot), 0.3),
+    piece("paper", posts, path(posts, "#8a6643"), "", 0.5),
+    piece("paper", pole + sign, path(pole, "#6f6a62") + `<path d="${sign}" fill="#2f6db5" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>` + `<text x="431" y="519.6" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="15" fill="#fff">P</text>`, "", 0.6),
+  ].join("");
+}
+
+/** The finish board at x, y (the middle between its two posts' feet): a wooden board across two posts, `text` on it in
+ *  ink (css/intros.css, st-sign), a chequered strip along its top as at a race's end. */
+export function pancarte(x, y, text) {
+  const posts = poly([[x - 44, y], [x - 44, y - 106], [x - 37, y - 106], [x - 37, y]]) + poly([[x + 37, y], [x + 37, y - 106], [x + 44, y - 106], [x + 44, y]]);
+  const lit = poly([[x - 44, y], [x - 44, y - 106], [x - 41.5, y - 106], [x - 41.5, y]]) + poly([[x + 37, y], [x + 37, y - 106], [x + 39.5, y - 106], [x + 39.5, y]]);
+  const board = blob([[x - 57, y - 96], [x, y - 97], [x + 57, y - 96], [x + 58, y - 81], [x + 57, y - 66], [x, y - 65], [x - 57, y - 66], [x - 58, y - 81]]);
+  const edge = [[x - 52, y - 108], [x + 52, y - 108], [x + 52, y - 97], [x - 52, y - 97]];
+  const step = 104 / 15;
+  const squares = Array.from({ length: 30 }, (_, k) => [k % 15, Math.floor(k / 15)])
+    .filter(([i, row]) => (i + row) % 2 === 0)
+    .map(([i, row]) => poly([[x - 52 + i * step, y - 108 + row * 5.5], [x - 52 + (i + 1) * step, y - 108 + row * 5.5], [x - 52 + (i + 1) * step, y - 102.5 + row * 5.5], [x - 52 + i * step, y - 102.5 + row * 5.5]]))
+    .join("");
+  const grain = [lens(x - 50, y - 91, 44, 0.5), lens(x + 4, y - 70, 40, 0.5), lens(x - 30, y - 69.5, 22, 0.4)].join("");
+  const nails = [dot(x - 40.5, y - 90, 1.1), dot(x + 40.5, y - 90, 1.1), dot(x - 40.5, y - 72, 1.1), dot(x + 40.5, y - 72, 1.1)].join("");
+  return [
+    piece("paper", posts, path(posts, "#6b4b2e") + path(lit, "#8a6643"), "", 0.6),
+    piece("paper", poly(edge), path(poly(edge), "#fbf6ee") + path(squares, "#2d2b2a"), topEdge(edge), 0.5),
+    piece("paper", board, path(board, "#c99a62") + path(grain, "#b5844f") + path(nails, "#6b4b2e"), "", 0.8),
+    `<text class="st-sign" x="${x}" y="${y - 76.5}" text-anchor="middle">${escape(text)}</text>`,
   ].join("");
 }

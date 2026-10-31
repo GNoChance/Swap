@@ -344,6 +344,32 @@
   will-change: transform; /* drawn once, then only turned */
 }
 
+/* a splash where someone falls into the river (plouf()), a box of no size on the water: its ring of foam, its crown
+   rising from its foot, its drops; GSAP grows, throws and fades them */
+.st-gerbe,
+.st-gerbe > span,
+.st-galerie,
+.st-galerie > span {
+  position: absolute;
+  display: block;
+}
+
+.st-gerbe__couronne {
+  transform-origin: 50% 100%;
+}
+
+.st-gerbe svg,
+.st-galerie svg {
+  display: block;
+  overflow: visible;
+}
+
+/* the laughing canoe of « la galerie » (canoe.js), a box of no size on the far water: GSAP moves and bobs it, and
+   rocks its two laughers on their seats */
+.st-galerie__rieur {
+  transform-origin: 50% 100%;
+}
+
 /* the words on a wooden sign (props-riviere.js), in ink */
 .st-sign {
   font: 600 13px var(--serif);
@@ -420,6 +446,14 @@
 
 .st-veil--chaud {
   background: linear-gradient(to bottom, rgba(255, 168, 96, 0.05), rgba(255, 140, 84, 0.3) 300px, rgba(232, 112, 104, 0.26) 440px, rgba(200, 96, 110, 0.2));
+}
+
+/* the golden light of the afternoon on the Dordogne (canoe.js: the plouf, the arrival): a glow round the sun, high on
+   the left (its layer's x 645: the stage's 40), and the warmth down to the far hills, fainter over the water */
+.st-veil--dore {
+  background:
+    radial-gradient(ellipse 560px 330px at 645px 170px, rgba(255, 236, 176, 0.45), rgba(255, 226, 160, 0)),
+    linear-gradient(to bottom, rgba(255, 176, 96, 0.06), rgba(255, 178, 104, 0.3) 260px, rgba(255, 184, 116, 0.56) 400px, rgba(255, 176, 104, 0.36) 452px, rgba(255, 172, 100, 0.12) 486px, rgba(250, 168, 100, 0.08));
 }
 
 .st-veil--nuit {

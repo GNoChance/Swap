@@ -1,10 +1,11 @@
 // The water's recipes (the canoe's spec, § 4): reusable pieces of timeline for a boat on the river, each → the moment it
 // ends (s): afloat (flotte: it pitches gently, its paddles' drops and « plic »), spinning round like a card turned over
 // (tourne: squeezed to nothing, into its other view, stretched out the other way; eddies under it, a dizzy spiral over
-// it), and paddling down the river as the decor glides towards it (rame). Everything is a tween or a set of the
-// timeline, nothing is worked out as it plays: it holds under any seek. Reads `window` only in its functions.
+// it), paddling down the river as the decor glides towards it (rame), and someone jumping into the river (plouf: an arc,
+// a splash of paper). Everything is a tween or a set of the timeline, nothing is worked out as it plays: it holds under
+// any seek. Reads `window` only in its functions.
 import { sfx } from "../../audio.js";
-import { gouttes, remous, tournis } from "./props-riviere.js";
+import { gerbe, gouttes, remous, tournis } from "./props-riviere.js";
 import { HIDDEN, layerX } from "./stage.js";
 
 const SWAY = 1.2; // s: a pitch from side to side and back
@@ -110,4 +111,58 @@ export function tourne(tl, at, { actor, layer, faces, turns = 2.5, duration }) {
 export function rame(tl, at, { stage, actor, layers, duration, focus, zoom = 1.6 }) {
   stage.pan(tl, at, { zoom, focus, duration, ease: "power1.inOut", only: layers });
   return flotte(tl, at, { actor, duration });
+}
+
+const DROPS = 8; // the drops a splash throws up
+
+/** plouf(tl, at, { jumper, to, layer, duration }): from `at` s, the jumper (an actor standing on its point, shown then
+ *  if hidden) jumps into the river: it crouches, then flies off in an arc over the higher of its two ends to `to`
+ *  ({ x, y }: where it falls in, its layer's stage units), tipping over a little, in `duration` s. There a splash of
+ *  paper opens in `layer` (in front of what it holds): its crown of water rises and falls back, its ring of foam spreads,
+ *  drops fly up and fall; « plouf », and the jumper sinks out of sight under it. → when the splash has fallen back (s). */
+export function plouf(tl, at, { jumper, to, layer, duration = 0.6 }) {
+  const [dx, dy] = [to.x - jumper.x, to.y - jumper.y];
+  const crouch = 0.08;
+  const off = at + crouch;
+  const flight = duration - crouch;
+  const rise = flight * 0.45;
+  const land = at + duration;
+  const lift = jumper.size * 0.75 + Math.max(0, -dy);
+  tl.set(jumper.el, { autoAlpha: 1 }, at);
+  tl.fromTo(jumper.pose, { scaleX: 1, scaleY: 1 }, { scaleX: 1.08, scaleY: 0.86, duration: crouch, ease: "power1.out", immediateRender: false }, at)
+    .to(jumper.pose, { scaleX: 0.94, scaleY: 1.08, duration: 0.12, ease: "power1.out" }, off) // stretched as it leaves
+    .to(jumper.pose, { scaleX: 1, scaleY: 1, duration: flight - 0.12, ease: "sine.inOut" }, off + 0.12);
+  tl.fromTo(jumper.pose, { rotation: 0 }, { rotation: Math.sign(dx || 1) * 24, duration: flight, ease: "power1.in", immediateRender: false }, off);
+  tl.fromTo(jumper.el, { x: 0 }, { x: dx, duration: flight, ease: "none", immediateRender: false }, off);
+  tl.fromTo(jumper.el, { y: 0 }, { y: -lift, duration: rise, ease: "power2.out", immediateRender: false }, off).fromTo(jumper.el, { y: -lift }, { y: dy, duration: flight - rise, ease: "power2.in", immediateRender: false }, off + rise);
+  tl.to(jumper.el, { y: dy + jumper.size * 0.25, autoAlpha: 0, duration: 0.1, ease: "power1.in" }, land); // under the splash
+
+  // the splash, its foot on the water where the jumper falls in
+  const w = jumper.size * 0.95;
+  const { couronne, anneau, goutte } = gerbe(w);
+  const splash = Object.assign(document.createElement("span"), { className: "st-gerbe" });
+  Object.assign(splash.style, { left: `${layerX(layer, to.x)}px`, top: `${to.y}px` });
+  const part = (cls, markup, left, top) => {
+    const el = element(cls, markup);
+    Object.assign(el.style, { left: `${left}px`, top: `${top}px` });
+    splash.append(el);
+    return el;
+  };
+  const ring = part("st-gerbe__anneau", anneau, -w * 0.85, -w * 0.17);
+  const crown = part("st-gerbe__couronne", couronne, -w / 2, -w * 0.8);
+  const drops = Array.from({ length: DROPS }, () => part("st-gerbe__goutte", goutte, -4, -7));
+  layer.append(splash);
+  const opens = land - 0.03;
+  tl.call(() => sfx("splash"), null, land - 0.02);
+  tl.fromTo(ring, { autoAlpha: 0.95, scale: 0.3 }, { scale: 1.25, duration: 0.7, ease: "power2.out", immediateRender: false }, opens).to(ring, { autoAlpha: 0, duration: 0.35, ease: "power1.in" }, opens + 0.4);
+  tl.fromTo(crown, { autoAlpha: 1, scaleX: 0.6, scaleY: 0.1 }, { scaleX: 1, scaleY: 1, duration: 0.2, ease: "back.out(1.6)", immediateRender: false }, opens).to(crown, { scaleX: 1.15, scaleY: 0.25, autoAlpha: 0, duration: 0.4, ease: "power2.in" }, opens + 0.24);
+  drops.forEach((drop, k) => {
+    const f = k / (DROPS - 1) - 0.5; // −0.5 (left) → 0.5 (right)
+    const [vx, peak] = [f * w * 1.4, w * (1.15 - Math.abs(f) * 0.9)];
+    const when = opens + 0.02 + (k % 3) * 0.02;
+    tl.fromTo(drop, { autoAlpha: 1, x: 0, y: 0, rotation: 0, scale: 0.6 }, { x: vx * 0.6, y: -peak, rotation: f * 50, scale: 1, duration: 0.26, ease: "power2.out", immediateRender: false }, when)
+      .to(drop, { x: vx, y: w * 0.04, rotation: f * 140, duration: 0.3, ease: "power2.in" }, when + 0.26)
+      .to(drop, { autoAlpha: 0, duration: 0.06 }, when + 0.5);
+  });
+  return opens + 0.75;
 }

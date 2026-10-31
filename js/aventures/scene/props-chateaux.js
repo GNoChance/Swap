@@ -1,6 +1,7 @@
 // The Dordogne's castles (the canoe's spec, § 4), in paper: Beynac, its keep high on its cliff over the river and its
 // village stepping down to the water (it takes its skin, "paper" or "poster": props.js); downstream from Carsac,
-// Montfort on its rock and Domme high on its cliff (paper only). Pure: markup only, the same for the same arguments.
+// Montfort on its rock and Domme high on its cliff; Castelnaud on its hill, facing Beynac (paper only). Pure: markup
+// only, the same for the same arguments.
 import { AFFICHE as A } from "./decor.js";
 import { edgeAt, path, poly, random } from "./geom.js";
 import { paper, piece, roundTrees, slab, strata } from "./props.js";
@@ -156,5 +157,61 @@ export function montfort() {
     markup,
     roundTrees(woods, { smooth: false }),
     piece("paper", stone + roofs, path(stone, C.stone) + path(shade, C.shade) + path(roofs, C.slate) + path(roofsLit, C.slateLit) + path(windows, C.window), "", 0.8),
+  ].join("");
+}
+
+// ── Castelnaud, facing Beynac across the river (the plouf; paper only) ──
+
+// its hill on the left, from the layer's edge up to the castle on its spur, then down to the river behind Beynac's
+// village (beynac(): its cliff on the right)
+const CASTELNAUD = [[L, 396], [-480, 386], [-360, 376], [-240, 366], [-130, 358], [-50, 352], [10, 349], [80, 347], [136, 348], [158, 356], [176, 376], [190, 404], [200, 436], [206, FOOT]];
+// its ochre stone, the west sides lit; its roofs of stone slabs (lauzes)
+const K = { hill: "#6f9150", hillLit: "#82a35e", stone: "#d7a65a", lit: "#e8bd72", shade: "#b7863f", roof: "#7d746c", roofLit: "#958b83", tile: "#9a5236", window: "#4c3b2c", flag: "#c8423a" };
+
+/** Castelnaud on its hill over the river (after its pictures), facing Beynac: the wooded hill, the village of ochre
+ *  houses stepping down under the castle, and the big ochre fortress on its spur: its curtain wall and battlements, its
+ *  tall square keep crowned with machicolations and merlons (a pennant on it), the steep stone roof of its lodging, its
+ *  round artillery tower and a square tower under their roofs. */
+export function castelnaud() {
+  const r = random(421);
+  const outline = poly([...CASTELNAUD, [206, FOOT + 6], [L, FOOT + 6]]);
+  const lit = poly([[-50, 352], [10, 349], [80, 347], [136, 348], [120, 362], [40, 366], [-40, 370]]);
+  // the woods along its top and down its face, round the village
+  const woods = [];
+  for (let x = L + 6; x < 12; x += 12 + r() * 8) woods.push([x, edgeAt(CASTELNAUD, x) + 6, 8 + r() * 6]);
+  for (let k = 0; k < 90; k++) {
+    const x = L + r() * 810;
+    const y = edgeAt(CASTELNAUD, x) + 22 + r() * (FOOT - edgeAt(CASTELNAUD, x) - 26);
+    if (!(x > 18 && x < 150 && y < 412)) woods.push([x, y, 7 + r() * 6]);
+  }
+  const village = [[30, 372, 14], [48, 368, 15], [66, 374, 13], [96, 370, 14], [116, 374, 13], [36, 394, 15], [58, 390, 14], [84, 396, 15], [108, 398, 14], [130, 394, 12]].map(([x, y, w], k) =>
+    house(x, y, w, { stone: K.stone, shade: K.shade, roof: k % 3 ? K.tile : K.roof, window: K.window }),
+  );
+  // the castle on the spur, its foot at y 348
+  const base = 348;
+  const wall = block(22, 138, base, base - 26);
+  const keep = block(58, 84, base - 26, base - 86);
+  const crown = block(55, 87, base - 86, base - 93); // its machicolations, jutting out
+  const corbels = Array.from({ length: 6 }, (_, k) => block(57 + k * 5, 59 + k * 5, base - 86, base - 82)).join("");
+  const lodging = block(86, 128, base - 26, base - 52);
+  const lodgingRoof = poly([[84, base - 52], [96, base - 74], [118, base - 74], [130, base - 52]]);
+  const round = block(22, 42, base, base - 44);
+  const cone = poly([[19, base - 44], [32, base - 64], [45, base - 44]]);
+  const square = block(126, 140, base - 12, base - 50);
+  const pyramid = poly([[124, base - 50], [133, base - 64], [142, base - 50]]);
+  const merlons = battlements(42, 126, base - 26, 8) + battlements(55, 87, base - 93, 6.4);
+  const stone = wall + keep + crown + lodging + round + square + merlons;
+  const roofs = lodgingRoof + cone + pyramid;
+  const lights = block(58, 64, base - 26, base - 86) + block(22, 28, base, base - 44) + block(86, 92, base - 26, base - 52) + block(126, 129, base - 12, base - 50);
+  const shades = block(78, 84, base - 26, base - 86) + block(36, 42, base, base - 44) + block(120, 128, base - 26, base - 52) + corbels;
+  const roofsLit = poly([[84, base - 52], [96, base - 74], [102, base - 74], [92, base - 52]]) + poly([[19, base - 44], [32, base - 64], [30, base - 44]]);
+  const windows = [block(66, 69, base - 60, base - 67), block(73, 76, base - 44, base - 51), block(94, 98, base - 34, base - 41), block(106, 110, base - 34, base - 41), block(118, 122, base - 34, base - 41), block(30, 33, base - 22, base - 28), block(131, 134, base - 30, base - 36)].join("");
+  const pole = block(70.6, 71.6, base - 93, base - 106);
+  const flag = poly([[71.6, base - 106], [82, base - 103], [71.6, base - 99]]);
+  return [
+    piece("paper", outline, path(outline, K.hill) + path(lit, K.hillLit), "", 0.8),
+    roundTrees(woods, { tint: { crown: "#4a7339", lit: "#62894a" }, smooth: false }),
+    piece("paper", village.map((h) => h.outline).join(""), village.map((h) => h.markup).join(""), "", 0.5),
+    piece("paper", stone + roofs + flag, path(stone, K.stone) + path(lights, K.lit) + path(shades, K.shade) + path(roofs, K.roof) + path(roofsLit, K.roofLit) + path(windows, K.window) + path(pole, "#5b4430") + path(flag, K.flag), "", 0.9),
   ].join("");
 }
