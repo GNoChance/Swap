@@ -87,7 +87,7 @@ export function mount(host, { aventure }) {
   const tentLayer = layerOf("tente");
   const tent = lac.tentUnfold({ layer: tentLayer.el });
   const water = layerOf("lac");
-  const glow = sheet("st-paper", 1600, props.lakeGlow()); // the lake's golden light: it goes with the night
+  const glow = sheet("st-paper st-glow", 1600, props.lakeGlow()); // the lake's golden light: it goes with the night
   water.paper.after(glow); // under its poster
   const lakeCrowd = stage.layer("lac-gens", { depth: 0.9 });
   const lakePeople = [

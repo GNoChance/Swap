@@ -284,10 +284,16 @@ async function suite(page, vp) {
         await page.waitFor(`innerWidth === ${width}`, 2000);
         const now = await page.eval(`new Promise((resolve) => {
           const tl = ${timeline};
-          const look = () => (tl.time() < ${valleyGone} ? requestAnimationFrame(look) : resolve({ same: window.__intro === document.querySelector(".screen-intro"), t: tl.time(), clock: performance.now() / 1000, seen: ${sceneBoxes} }));
+          const until = performance.now() + 3000;
+          const look = () => {
+            if (!tl) return resolve({ same: false });
+            if (tl.time() < ${valleyGone} && performance.now() < until) return requestAnimationFrame(look);
+            resolve({ same: window.__intro === document.querySelector(".screen-intro"), stalled: tl.time() < ${valleyGone}, t: tl.time(), clock: performance.now() / 1000, seen: ${sceneBoxes} });
+          };
           requestAnimationFrame(look);
         })`);
         if (!now.same) throw new Error(`${width} × ${height} : l'intro a changé`);
+        if (now.stalled) throw new Error(`${width} × ${height} : la timeline n'avance plus (à ${now.t.toFixed(2)} s après 3 s)`);
         if (now.t >= beat["En haut"].at) throw new Error(`${width} × ${height} : arrêt après la montée (à ${now.t.toFixed(2)} s), trop tard pour compter Cycy et Kevin`);
         const who = now.seen.actors.map((b) => b.what).sort();
         if (JSON.stringify(who) !== JSON.stringify(["cycy", "kevin"])) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : à l'écran ${JSON.stringify(who)}`);

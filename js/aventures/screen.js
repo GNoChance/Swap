@@ -167,6 +167,7 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   /** The scenario of the outing to live, imported once the book rests (never during its flight): its touch then plays
    *  it at once. An outing without one imports nothing; a failure is left to that touch (the provisional intro). */
   function warm() {
+    if (buddy.stopped) return; // left before the book landed
     const id = nextToLive(AVENTURES, progress);
     if (id) SCENARIOS[id]?.load().catch(() => {});
   }
