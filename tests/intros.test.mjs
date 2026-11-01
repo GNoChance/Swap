@@ -9,7 +9,7 @@ import { AVENTURES, PEOPLE, TRANSPORTS } from "../js/aventures/data.js";
 import { SCENARIOS } from "../js/aventures/intros/index.js";
 import { fit } from "../js/aventures/scene/stage.js";
 import { fitTitle, posterLine, posterTitle, TITLE_FIT, titleWidth } from "../js/aventures/scene/poster-text.js";
-import { fallbackUrl, sceneUrl, stickerUrl, vehicleFallback, vehicleUrl } from "../js/aventures/scene/urls.js";
+import { fallbackUrl, sceneLook, sceneUrl, stickerUrl, vehicleFallback, vehicleUrl } from "../js/aventures/scene/urls.js";
 import { projection } from "../js/aventures/scene/geo.js";
 import { stops } from "../js/aventures/scene/props-carte.js";
 
@@ -191,6 +191,16 @@ test("intros: the Île de Ré goes by C3 to La Rochelle and over the bridge", ()
   assert.deepEqual(stops({ trajet, lieu }, project).map((s) => s.name), ["Bordeaux", "Saintes", "La Rochelle", "Île de Ré"]);
 });
 
+// Going north, La Rochelle's name keeps clear of the road coming from Rochefort and leaving west for the bridge, and the
+// arrival's of its pin at Rivedoux (the bridge comes to it from the east): out over the land and the strait.
+test("intros: on a trip north, each name stands away from the road and from the pin", () => {
+  const [start, saintes, rochelle, ile] = stops(byId("ile-de-re"), projection(ILE_MAP));
+  assert.ok(start.anchor === "end" && start.tx < start.x, `start: ${JSON.stringify(start)}`); // the road leaves it going right
+  for (const s of [saintes, rochelle]) assert.ok(s.anchor === "start" && s.tx > s.x && s.ty < s.y + 5, `${s.name}: ${JSON.stringify(s)}`); // right of it, a little up
+  assert.ok(ile.anchor === "middle" && ile.tx < ile.x && ile.ty - ile.y > 14, `end: ${JSON.stringify(ile)}`); // under its pin, west of it
+  for (const s of [start, saintes, rochelle, ile]) assert.ok(s.box.x0 >= 25 && s.box.x1 <= 365, `${s.name}: ${JSON.stringify(s.box)}`);
+});
+
 test("intros: a trip's relay is known", () => {
   for (const a of AVENTURES.filter((x) => x.trajet?.relais)) {
     const { transport, arrivee, noms } = a.trajet.relais;
@@ -224,4 +234,6 @@ test("intros: a trip going east writes its names under its road and over its pin
 test("intros: scene sticker urls", () => {
   assert.equal(sceneUrl("canoe", "cycy-et-kevin-en-canoe", 2), "assets/aventures/canoe/scene-cycy-et-kevin-en-canoe-02.webp");
   assert.equal(sceneUrl("canoe", "sarlat-le-chevalier", 1), "assets/aventures/canoe/scene-sarlat-le-chevalier-01.webp");
+  assert.deepEqual(sceneLook("ile-de-re", "cycy-et-kevin-a-velo", 1), { src: "assets/aventures/ile-de-re/scene-cycy-et-kevin-a-velo-01.webp", fallback: "assets/cyrielle/joy.webp" });
+  assert.equal(sceneLook("canoe", "sarlat-le-chevalier", 1, "kevin", "surprise").fallback, "assets/cyrielle/kevin-surprised.webp");
 });

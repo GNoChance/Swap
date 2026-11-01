@@ -30,4 +30,19 @@ export const SCENARIOS = {
       { name: "L'affiche", at: 28.6 },
     ],
   },
+  "ile-de-re": {
+    load: () => import("./ile-de-re.js"),
+    beats: [
+      { name: "La carte", at: 0 },
+      { name: "Le pont", at: 4.5 },
+      { name: "En selle", at: 7.5 },
+      { name: "La traversée", at: 9.5 },
+      { name: "Le phare", at: 15 },
+      { name: "La glace", at: 18 },
+      { name: "Le retour", at: 20.5 },
+      { name: "La Rochelle", at: 23 },
+      { name: "La côte", at: 26.5 },
+      { name: "L'affiche", at: 28.6 },
+    ],
+  },
 };

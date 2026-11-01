@@ -32,6 +32,11 @@ export function fallbackUrl(who, side, pose) {
   return `assets/cyrielle/${FALLBACK[pose][(who === "kevin" ? 1 : 0) + (side === "dos" ? 2 : 0)]}.webp`;
 }
 
+/** sceneLook("canoe", "sarlat-le-chevalier", 1, "kevin", "surprise") → a look of a sceneActor() (actors.js): the scene
+ *  sticker of an outing's board (its number `k`), and its stand-in, its main person from the front in the nearest
+ *  pose. */
+export const sceneLook = (outing, board, k, who = "cycy", pose = "joie") => ({ src: sceneUrl(outing, board, k), fallback: fallbackUrl(who, "face", pose) });
+
 // a small car seen from the side, in the paper's colours, with its white sticker edge
 const CAR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150"><g stroke="#fff" stroke-width="10" stroke-linejoin="round"><path d="M18 108c0-22 10-30 34-34l40-34c10-8 22-12 38-12h62c22 0 38 10 52 30l18 18c16 2 22 12 22 32v8H18z" fill="#e7e1d6"/><circle cx="82" cy="116" r="22" fill="#4a4f5f"/><circle cx="226" cy="116" r="22" fill="#4a4f5f"/></g><path d="M104 48h40v30H76zM160 48h30c12 0 22 8 30 30h-60z" fill="#9fb6c8"/></svg>`;
 

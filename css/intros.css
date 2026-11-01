@@ -409,6 +409,25 @@
   overflow: visible;
 }
 
+/* ── Ré's bridge (ile-de-re.js): the gulls, gliding and flapping, and the sailboats, sailing on and rocking on their
+   waterline; GSAP moves them, each drawn apart ── */
+.st-mouette,
+.st-voilier {
+  position: absolute;
+  display: block;
+  will-change: transform;
+}
+
+.st-voilier {
+  transform-origin: 50% 100%;
+}
+
+.st-mouette svg,
+.st-voilier svg {
+  display: block;
+  overflow: visible;
+}
+
 /* a puff of paper smoke from a vehicle's back (smoke()) */
 .st-puff {
   position: absolute;

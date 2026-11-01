@@ -1048,16 +1048,17 @@ async function suite(page, vp) {
     if (wrong.length) throw new Error(wrong.join(" ; "));
   });
 
-  // the outing after a stamp, on its provisional intro: the Île de Ré (the canoe has its own scenario, of 31 s)
-  await check("?demo&tampon=canoe : après le tampon, toucher l'Île de Ré ouvre son intro, une seule entrée d'historique de plus ; à sa fin, le tampon encreur attend sur l'Île de Ré ; rien n'est enregistré", async () => {
-    await page.goto(`${BASE}?demo&tampon=canoe#/aventures`);
+  // the outing after a stamp, on its provisional intro: Marquèze (the canoe and the Île de Ré have their own scenarios,
+  // of 31 s)
+  await check("?demo&tampon=ile-de-re : après le tampon, toucher Marquèze ouvre son intro, une seule entrée d'historique de plus ; à sa fin, le tampon encreur attend sur Marquèze ; rien n'est enregistré", async () => {
+    await page.goto(`${BASE}?demo&tampon=ile-de-re#/aventures`);
     const kept = await page.eval(`localStorage.getItem("${KEY}")`);
-    const its = pageOf(AVENTURES, "ile-de-re");
-    await toolOn("canoe");
+    const its = pageOf(AVENTURES, "marqueze");
+    await toolOn("ile-de-re");
     await page.tap(".pp-tool");
-    const lit = `document.querySelector('${slot("ile-de-re")}[data-status="open"] .slot-body')`;
-    // the canoe stamped, the book turned to the Île de Ré's page and still
-    await page.waitFor(`${stampOn("canoe")} && ${lit} && !gsap.isTweening(${lit}) && ${opened} && ${onPage(its)} && !${book}.classList.contains("is-turning")`, 6000);
+    const lit = `document.querySelector('${slot("marqueze")}[data-status="open"] .slot-body')`;
+    // the Île de Ré stamped, the book turned to Marquèze's page and still
+    await page.waitFor(`${stampOn("ile-de-re")} && ${lit} && !gsap.isTweening(${lit}) && ${opened} && ${onPage(its)} && !${book}.classList.contains("is-turning")`, 6000);
     // the entries the page writes from now on (history.length stops at 50, which a long run reaches)
     await page.eval(`window.__entries = { push: 0, replace: 0 };
       for (const kind of ["push", "replace"]) {
@@ -1067,14 +1068,14 @@ async function suite(page, vp) {
           return write.apply(this, args);
         };
       }`);
-    await page.tap(slot("ile-de-re"));
-    await page.waitFor(`location.hash === "#/aventures/ile-de-re" && document.querySelector('.screen-intro[data-id="ile-de-re"]')`, 4000).catch(async () => {
-      throw new Error(`pas d'intro de l'Île de Ré : ${JSON.stringify(await page.eval(`({ hash: location.hash, entries: window.__entries, ile: document.querySelector('${slot("ile-de-re")}')?.dataset.status })`))}`);
+    await page.tap(slot("marqueze"));
+    await page.waitFor(`location.hash === "#/aventures/marqueze" && document.querySelector('.screen-intro[data-id="marqueze"]')`, 4000).catch(async () => {
+      throw new Error(`pas d'intro de Marquèze : ${JSON.stringify(await page.eval(`({ hash: location.hash, entries: window.__entries, marqueze: document.querySelector('${slot("marqueze")}')?.dataset.status })`))}`);
     });
     const entries = await page.eval(`window.__entries`);
     if (entries.push !== 1 || entries.replace !== 0) throw new Error(`historique : ${JSON.stringify(entries)} (une entrée ajoutée, aucune réécrite)`);
     await backOn(its, (await page.eval(introLength)) + 4500);
-    await toolOn("ile-de-re");
+    await toolOn("marqueze");
     if ((await page.eval(`localStorage.getItem("${KEY}")`)) !== kept) throw new Error(`la sauvegarde a changé : ${await page.eval(`localStorage.getItem("${KEY}")`)}`);
   });
 

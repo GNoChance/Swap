@@ -17,7 +17,7 @@ import { createStage, ENTER, HIDDEN, layerX } from "../scene/stage.js";
 import { grain, paperLayer, sheet } from "../scene/decor.js";
 import { faceBubble, paperVehicle, person, preload, sceneActor, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
-import { fallbackUrl, sceneUrl } from "../scene/urls.js";
+import { sceneLook } from "../scene/urls.js";
 import * as carte from "../scene/props-carte.js";
 import * as perigord from "../scene/props-perigord.js";
 import * as riviere from "../scene/props-riviere.js";
@@ -45,7 +45,7 @@ function placed(el, left, top) {
 }
 /** A scene sticker of the canoe's boards (`board`, its number `k`), and its stand-in: its main person from the front in
  *  the nearest pose (spec § 3). */
-const scene = (board, k, who = "cycy", pose = "joie") => ({ src: sceneUrl("canoe", board, k), fallback: fallbackUrl(who, "face", pose) });
+const scene = (board, k, who, pose) => sceneLook("canoe", board, k, who, pose);
 
 // the river's layers, back to front: [name, depth (its share of the camera's moves), its markup in a skin]
 const RIVER = [

@@ -399,6 +399,30 @@ const sounds = {
       tone({ freq: freq * 2.01, at, dur: 0.12, gain: 0.01, attack: 0.003 });
     });
   },
+  /** Seagulls (~0.8 s): three cries, « kiaou », each a quick rise and a long fall, nasal, the last one further off. */
+  gulls() {
+    const t = ctx.currentTime;
+    [[0, 1, 1], [0.27, 1.12, 0.8], [0.52, 0.93, 0.55]].forEach(([at, pitch, loud]) => {
+      const start = t + at;
+      const dur = 0.25;
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(1150 * pitch, start);
+      osc.frequency.exponentialRampToValueAtTime(1800 * pitch, start + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(820 * pitch, start + dur);
+      const throat = ctx.createBiquadFilter(); // the nasal « ia »
+      throat.type = "bandpass";
+      throat.frequency.value = 1900 * pitch;
+      throat.Q.value = 2.4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.1 * loud, start + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(throat).connect(g).connect(master);
+      osc.start(start);
+      osc.stop(start + dur + 0.05);
+    });
+  },
   /** A crowd roaring in the stands. */
   crowd() {
     for (let i = 0; i < 8; i++) noise({ at: i * 0.16, dur: 0.9, gain: 0.07, filter: 600 + Math.random() * 900, q: 0.35 });

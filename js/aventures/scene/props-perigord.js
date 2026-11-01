@@ -86,15 +86,16 @@ export function dordogne(project) {
 /** Is [x, y] clear of the road, of the Dordogne and of every box (a name's: { x0, x1, y0, y1 }), by `gap`? */
 const clearOf = ({ road, river, clear }, [x, y], gap) => distance(road, [x, y]) > gap && distance(river, [x, y]) > gap - 2 && !clear.some((b) => x > b.x0 - gap && x < b.x1 + gap && y > b.y0 - gap && y < b.y1 + gap);
 
-/** The vineyards round Saint-Émilion, in the Entre-deux-Mers and round Bergerac: paper parcels, each with its rows of
- *  vines, none on the road (`road`: its points [x, y]) nor on a name (`clear`: boxes). */
-export function vignes(project, { road = [], clear = [] } = {}) {
+/** The vineyards round Saint-Émilion, in the Entre-deux-Mers and round Bergerac (or another map's, `vineyards`: as
+ *  VINEYARDS): paper parcels, each with its rows of vines, none on the road (`road`: its points [x, y]) nor on a name
+ *  (`clear`: boxes). */
+export function vignes(project, { road = [], clear = [], vineyards = VINEYARDS } = {}) {
   const river = pts(project, DORDOGNE);
   const r = random(131);
   let parcels = "";
   let lit = "";
   let rows = "";
-  for (const [lat, lon, reach, count] of VINEYARDS) {
+  for (const [lat, lon, reach, count] of vineyards) {
     const { x: cx, y: cy } = project([lat, lon]);
     for (let i = 0, made = 0; i < count * 4 && made < count; i++) {
       const [x, y] = [cx + (r() - 0.5) * 2 * reach, cy + (r() - 0.5) * 1.4 * reach];
@@ -114,12 +115,13 @@ export function vignes(project, { road = [], clear = [] } = {}) {
 /** The maps' round trees (props.js roundTrees(), in small polygons: a map has hundreds), in their greens. */
 const grove = (list, { lift = 0.4, tint = {} } = {}) => roundTrees(list, { tint: { crown: C.wood, lit: C.woodLit, trunk: C.trunk, ...tint }, lift, smooth: false });
 
-/** The Périgord's round woods, clumps of small trees, none on the road nor the river nor a name. */
-export function bois(project, { road = [], clear = [] } = {}) {
+/** The Périgord's round woods (or another map's, `woods`: as WOODS), clumps of small trees, none on the road nor the
+ *  river nor a name. */
+export function bois(project, { road = [], clear = [], woods = WOODS } = {}) {
   const river = pts(project, DORDOGNE);
   const r = random(137);
   const trees = [];
-  for (const [lat, lon, reach, count] of WOODS) {
+  for (const [lat, lon, reach, count] of woods) {
     const { x: cx, y: cy } = project([lat, lon]);
     for (let i = 0, made = 0; i < count * 4 && made < count; i++) {
       const [a, d] = [r() * Math.PI * 2, reach * Math.sqrt(r())];
