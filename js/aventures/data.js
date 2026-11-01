@@ -43,7 +43,22 @@ export const AVENTURES = [
       relais: { transport: "bus", arrivee: "Carsac", noms: ["Beynac", "Castelnaud", "La Roque-Gageac", "Domme", "Sarlat"] },
     },
   },
-  { id: "ile-de-re", name: "Île de Ré", from: "2025-08-17", to: "2025-08-18", transports: ["c3", "velo"], people: [] },
+  {
+    id: "ile-de-re",
+    name: "Île de Ré",
+    from: "2025-08-17",
+    to: "2025-08-18",
+    transports: ["c3", "velo"],
+    people: [],
+    lieu: "Île de Ré",
+    trajet: {
+      depart: "Bordeaux",
+      etapes: ["Saintes", "La Rochelle"],
+      etapesAt: [3, 5],
+      // [lat, lon]: Bordeaux, Saint-André-de-Cubzac, Pons, Saintes, Rochefort, La Rochelle, the bridge's head, Rivedoux
+      points: [[44.837, -0.579], [45.0, -0.445], [45.578, -0.548], [45.746, -0.633], [45.937, -0.962], [46.16, -1.152], [46.172, -1.236], [46.158, -1.272]],
+    },
+  },
   { id: "marqueze", name: "Marquèze", from: "2025-08-22", to: "2025-08-22", transports: ["c3", "train"], people: [] },
   { id: "airbnb", name: "Premier Airbnb", from: "2025-09-21", to: "2025-09-21", transports: ["c3"], people: [] },
   { id: "boxers", name: "Boxers de Bordeaux", from: "2025-10-03", to: "2025-10-03", transports: ["pied"], people: [] },

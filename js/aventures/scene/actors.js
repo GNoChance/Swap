@@ -189,6 +189,7 @@ function emoteOf(self) {
 export function person({ layer, outing, who, x, y, height, side = "face", pose = "joie" }) {
   const self = cast({ layer, x, y, size: height });
   self.el.dataset.who = who;
+  const turnBox = self.turn; // kept: the methods below replace self.turn
   const look = (s, p) => self.look(`${s}-${p}`, stickerUrl(outing, who, s, p), fallbackUrl(who, s, p));
   Object.assign(self, {
     /** From the front or the back, in a pose, now (before the timeline plays). */
@@ -201,12 +202,11 @@ export function person({ layer, outing, who, x, y, height, side = "face", pose =
       look(s, p);
       self.wearAt(tl, at, `${s}-${p}`);
     },
-    /** Turns round at `at` s (face ↔ dos), into `p`, as a sticker turned over (turnOver()). By now `self.turn` is this
-     *  method, not the turn box (this Object.assign): the squeeze moves nothing and the look swaps at once, as the
-     *  bivouac plays and was validated; passing the box would show the squeeze. */
+    /** Turns round at `at` s (face ↔ dos), into `p`, as a sticker turned over (turnOver()): its turn box is squeezed to
+     *  nothing and back. */
     turn(tl, at, s, p) {
       look(s, p);
-      turnOver(tl, self, self.turn, at, `${s}-${p}`);
+      turnOver(tl, self, turnBox, at, `${s}-${p}`);
     },
     /** A hop on the spot, `height` units; → when it has landed. */
     hop: (tl, at, height = 14) => hopOf(tl, self.pose, at, height),

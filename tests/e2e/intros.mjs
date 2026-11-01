@@ -458,6 +458,19 @@ async function suite(page, vp) {
     }
   }
 
+  // the turn at « En haut » (+ 0.75 s, 0.08 s down, 0.1 s up): Cycy is squeezed like a card, then whole again
+  await check("le bivouac, En haut : Cycy se retourne comme une carte (sa boîte .st-actor__turn est écrasée au milieu du retournement, entière 0,7 s plus tard)", async () => {
+    const scale = `+gsap.getProperty(document.querySelector('.st-actor[data-who="cycy"] .st-actor__turn'), "scaleX")`;
+    await page.goto(`${BASE}?demo&t=${beat["En haut"].at + 0.83}#/aventures/bivouac-1`);
+    await page.waitFor(playing, 8000);
+    await page.eval(holdAt(beat["En haut"].at + 0.83));
+    const mid = await page.eval(scale);
+    if (SHOTS) await page.screenshot(join(SHOTS, `en-haut-retournement-${vp.width}x${vp.height}.png`));
+    await page.eval(holdAt(beat["En haut"].at + 1.5));
+    const after = await page.eval(scale);
+    if (!(mid < 0.6) || Math.abs(after - 1) > 0.01) throw new Error(`scaleX au milieu ${mid}, ensuite ${after}`);
+  });
+
   await check("?demo&t=99 (après la fin de l'intro) : retour au passeport, sans rester figé sur la dernière image", async () => {
     await page.goto(`${BASE}?demo&t=99#/aventures/bivouac-1`);
     await page.waitFor(atPassport, 5000);

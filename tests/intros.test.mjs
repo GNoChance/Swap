@@ -175,6 +175,22 @@ test("intros: the canoe goes by C3, bus and canoe to La Dordogne", () => {
   assert.ok(points.at(-1)[1] > points[0][1], "the arrival is east of the start");
 });
 
+// The Île de Ré: C3 to La Rochelle, then over the bridge (the stages are La Rochelle's and Saintes').
+const ILE_MAP = { origin: [44.837, -0.579], at: { x: 260, y: 640 }, unitsPerDegree: 258 };
+
+test("intros: the Île de Ré goes by C3 to La Rochelle and over the bridge", () => {
+  assert.equal(byId("ile-de-re").lieu, "Île de Ré");
+  const project = projection(ILE_MAP);
+  const { points } = byId("ile-de-re").trajet;
+  for (const point of points) {
+    const { x, y } = project(point);
+    assert.ok(x >= 25 && x <= 365 && y >= 120 && y <= 700, `${point} → (${x}, ${y})`);
+  }
+  assert.ok(points.at(-1)[0] > points[0][0], "the arrival is north of the start");
+  const { trajet, lieu } = byId("ile-de-re");
+  assert.deepEqual(stops({ trajet, lieu }, project).map((s) => s.name), ["Bordeaux", "Saintes", "La Rochelle", "Île de Ré"]);
+});
+
 test("intros: a trip's relay is known", () => {
   for (const a of AVENTURES.filter((x) => x.trajet?.relais)) {
     const { transport, arrivee, noms } = a.trajet.relais;
