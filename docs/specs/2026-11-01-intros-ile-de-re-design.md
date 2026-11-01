@@ -16,7 +16,7 @@ Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la techni
 - **Ce qui ne change pas :**
   - les intros du bivouac et du canoë, l'écran de l'intro, le passeport, le tampon, Mini Cycy, le hub, le Swap et la Galerie UBB ;
   - les 12 autres sorties gardent l'intro provisoire.
-  - Une seule exception, à faire seulement si Kevin dit oui à la relecture de cette spec (§ 4) : le retournement des personnes.
+  - Une seule exception, validée par Kevin à la relecture de cette spec (§ 4) : le retournement des personnes, bivouac compris.
 
 ## 1. Ce que contient la tranche
 - **La découpe** des 5 planches de la sortie : 60 stickers (§ 3). La C3 est déjà découpée.
@@ -96,7 +96,7 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
   - **La Rochelle :** les deux tours, les mâts et le quai ;
   - **la côte :** la route, la plage et le soleil.
   - Ils réutilisent ce qui existe : `roundTrees`, `house`, `shingle`, la mer et les reflets du canoë, le ciel doré.
-- **Le retournement des personnes, seulement si Kevin dit oui :** le retournement de dos à face devait écraser le sticker puis le faire revenir, comme une carte. À cause d'un défaut de la tranche 3a, il change d'un coup. La correction tient en une ligne de `person.turn`, et le bivouac en profiterait aussi. Si Kevin dit non, rien ne change.
+- **Le retournement des personnes (Kevin a dit oui) :** le retournement de dos à face devait écraser le sticker puis le faire revenir, comme une carte. À cause d'un défaut de la tranche 3a (`person.turn` reçoit la méthode au lieu de sa boîte), il change d'un coup. On le corrige dans `person.turn`, et le bivouac en profite aussi : ses retournements « En haut » et « La descente » deviennent des cartes retournées. Les suites du bivouac doivent rester vertes.
 - **Les sons**, en WebAudio, sans fichier :
   - nouveaux : `bell`, le « dring » de la sonnette, et `gulls`, les cris des mouettes ;
   - réutilisés : `engine`, `pop`, `step`, `paper`, `letter`, `whoosh` ;
