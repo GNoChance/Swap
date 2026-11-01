@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cutStickers, findStickers, padBox } from "../tools/decoupe/islands.mjs";
 import { boardOf, outingOf, fileNames, stickerWidth } from "../tools/decoupe/names.mjs";
+import { parseArgs } from "../tools/decoupe/args.mjs";
 
 const W = 400;
 const H = 330;
@@ -178,4 +179,18 @@ test("decoupe: names", () => {
 test("decoupe: a scene sticker is 600 px wide, a standard one 300", () => {
   assert.equal(stickerWidth({ scene: true }), 600);
   assert.equal(stickerWidth({ scene: false }), 300);
+});
+
+test("decoupe: arguments", () => {
+  assert.deepEqual(parseArgs(["planches/voyages/ile-de-re"]), { target: "planches/voyages/ile-de-re", scene: false, count: null });
+  assert.deepEqual(parseArgs(["x.png", "--scene"]), { target: "x.png", scene: true, count: null });
+  assert.deepEqual(parseArgs(["--scene", "--count", "12", "x.png"]), { target: "x.png", scene: true, count: 12 });
+  assert.deepEqual(parseArgs(["x.png", "--scene", "--count", "12"]), { target: "x.png", scene: true, count: 12 });
+  assert.throws(() => parseArgs(["x.png", "--count", "12"]), /--count/);
+  for (const bad of [[], ["a"], ["a", "b"], ["x"]]) {
+    assert.throws(() => parseArgs(["x.png", "--scene", "--count", ...bad.slice(0, 1)].filter((v, i, all) => !(i === all.length - 1 && v === "x"))), /--count/);
+  }
+  assert.throws(() => parseArgs(["x.png", "--scene", "--count", "0"]), /--count/);
+  assert.throws(() => parseArgs(["x.png", "--scene", "--count", "2.5"]), /--count/);
+  assert.throws(() => parseArgs(["--scene"]), /usage/);
 });

@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch } from "../../tests/e2e/cdp.mjs";
+import { parseArgs } from "./args.mjs";
 import { SPECK, cutStickers, padBox } from "./islands.mjs";
 import { VEHICLES, boardOf, fileNames, outingOf, slug, stickerWidth } from "./names.mjs";
 
@@ -153,13 +154,7 @@ function boardFiles(target, scene) {
 }
 
 async function main() {
-  const args = process.argv.slice(2);
-  const scene = args.includes("--scene");
-  const at = args.indexOf("--count");
-  const count = at < 0 ? null : Number(args[at + 1]);
-  if (at >= 0 && (!scene || !Number.isInteger(count) || count < 1)) throw new Error("--count N (entier) ne va qu'avec --scene");
-  const target = args.find((a, i) => !a.startsWith("--") && i !== at + 1);
-  if (!target) throw new Error("usage : node tools/decoupe/decoupe.mjs <dossier de planches | planche.png> [--scene [--count N]]");
+  const { target, scene, count } = parseArgs(process.argv.slice(2));
   const jobs = boardFiles(target, scene).map((file) => jobOf(file, scene, count));
   const page = await launch({ width: 1200, height: 900, mobile: false });
   try {
