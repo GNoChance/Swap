@@ -419,7 +419,7 @@ async function suite(page, vp) {
       if (errors.some((e) => !e.includes(`${SCENE.split("/")[1]}.webp`))) throw new Error(`erreurs : ${JSON.stringify(errors)}`);
     }, { allowErrors: true });
 
-    await check("point 1 : le passeport posé, le Premier bivouac tamponné (le canoë à vivre) : le fichier intros/canoe.js est déjà demandé, une fois le livre arrivé ; le toucher sur le Premier canoë ne le redemande pas", async () => {
+    await check("point 1 : le passeport posé, le Premier bivouac tamponné (le canoë à vivre) : le fichier intros/canoe.js est déjà demandé, une fois le livre arrivé, et ses stickers aussi ; une fois qu'ils sont arrivés, le toucher sur le Premier canoë ne redemande pas le fichier et ne retélécharge aucun sticker", async () => {
       await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(BIVOUAC_STAMPED))}#/aventures`);
       await page.waitFor(`window.__landedAt`, 8000);
       await page.waitFor(`${scenarioAsked}.length === 1`, 3000).catch(async () => {
@@ -428,9 +428,13 @@ async function suite(page, vp) {
       const after = await page.eval(`${scenarioAsked}[0].startTime - window.__landedAt`);
       if (after < -20) throw new Error(`demandé ${Math.round(-after)} ms avant que le livre soit posé`); // a frame's leeway
       await page.waitFor(`${settled(1)} && document.querySelector('.pp-slot[data-id="canoe"][data-status="open"]')`, 8000);
-      // its stickers too: all asked once the book landed (before any touch), and the touch asks for none again
-      const mine = `performance.getEntriesByType("resource").filter((e) => ${JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`))}.includes(new URL(e.name).pathname))`;
-      await page.waitFor(`${stickers.length} > 0 && new Set(${mine}.map((e) => e.name)).size === ${stickers.length}`, 6000).catch(() => {});
+      // its stickers too: all asked once the book landed (before any touch) and all arrived (their responses ended), then
+      // the touch downloads none again
+      const paths = JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`));
+      const mine = `performance.getEntriesByType("resource").filter((e) => ${paths}.includes(new URL(e.name).pathname))`;
+      await page.waitFor(`${stickers.length} > 0 && ${paths}.every((p) => ${mine}.some((e) => new URL(e.name).pathname === p && e.responseEnd > 0))`, 8000).catch(async () => {
+        throw new Error(`stickers arrivés avant le toucher : ${await page.eval(`${mine}.filter((e) => e.responseEnd > 0).length`)} sur ${stickers.length}`);
+      });
       const early = await page.eval(`${mine}.length`);
       await page.tap('.pp-slot[data-id="canoe"]');
       await page.waitFor(loaded, 8000);
@@ -438,7 +442,6 @@ async function suite(page, vp) {
       const late = await page.eval(`${mine}.slice(${early}).map((e) => e.transferSize)`); // an entry per image, but from the cache
       await page.goto("about:blank");
       if (asked !== 1) throw new Error(`redemandé au toucher : ${asked} demandes`);
-      if (early !== stickers.length) throw new Error(`stickers demandés avant le toucher : ${early} sur ${stickers.length}`);
       if (late.some((size) => size > 0)) throw new Error(`stickers retéléchargés au toucher : ${late.filter((size) => size > 0).length}`);
     });
 
