@@ -36,6 +36,10 @@ const WELCOMED = { welcomed: true, known: AVENTURES.map((a) => a.id) }; // a sav
 
 // the requests for the bivouac's scenario file
 const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => new URL(e.name).pathname === "/js/aventures/intros/bivouac-1.js")`;
+// the passport's warm-up over: each of the bivouac's stickers asked and arrived (an entry is added once its response
+// has ended). A hold set after it makes the intro fetch them again, held (page.hold turns the cache off); set while
+// they are still on their way, the intro's images would come with them, unheld
+const warmedUp = `${JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`))}.every((p) => performance.getEntriesByType("resource").some((e) => new URL(e.name).pathname === p))`;
 // the poster in place: its line and every letter of its title fully shown
 const built = `(() => {
   const parts = [...document.querySelectorAll(".af-title .af-letter, .af-line")];
@@ -259,6 +263,7 @@ async function suite(page, vp) {
     await check("point 1 : entrer dans l'intro (première visite, hors démo) puis le retour du navigateur 50 ms après, ses stickers encore en route (retenus 1,5 s) et sa timeline pas encore partie : le passeport, aucune scène restée, rien d'enregistré, pas de tampon qui attend, et le lissage de GSAP à son réglage d'origine", async () => {
       await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify({ welcomed: true, known: AVENTURES.map((a) => a.id) }))}#/aventures`);
       await page.waitFor(`document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"][data-page="1"]') && document.querySelector('.pp-slot[data-id="bivouac-1"][data-status="open"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`, 8000);
+      await page.waitFor(warmedUp, 6000);
       // just before the back: is its timeline still waiting (paused), and how many of its stickers are still on their way?
       await page.eval(`new MutationObserver((_, watch) => {
         const el = document.querySelector("#app > .screen-intro");
@@ -319,6 +324,7 @@ async function suite(page, vp) {
       for (const away of ["lock", "hide"]) {
         await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(WELCOMED))}#/aventures`);
         await page.waitFor(`${settled(1)} && document.querySelector('.pp-slot[data-id="bivouac-1"][data-status="open"]')`, 8000);
+        await page.waitFor(warmedUp, 6000);
         const held = 1500;
         await page.hold(["*/assets/aventures/*.webp"], held);
         try {

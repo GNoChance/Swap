@@ -110,6 +110,9 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   let quiet = 0; // the countdown to her nudge
   let cheer = null; // her last line at a stamp
   let own = null; // { id, until }: the slot just stamped, still the stamp's (a double touch must not open its intro)
+  // the stickers of the outing to live, loaded ahead (warm()): held until the screen is left, so that its intro finds
+  // them among the page's images, never fetched again (an image nothing holds may be collected, and fetched anew)
+  let warmed = [];
   const timers = new Set();
   /** fn in `ms`, unless the screen is left meanwhile. */
   function later(ms, fn) {
@@ -169,11 +172,11 @@ export async function aventuresWorld({ id, from, open, done, back }) {
   function warm() {
     if (buddy.stopped) return; // left before the book landed
     const id = nextToLive(AVENTURES, progress);
-    // then its stickers, for the HTTP cache to serve the intro's images (its first viewing cannot be skipped)
+    // then its stickers, held for the intro's images (its first viewing cannot be skipped)
     if (id) {
       SCENARIOS[id]?.load().then(({ stickers }) => {
         if (buddy.stopped) return; // left meanwhile
-        for (const path of stickers ?? []) new Image().src = `assets/aventures/${path}.webp`;
+        warmed = (stickers ?? []).map((path) => Object.assign(new Image(), { src: `assets/aventures/${path}.webp` }));
       }).catch(() => {});
     }
   }
@@ -391,6 +394,7 @@ export async function aventuresWorld({ id, from, open, done, back }) {
       clearEffects(); // the fireworks of a passport complete go with it
       passport.dispose();
       buddy.dispose();
+      warmed = []; // the intro mounts its images in this same turn, right after (main.js: show())
     },
   };
 }

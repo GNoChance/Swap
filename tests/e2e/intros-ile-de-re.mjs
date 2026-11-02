@@ -260,8 +260,8 @@ async function suite(page, vp) {
       const after = await page.eval(`${scenarioAsked}[0].startTime - window.__landedAt`);
       if (after < -20) throw new Error(`demandé ${Math.round(-after)} ms avant que le livre soit posé`); // a frame's leeway
       await page.waitFor(`${settled(pageOf(AVENTURES, ID))} && document.querySelector('.pp-slot[data-id="${ID}"][data-status="open"]')`, 8000);
-      // its stickers: all asked once the book landed (before any touch) and all arrived (their responses ended), then
-      // the touch downloads none again
+      // its stickers: all asked once the book landed, before any touch, each once (an entry is added once its
+      // response has ended); then the touch downloads none again (the passport holds them: screen.js, warm())
       const paths = JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`));
       const mine = `performance.getEntriesByType("resource").filter((e) => ${paths}.includes(new URL(e.name).pathname))`;
       await page.waitFor(`${stickers.length} > 0 && ${paths}.every((p) => ${mine}.some((e) => new URL(e.name).pathname === p && e.responseEnd > 0))`, 8000).catch(async () => {
@@ -274,6 +274,7 @@ async function suite(page, vp) {
       const late = await page.eval(`${mine}.slice(${early}).map((e) => e.transferSize)`); // an entry per image, but from the cache
       await page.goto("about:blank");
       if (asked !== 1) throw new Error(`redemandé au toucher : ${asked} demandes`);
+      if (early !== stickers.length) throw new Error(`stickers demandés avant le toucher : ${early} demandes pour ${stickers.length}`);
       if (late.some((size) => size > 0)) throw new Error(`stickers retéléchargés au toucher : ${late.filter((size) => size > 0).length}`);
     });
 
