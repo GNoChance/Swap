@@ -298,7 +298,8 @@ export function plage() {
   ].join("");
 }
 
-const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+/** A text safe in markup (a sign's words; shared with props-pont.js). */
+export const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
 /** A wooden signpost at x, y (its post's foot), its arrow-shaped plank pointing right with `text` on it (ink on wood:
  *  css/intros.css, st-sign). */

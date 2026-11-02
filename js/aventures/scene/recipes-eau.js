@@ -12,8 +12,9 @@ const SWAY = 1.2; // s: a pitch from side to side and back
 const BOB = 0.9; // s: a rise and fall
 const STROKE = 0.45; // s between two strokes of the paddles
 
-/** An ease that makes a wave of `cycles` whole periods: 0 at both ends, the tween's end value at its crests. */
-const wave = (cycles) => (p) => Math.sin(2 * Math.PI * cycles * p);
+/** An ease that makes a wave of `cycles` whole periods: 0 at both ends, the tween's end value at its crests (shared with
+ *  recipes-velo.js). */
+export const wave = (cycles) => (p) => Math.sin(2 * Math.PI * cycles * p);
 /** An element of class `cls` holding `markup`, hidden. */
 function element(cls, markup) {
   const el = Object.assign(document.createElement("span"), { className: cls });

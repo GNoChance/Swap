@@ -175,24 +175,28 @@ test("intros: the canoe goes by C3, bus and canoe to La Dordogne", () => {
   assert.ok(points.at(-1)[1] > points[0][1], "the arrival is east of the start");
 });
 
-// The Île de Ré: C3 to La Rochelle, then over the bridge (the stages are La Rochelle's and Saintes').
+// The Île de Ré: C3 by Saintes and La Rochelle to the foot of Ré's bridge at La Pallice, where the bikes are rented (the
+// stages are La Rochelle's and Saintes'; the pin carries the lieu; the bridge is crossed by bike, off the map).
 const ILE_MAP = { origin: [44.837, -0.579], at: { x: 260, y: 640 }, unitsPerDegree: 258 };
 
-test("intros: the Île de Ré goes by C3 to La Rochelle and over the bridge", () => {
+test("intros: the Île de Ré goes by C3 to the foot of Ré's bridge", () => {
   assert.equal(byId("ile-de-re").lieu, "Île de Ré");
+  assert.deepEqual(byId("ile-de-re").transports, ["c3", "velo"]);
   const project = projection(ILE_MAP);
-  const { points } = byId("ile-de-re").trajet;
+  const { trajet, lieu } = byId("ile-de-re");
+  const { points } = trajet;
+  assert.deepEqual(points.at(-1), [46.172, -1.236]); // the bridge's head at La Pallice
   for (const point of points) {
     const { x, y } = project(point);
     assert.ok(x >= 25 && x <= 365 && y >= 120 && y <= 700, `${point} → (${x}, ${y})`);
   }
   assert.ok(points.at(-1)[0] > points[0][0], "the arrival is north of the start");
-  const { trajet, lieu } = byId("ile-de-re");
+  assert.equal(trajet.arrivee, undefined);
   assert.deepEqual(stops({ trajet, lieu }, project).map((s) => s.name), ["Bordeaux", "Saintes", "La Rochelle", "Île de Ré"]);
 });
 
 // Going north, La Rochelle's name keeps clear of the road coming from Rochefort and leaving west for the bridge, and the
-// arrival's of its pin at Rivedoux (the bridge comes to it from the east): out over the land and the strait.
+// arrival's of its pin at La Pallice (the road comes to it from La Rochelle, east): out over the strait.
 test("intros: on a trip north, each name stands away from the road and from the pin", () => {
   const [start, saintes, rochelle, ile] = stops(byId("ile-de-re"), projection(ILE_MAP));
   assert.ok(start.anchor === "end" && start.tx < start.x, `start: ${JSON.stringify(start)}`); // the road leaves it going right

@@ -399,6 +399,11 @@ const sounds = {
       tone({ freq: freq * 2.01, at, dur: 0.12, gain: 0.01, attack: 0.003 });
     });
   },
+  /** A bicycle bell's « dring dring » (~0.45 s): two trills, each four quick strikes on a little bell, high and bright.
+   *  (Not named « bell »: that is the bell helper above.) */
+  dring() {
+    for (const at of [0, 0.2]) for (let i = 0; i < 4; i++) bell(i % 2 ? 3150 : 2650, at + i * 0.035, 0.045, 0.16);
+  },
   /** Seagulls (~0.8 s): three cries, « kiaou », each a quick rise and a long fall, nasal, the last one further off. */
   gulls() {
     const t = ctx.currentTime;

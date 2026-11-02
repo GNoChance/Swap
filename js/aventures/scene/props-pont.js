@@ -1,13 +1,14 @@
-// The bridge's pieces (the Île de Ré's spec, § 2, moment 2, and § 4): the open sea on a summer day (bands deeper blue
-// nearer, ripples and whitecaps, the sun's glints; the lighthouse's sea too, so it takes its skin, "paper" or "poster":
-// props.js), the far coast low on the horizon, Ré's long bridge seen from the side (its deck rising to its hump over
-// the shipping channel, its many slender piers in the water with their reflections, its lamp posts and its rail), the
-// sailboats and the gulls. The bridge's layers are wider than 1600 units: the camera follows the C3 over it. Pure:
-// markup only, the same for the same arguments.
+// The bridge's pieces (the Île de Ré's spec, § 2, moments 2 and 3, and § 4): the open sea on a summer day (bands deeper
+// blue nearer, ripples and whitecaps, the sun's glints; the lighthouse's sea too, so it takes its skin, "paper" or
+// "poster": props.js), the far coast low on the horizon, Ré's bridge seen from the side (its deck rising to its hump
+// over the shipping channel, its slender piers in the water with their reflections, its lamp posts and its rail), the
+// land at both its ends (La Pallice's foot with the bike rental, Ré's end), the sailboats and the gulls. The bridge's
+// layers are wider than 1600 units: the camera follows the two of them over it. Pure: markup only, the same for the
+// same arguments.
 import { AFFICHE as A, cutPiece } from "./decor.js";
-import { blob, curve, lens, n, path, poly, random } from "./geom.js";
-import { paper, sheetOf } from "./props.js";
-import { WATER_LINE } from "./props-riviere.js";
+import { blob, curve, lens, n, path, poly, random, speck, topEdge, tuft, xy } from "./geom.js";
+import { paper, rock, roundTrees, sheetOf } from "./props.js";
+import { escape, WATER_LINE } from "./props-riviere.js";
 
 /** Where the sea meets the sky (props-riviere.js: its sky). */
 export const HORIZON = WATER_LINE;
@@ -71,36 +72,37 @@ export function large() {
 
 // ── The bridge ──────────────────────────────────────────────
 
-/** Ré's bridge: its road on the deck at `base` (y), rising `rise` to its hump at x `hump` over `half` units each way;
+/** Ré's bridge: its road on the deck at `base` (y), rising `rise` to its hump at x `hump` over `half` units each way
+ *  (the ramp starting on the land); over the water from its abutment on La Pallice's land at x `from` to Ré's at `to`;
  *  its deck `thick` units thick; its piers standing in the water at `foot` (y), `span` apart, the channel's span wider. */
-export const DECK = { hump: 350, half: 520, rise: 60, base: 500, thick: 18, foot: 604, span: 94, channel: 150 };
+export const DECK = { hump: 560, half: 380, rise: 44, base: 500, thick: 18, foot: 604, span: 72, channel: 120, from: 300, to: 820 };
 
-/** The y of the road on the deck at x (stage units): flat far off, rising smoothly to the hump. */
+/** The y of the road at x (stage units), on the bridge and on the land at its ends: flat far off, rising smoothly to the
+ *  hump. */
 export function deck(x) {
   const u = (x - DECK.hump) / DECK.half;
   return DECK.base - (Math.abs(u) < 1 ? (DECK.rise * (1 + Math.cos(Math.PI * u))) / 2 : 0);
 }
 
-/** The x of its piers in a layer `width` units wide: either side of the channel, then a span apart. */
-function piers(width) {
-  const [l, r] = edges(width);
+/** The x of its piers in the water: either side of the channel, then a span apart, clear of the land's banks. */
+function piers() {
   const list = [];
-  for (let off = DECK.channel / 2; DECK.hump - off > l - 20 || DECK.hump + off < r + 20; off += DECK.span) list.push(DECK.hump - off, DECK.hump + off);
-  return list.filter((x) => x > l - 20 && x < r + 20).sort((a, b) => a - b);
+  for (let off = DECK.channel / 2; DECK.hump - off > DECK.from + 40 && DECK.hump + off < DECK.to - 40; off += DECK.span) list.push(DECK.hump - off, DECK.hump + off);
+  return list.sort((a, b) => a - b);
 }
 
-/** A line along the deck, `dy` under its road, every 8 units across the layer. */
-function deckLine(width, dy) {
-  const [l, r] = edges(width);
-  return Array.from({ length: Math.ceil((r - l) / 8) + 1 }, (_, k) => [l + k * 8, deck(l + k * 8) + dy]);
+/** A line along the deck, `dy` under its road, every 8 units from x0 to x1 (by default its ends, tucked under the land). */
+function deckLine(dy, x0 = DECK.from - 20, x1 = DECK.to + 20) {
+  return Array.from({ length: Math.ceil((x1 - x0) / 8) + 1 }, (_, k) => Math.min(x1, x0 + k * 8)).map((x) => [x, deck(x) + dy]);
 }
 
-/** The bridge across a layer `width` units wide, seen from the side (paper only): its slender piers on their footings
- *  in the water, each with its cap under the deck and its broken reflection; the deck, a pale girder curving up to the
- *  hump, its fascia shaded and its underside dark; the far parapet along the road, the lamp posts every other pier. The
- *  C3 drives on the road (deck()); the near rail goes in front of it (rail()). */
-export function pont(width) {
-  const xs = piers(width);
+/** The bridge seen from the side (paper only), from its abutment on La Pallice's land to Ré's: its slender piers on
+ *  their footings in the water, each with its cap under the deck, its broken reflection and a lamp post on the deck
+ *  over it; the deck, a pale girder curving up to the hump, its fascia shaded and its underside dark, its ends under the
+ *  land (rives()); the far parapet along the road. The two of them ride on the road (deck()); the near rail goes in
+ *  front of them (rail()). */
+export function pont() {
+  const xs = piers();
   const r = random(421);
   let columns = "";
   let lit = "";
@@ -108,6 +110,7 @@ export function pont(width) {
   let footings = "";
   let reflections = "";
   let foam = "";
+  let lamps = "";
   for (const x of xs) {
     const top = deck(x) + DECK.thick;
     columns += poly([[x - 6, top], [x + 6, top], [x + 7.5, DECK.foot], [x - 7.5, DECK.foot]]);
@@ -116,33 +119,135 @@ export function pont(width) {
     footings += poly([[x - 11, DECK.foot - 10], [x + 11, DECK.foot - 10], [x + 12, DECK.foot + 3], [x - 12, DECK.foot + 3]]);
     foam += lens(x - 16, DECK.foot + 2, 32, 1.2);
     for (let y = DECK.foot + 7; y < DECK.foot + 52; y += 7 + r() * 4) reflections += lens(x - 6 + (r() - 0.5) * 5, y, 12 + r() * 4, 1.1);
-  }
-  const road = deckLine(width, 0);
-  const girder = poly([...road, ...deckLine(width, DECK.thick).reverse()]);
-  const fascia = poly([...deckLine(width, DECK.thick * 0.5), ...deckLine(width, DECK.thick).reverse()]);
-  const parapet = poly([...deckLine(width, -5), ...road.slice().reverse()]);
-  const underside = poly([...deckLine(width, DECK.thick - 2.5), ...deckLine(width, DECK.thick).reverse()]);
-  let lamps = "";
-  xs.filter((_, k) => k % 2 === 0).forEach((x) => {
     const y = deck(x) - 5;
     lamps += poly([[x - 0.9, y], [x - 0.9, y - 46], [x + 0.9, y - 46], [x + 0.9, y]]) + poly([[x, y - 46], [x + 12, y - 48], [x + 12, y - 46], [x, y - 44]]) + poly([[x + 9, y - 47], [x + 16, y - 47], [x + 15, y - 44], [x + 10, y - 44]]);
-  });
+  }
+  const road = deckLine(0);
+  const girder = poly([...road, ...deckLine(DECK.thick).reverse()]);
+  const fascia = poly([...deckLine(DECK.thick * 0.5), ...deckLine(DECK.thick).reverse()]);
+  const underside = poly([...deckLine(DECK.thick - 2.5), ...deckLine(DECK.thick).reverse()]);
+  const parapet = poly([...deckLine(-5, DECK.from, DECK.to), ...deckLine(0, DECK.from, DECK.to).reverse()]); // from abutment to abutment
   return [
     path(reflections, "#5f94bb") + path(foam, "#eef6fa"),
     cutPiece({ silhouette: columns + footings, markup: path(columns, "#d6d0c3") + path(lit, "#e8e3d8") + path(footings, "#aba393"), lift: 0.8 }),
     path(caps, "#c4bdae"),
-    cutPiece({ silhouette: girder + parapet, markup: path(girder, "#ebe7dd") + path(fascia, "#d5cfc2") + path(underside, "#aea696") + path(parapet, "#dcd7cb"), edge: curve(deckLine(width, -4.4)), lift: 1.4 }),
+    cutPiece({ silhouette: girder + parapet, markup: path(girder, "#ebe7dd") + path(fascia, "#d5cfc2") + path(underside, "#aea696") + path(parapet, "#dcd7cb"), edge: curve(deckLine(-4.4, DECK.from, DECK.to)), lift: 1.4 }),
     cutPiece({ silhouette: lamps, markup: path(lamps, "#6f6c68"), lift: 0.5 }),
   ].join("");
 }
 
-/** The near rail along the road (paper only), over the C3's wheels: a thin bar on its posts. */
-export function rail(width) {
-  const top = deckLine(width, -7);
+/** The near rail along the road over the water (paper only), in front of the two of them's wheels: a thin bar on its
+ *  posts. */
+export function rail() {
+  const top = deckLine(-7, DECK.from, DECK.to);
   let posts = "";
   for (const [x, y] of top.filter((_, k) => k % 2 === 0)) posts += poly([[x - 0.6, y], [x + 0.6, y], [x + 0.6, y + 7], [x - 0.6, y + 7]]);
-  const bar = poly([...top, ...deckLine(width, -5.6).reverse()]);
+  const bar = poly([...top, ...deckLine(-5.6, DECK.from, DECK.to).reverse()]);
   return cutPiece({ silhouette: bar + posts, markup: path(posts, "#bdb6a8") + path(bar, "#f4f1ea"), lift: 0.4 });
+}
+
+// ── Its ends: the land at La Pallice with the bike rental, the land on Ré ──
+
+/** The land at an end of the bridge (paper), from the layer's edge `far` to its abutment at `at`, the water on its
+ *  `water` side (1: on its right, at La Pallice; −1: on its left, on Ré): a strip of grass under the road (the road its
+ *  top edge, a pale strip of cycle path along it, the ramp rising on it), its bank of rocks going down into the water
+ *  under the bridge, and its near shore a sandy beach, the sea in front of it; foam along the water's edge; tufts,
+ *  flowers and bushes in the grass. → { behind: the land going away behind the road (paler, its coast turning back
+ *  before the bridge) and a few trees on it; land } */
+function rive(far, at, water, r) {
+  const away = (from, step, count) => Array.from({ length: count }, (_, k) => at - water * (from + k * step + r() * 60)).filter((x) => (x - far) * water > 30);
+  const hinter = [[far, 476], [at - water * 140, 478], [at - water * 70, 486], [at - water * 30, deck(at - water * 30) + 1]];
+  const back = `${curve(hinter)}L${n(hinter.at(-1)[0])} 512L${far} 512Z`;
+  const top = [];
+  for (let x = far; (at - x) * water > 0; x += water * 10) top.push([x, deck(x)]);
+  top.push([at, deck(at)]);
+  const bank = [[at + water * 12, deck(at) + 26], [at + water * 30, 578], [at + water * 44, DECK.foot + 2]];
+  // the near shore, from the bank's foot back along the land to its far edge, a little wavy
+  const shore = [];
+  for (let k = 0; (at + water * (30 - k * 90) - far) * water > 0; k++) shore.push([at + water * (30 - k * 90), 628 + 24 * (1 - Math.exp(-k / 2)) + 5 * Math.sin(k * 1.7)]);
+  shore.push([far, shore.at(-1)[1]]);
+  const outline = [...top, ...bank, ...shore];
+  const strip = poly([...top, ...[...top].reverse().map(([x, y]) => [x, y + 3.5])]);
+  const beach = poly([...shore, ...[...shore].reverse().map(([x, y], k) => [x, y - (k === shore.length - 1 ? 0 : 13)])]);
+  let tufts = "";
+  let streaks = "";
+  const flowers = ["", ""];
+  for (let k = 0; k < 150; k++) {
+    const x = far + water * r() * Math.abs(at - far);
+    const y = deck(x) + 8 + r() ** 0.8 * 115;
+    const w = 40 + r() * 70;
+    const from = water > 0 ? Math.min(x, at - 20 - w) : Math.max(x - w, at + 20); // a streak's start: all of it on the land
+    if (k % 5 === 0) streaks += lens(from, y, w, 1.6 + r() * 1.6);
+    else if (k % 3) tufts += tuft(x, y, 2.4 + ((y - 500) / 130) * 2.6);
+    else flowers[k % 2] += speck(x, y, 1.3 + ((y - 500) / 130) * 0.9);
+  }
+  // the riprap: rocks along the bank, half in the water, and where it meets the beach
+  const rocks = [...bank, [at + water * 34, 618], [at + water * 22, 626]].flatMap(([x, y], k, all) => (k ? [[(x + all[k - 1][0]) / 2, (y + all[k - 1][1]) / 2], [x, y]] : [[x, y]]));
+  const foam = `<path d="${curve([...bank.slice(1), ...shore].map(([x, y]) => [x + water * 2, y + 1.5]))}" fill="none" stroke="#f4fbff" stroke-width="2" stroke-dasharray="22 8 10 6" stroke-linecap="round"/>`;
+  const bushes = away(260, 170, 7).map((x) => [x, 560 + r() * 50, 13 + r() * 8]);
+  return {
+    behind: cutPiece({ silhouette: back, markup: path(back, "#a3bf74"), edge: curve(hinter), lift: 0.5 }) + roundTrees(away(330, 140, 9).map((x) => [x, 488, 14 + r() * 8])),
+    land: [
+      cutPiece({ silhouette: poly(outline), markup: path(poly(outline), "#86ab58") + path(streaks, "#93b766") + path(beach, "#e8dcbc") + path(strip, "#d9d1bf") + path(tufts, "#6f9446") + path(flowers[0], "#fbf6ee") + path(flowers[1], "#f2cf5b"), edge: curve(top), lift: 0.8 }),
+      ...rocks.map(([x, y], k) => rock(x - 12 + water * 3, y + 4, 20 + (k % 3) * 5, "paper")),
+      foam,
+      roundTrees(bushes),
+    ].join(""),
+  };
+}
+
+/** A rental bike parked side on, facing right, its rear wheel on the ground at x, y, its frame `frame` (paper). */
+function velo(x, y, frame) {
+  const w = 9.5; // its wheels' radius
+  const [rear, front, crank, seat, head] = [[x, y - w], [x + 30, y - w], [x + 13, y - w + 1], [x + 9, y - 29], [x + 25, y - 29]];
+  const line = (...list) => `M${list.map(xy).join("L")}`;
+  const ring = ([cx, cy]) => `M${n(cx - w)} ${n(cy)}a${w} ${w} 0 1 0 ${2 * w} 0a${w} ${w} 0 1 0 ${-2 * w} 0`;
+  const wheels = ring(rear) + ring(front);
+  const tubes = line(rear, crank, seat, rear) + line(seat, head) + line(crank, [head[0] + 1, head[1] + 5]) + line(head, front);
+  const bits = line([seat[0] - 4, seat[1] - 2], [seat[0] + 4, seat[1] - 2]) + line(head, [head[0] - 1, head[1] - 5], [head[0] + 4, head[1] - 6]);
+  const stroke = (d, colour, width) => `<path d="${d}" fill="none" stroke="${colour}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return cutPiece({ silhouette: wheels + tubes + bits, stroke: 2.2, lift: 0.4, markup: stroke(wheels, "#3a3a3f", 2.2) + stroke(tubes, frame, 2.2) + stroke(bits, "#3a3a3f", 2) });
+}
+
+// the bike rental behind the road at the bridge's foot: its cabin from x0 to x1, its base `foot` under the land's top
+// edge, its eaves and its ridge, its sign on the roof (its board's top and bottom); its bikes parked in front of it:
+// [x, frame]
+const RENTAL = { x0: 30, x1: 142, foot: 506, eave: 440, ridge: 421, sign: { y0: 394, y1: 415 } };
+const PARKED = [[40, "#2f8f9d"], [62, "#e3b23c"], [84, "#d0573f"]];
+
+/** The bike rental (paper), behind the road: a white wooden cabin, its planks, its green door and shuttered window, its
+ *  tiled roof; on the roof its sign, a cream board on two posts with `text` in ink (css/intros.css, st-sign; the board
+ *  and its words in a group of class st-enseigne); three rental bikes parked in a row in front of it. */
+function location(text) {
+  const { x0, x1, foot, eave, ridge, sign } = RENTAL;
+  const walls = poly([[x0, foot], [x0, eave], [x1, eave], [x1, foot]]);
+  let planks = "";
+  for (let y = eave + 6; y < foot; y += 6) planks += `M${x0} ${y}H${x1}`;
+  const roof = [[x0 - 7, eave + 1], [x0 + 5, ridge], [x1 - 5, ridge], [x1 + 7, eave + 1]];
+  let tiles = "";
+  for (let x = x0 - 2; x < x1 + 4; x += 6) tiles += `M${x} ${eave}L${x + 2.6} ${ridge + 1}`;
+  const door = poly([[52, foot], [52, 458], [74, 458], [74, foot]]);
+  const panes = poly([[57, 463], [69, 463], [69, 474], [57, 474]]) + poly([[102, 452], [122, 452], [122, 472], [102, 472]]);
+  const shutters = poly([[94, 451], [102, 451], [102, 473], [94, 473]]) + poly([[122, 451], [130, 451], [130, 473], [122, 473]]);
+  const board = poly([[x0 + 2, sign.y1], [x0 + 2, sign.y0], [x1 - 2, sign.y0], [x1 - 2, sign.y1]]);
+  const posts = poly([[50, ridge + 1], [50, sign.y1], [53, sign.y1], [53, ridge + 1]]) + poly([[119, ridge + 1], [119, sign.y1], [122, sign.y1], [122, ridge + 1]]);
+  return [
+    cutPiece({ silhouette: walls, markup: path(walls, "#f4efe4") + `<path d="${planks}" stroke="#e0d9cb" stroke-width=".8"/>` + path(door + shutters, "#4f7f5a") + path(panes, "#9fb6c8"), lift: 0.8 }),
+    cutPiece({ silhouette: poly(roof), markup: path(poly(roof), "#c8734f") + `<path d="${tiles}" stroke="#b05f3f" stroke-width=".9"/>`, edge: topEdge(roof), lift: 0.7 }),
+    cutPiece({ silhouette: posts, markup: path(posts, "#6b4b2e"), lift: 0.4 }),
+    `<g class="st-enseigne">${cutPiece({ silhouette: board, markup: `<path d="${board}" fill="#fbf6ea" stroke="#3b2a18" stroke-width="1.2" stroke-linejoin="round"/>`, lift: 0.6 })}<text class="st-sign" x="${(x0 + x1) / 2}" y="${sign.y1 - 6.5}" text-anchor="middle">${escape(text)}</text></g>`,
+    ...PARKED.map(([x, frame]) => velo(x, foot - 2, frame)),
+  ].join("");
+}
+
+/** The land at both ends of the bridge, across a layer `width` units wide (paper only): La Pallice's on the left with
+ *  the bike rental behind its road (its sign saying `sign`), Ré's on the right; the trees and the rental behind the
+ *  roads, under the land's edge. */
+export function rives(width, sign) {
+  const [l, r] = edges(width);
+  const rand = random(441);
+  const ends = [rive(l, DECK.from, 1, rand), rive(r, DECK.to, -1, rand)];
+  return ends.map((end) => end.behind).join("") + location(sign) + ends.map((end) => end.land).join("");
 }
 
 // ── The sailboats and the gulls ─────────────────────────────

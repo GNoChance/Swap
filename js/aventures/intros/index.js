@@ -34,8 +34,8 @@ export const SCENARIOS = {
     load: () => import("./ile-de-re.js"),
     beats: [
       { name: "La carte", at: 0 },
-      { name: "Le pont", at: 4.5 },
-      { name: "En selle", at: 7.5 },
+      { name: "En selle", at: 4.5 },
+      { name: "Le pont", at: 6.5 },
       { name: "La traversée", at: 9.5 },
       { name: "Le phare", at: 15 },
       { name: "La glace", at: 18 },

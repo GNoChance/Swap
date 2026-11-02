@@ -55,8 +55,8 @@ export const AVENTURES = [
       depart: "Bordeaux",
       etapes: ["Saintes", "La Rochelle"],
       etapesAt: [3, 5],
-      // [lat, lon]: Bordeaux, Saint-André-de-Cubzac, Pons, Saintes, Rochefort, La Rochelle, the bridge's head, Rivedoux
-      points: [[44.837, -0.579], [45.0, -0.445], [45.578, -0.548], [45.746, -0.633], [45.937, -0.962], [46.16, -1.152], [46.172, -1.236], [46.158, -1.272]],
+      // [lat, lon]: Bordeaux, Saint-André-de-Cubzac, Pons, Saintes, Rochefort, La Rochelle, the bridge's head at La Pallice
+      points: [[44.837, -0.579], [45.0, -0.445], [45.578, -0.548], [45.746, -0.633], [45.937, -0.962], [46.16, -1.152], [46.172, -1.236]],
     },
   },
   { id: "marqueze", name: "Marquèze", from: "2025-08-22", to: "2025-08-22", transports: ["c3", "train"], people: [] },

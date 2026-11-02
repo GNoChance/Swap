@@ -1,17 +1,19 @@
 // End-to-end checks of the Île de Ré's intro (js/aventures/intros/ile-de-re.js), in headless Chrome, on the kit's
 // screens (intro-kit.mjs) and the first phone turned sideways: its length and its closing poster « ÎLE DE RÉ », its map
-// going north (the C3 from Bordeaux by Saintes to La Rochelle, the dots over the bridge to the pin at Rivedoux), the C3
-// crossing the bridge as the camera follows it, who shows in its moments, its decor over a wide screen, the stickers it
-// loads and a scene sticker's stand-in, its scenario warmed on the passport, a touch the first time, « Passer ▸ » in the
-// demo, the browser's back. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
-// `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of
-// each moment on each screen, of the map at 2 and 3.9 s and of the finished poster). Stops at the first failure (exit
-// code 1). A check also fails if the page logged an error.
+// going north (the C3 from Bordeaux by Saintes and La Rochelle to the pin at the foot of the bridge, La Pallice), the
+// two of them on their bikes at the bridge's foot and crossing it as the camera follows them (one view at a time, no
+// C3), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene sticker's stand-in, its
+// scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the browser's back. Needs the site
+// running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single
+// screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, of the map at 2 and 3.9 s, of
+// the bridge at 5, 6, 7, 8 and 9.2 s and of the finished poster). Stops at the first failure (exit code 1). A check also
+// fails if the page logged an error.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
 import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
+import { content } from "../../js/content.js";
 import { AVENTURES } from "../../js/aventures/data.js";
 import { pageOf } from "../../js/aventures/logic.js";
 import { SCENARIOS } from "../../js/aventures/intros/index.js";
@@ -27,38 +29,54 @@ const LINE = "Île de Ré · 17–18 août 2025";
 const LENGTH = { min: 30000, max: 32000 }; // ms, the Île de Ré's intro (spec § 2)
 const ile = AVENTURES.find((a) => a.id === ID);
 const { trajet } = ile;
-const MAP_NAMES = [trajet.depart, ...trajet.etapes, ile.lieu]; // written on the map, from the data
+const PIN_NAME = ile.lieu; // the pin's name (the trip has no arrivee), at the foot of the bridge
+const MAP_NAMES = [trajet.depart, ...trajet.etapes, PIN_NAME]; // written on the map, from the data
 const MAP_TIMES = [0.3, 2, 3.9]; // s: the C3 on the map
-const PIN_AT = 3.9; // s: from then on, the pin plopped at Rivedoux
+const PIN_AT = 3.9; // s: from then on, the pin plopped at the bridge's head, La Pallice
+const ROCHELLE = "La Rochelle"; // its name, next to the pin's: their boxes never cross
 // a save whose welcome is seen, the Premier bivouac and the Premier canoë stamped: the Île de Ré to live, the first time
 const CANOE_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), stamped: ["bivouac-1", "canoe"] };
-const SCENE = "ile-de-re/scene-cycy-et-kevin-a-velo-01"; // the two of them side by side on their bikes, on the poster
+const SCENE = "ile-de-re/scene-cycy-et-kevin-a-velo-01"; // the two of them side by side on their bikes, over the bridge and on the poster
 const beat = SCENARIOS[ID] ? beatsOf(ID) : {};
-// who shows in the middle of a moment (spec § 2), entirely on screen: the C3 on the bridge, the two of them on their
-// bikes in a scene sticker (« duo ») on the poster; the moments in between come with their own scenes (tasks 4 to 6)
-const CAST = { "Le pont": ["c3"], "L'affiche": ["duo"] };
-const CROSSING = [5, 6, 7.2]; // s: the C3 on the bridge, the camera following it
+// who shows in the middle of a moment (spec § 2), entirely on screen: the two of them on their bikes in a scene sticker
+// (« duo ») at the bridge's foot, over the bridge, and on the poster; the moments in between come with their own scenes
+// (tasks 4b to 6)
+const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "L'affiche": ["duo"] };
+const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
+const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
+// s: from « En selle » to « La traversée », the bikes and the bridge (Review Focus 2): no C3, a single view of the bikes
+const BIKES = { from: 4.5, to: 9.5 };
+const DIVE_OVER = 5; // s: the map, its C3 on it, gone under the bridge by then (recipes.plonge)
+const RENTAL = "En selle"; // in its middle, the bike rental's sign at the bridge's foot whole on screen
+const RENTAL_SIGN = content.aventures.intros.ileDeRe?.location; // its words
 
+// an element shows: visible, and not see-through up its tree
+const SHOWS = `(el) => {
+  if (getComputedStyle(el).visibility !== "visible") return false;
+  for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
+  return true;
+}`;
 // what shows on the map: the actors as the kit sees them, the names and the pin that show, with the screen's size
 const onMap = `(() => {
   const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-  const shows = (el) => {
-    if (getComputedStyle(el).visibility !== "visible") return false;
-    for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
-    return true;
-  };
-  const seen = (selector, what) => [...document.querySelectorAll(selector)].filter(shows).map((el) => box(el, what ?? el.textContent));
+  const seen = (selector, what) => [...document.querySelectorAll(selector)].filter(${SHOWS}).map((el) => box(el, what ?? el.textContent));
   return { ...${sceneBoxes}, names: seen(".st-name"), pins: seen(".st-pin", "épingle") };
 })()`;
 // the stage's layers that show, with their boxes (px)
-const layersSeen = `(() => {
-  const shows = (el) => {
-    if (getComputedStyle(el).visibility !== "visible") return false;
-    for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
-    return true;
+const layersSeen = `[...document.querySelectorAll(".st-layer")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { name: el.dataset.layer, left: r.left, right: r.right }; })`;
+// the bikes' looks that show (one at a time: never two views, never none), and each C3 that shows with its layer
+const bikesSeen = `(() => {
+  const shows = ${SHOWS};
+  return {
+    looks: [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].filter(shows).length,
+    c3: [...document.querySelectorAll('[data-vehicle="c3"]')].filter((el) => [...el.querySelectorAll(".st-actor__img")].some(shows)).map((el) => el.closest(".st-layer")?.dataset.layer),
   };
-  return [...document.querySelectorAll(".st-layer")].filter(shows).map((el) => { const r = el.getBoundingClientRect(); return { name: el.dataset.layer, left: r.left, right: r.right }; });
 })()`;
+// the rental's signs that show (each its board and its words), with the screen's size
+const signsSeen = `({
+  screen: { width: innerWidth, height: innerHeight },
+  signs: [...document.querySelectorAll(".st-enseigne")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }),
+})`;
 // the requests for the Île de Ré's scenario file
 const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => new URL(e.name).pathname === "/js/aventures/intros/${ID}.js")`;
 // the poster in place: its line and every letter of its title fully shown
@@ -124,8 +142,9 @@ async function suite(page, vp) {
   }
 
   /** The map, held at given moments: the C3 alone and in sight, the names of the data written, none cut by the screen's
-   *  edge nor under the C3; « Bordeaux » in the screen at the start, then « Saintes », « La Rochelle » and « Île de Ré »;
-   *  the pin at Rivedoux in the screen once it has plopped. */
+   *  edge, none over another (the pin's « Île de Ré » clear of « La Rochelle ») nor under the C3; « Bordeaux » in the
+   *  screen at the start, then « Saintes », « La Rochelle » and « Île de Ré »; the pin at La Pallice in the screen once it
+   *  has plopped, clear of « La Rochelle » too. */
   async function maps(where) {
     const offScreen = (now, t, boxes, what) => {
       const off = outside(now.screen, boxes);
@@ -140,18 +159,23 @@ async function suite(page, vp) {
       offScreen(now, t, now.actors, "la C3");
       // names in view are whole: never cut by the screen's edge
       offScreen(now, t, now.names.filter((b) => b.right > 0 && b.left < now.screen.width && b.bottom > 0 && b.top < now.screen.height), "un nom coupé par le bord");
-      offScreen(now, t, named(now, t === MAP_TIMES[0] ? [trajet.depart] : [...trajet.etapes, ile.lieu]), "un nom de la carte");
+      offScreen(now, t, named(now, t === MAP_TIMES[0] ? [trajet.depart] : [...trajet.etapes, PIN_NAME]), "un nom de la carte");
+      const crossed = now.names.flatMap((a, k) => now.names.slice(k + 1).filter((b) => gap(a, b) === 0).map((b) => [a, b]));
+      if (crossed.length) throw new Error(`${where}, à ${t} s : des noms l'un sur l'autre ${JSON.stringify(crossed.map((pair) => pair.map(round)))}`);
       if (t >= PIN_AT) {
         if (now.pins.length !== 1) throw new Error(`${where}, à ${t} s : ${now.pins.length} épingle(s)`);
         offScreen(now, t, now.pins, "l'épingle");
+        const rochelle = now.names.find((b) => b.what === ROCHELLE);
+        if (gap(now.pins[0], rochelle) === 0) throw new Error(`${where}, à ${t} s : l'épingle sur « ${ROCHELLE} » ${JSON.stringify([now.pins[0], rochelle].map(round))}`);
       }
       const under = now.names.filter((b) => gap(b, now.actors[0]) === 0);
       if (under.length) throw new Error(`${where}, à ${t} s : ${JSON.stringify(under.map((b) => b.what))} sous la C3 ${JSON.stringify([...under, now.actors[0]].map(round))}`);
     }
   }
 
-  /** In the middle of each moment of CAST, held there: exactly those it shows, each entirely on screen; on the bridge,
-   *  as the camera follows it, the C3 alone and entirely on screen. */
+  /** In the middle of each moment of CAST, held there: exactly those it shows, each entirely on screen; in the middle of
+   *  « En selle », the rental's sign whole on screen, its words from content.js; on the bridge, as the camera follows
+   *  them, the two of them on their bikes alone and entirely on screen. */
   async function scenes(where) {
     for (const [name, needs] of Object.entries(CAST)) {
       const t = beat[name]?.mid;
@@ -161,12 +185,17 @@ async function suite(page, vp) {
       if (JSON.stringify(who) !== JSON.stringify([...needs].sort())) throw new Error(`${where}, « ${name} » à ${t} s : à l'écran ${JSON.stringify(who)}`);
       const off = outside(now.screen, now.actors);
       if (off.length) throw new Error(`${where}, « ${name} » à ${t} s : hors de l'écran ${JSON.stringify(off.map(round))}`);
+      if (name !== RENTAL) continue;
+      const { screen, signs } = await page.eval(signsSeen);
+      if (!RENTAL_SIGN || signs.length !== 1 || signs[0].what !== RENTAL_SIGN) throw new Error(`${where}, « ${name} » à ${t} s : le panneau de la location ${JSON.stringify(signs.map((b) => b.what))}, pas « ${RENTAL_SIGN} »`);
+      const cut = outside(screen, signs);
+      if (cut.length) throw new Error(`${where}, « ${name} » à ${t} s : le panneau de la location coupé par le bord ${JSON.stringify(cut.map(round))}`);
     }
     for (const t of CROSSING) {
       const now = await heldAt(t, sceneBoxes);
-      if (now.actors.length !== 1 || now.actors[0].what !== "c3") throw new Error(`${where}, sur le pont à ${t} s : à l'écran ${JSON.stringify(now.actors.map((b) => b.what))}`);
+      if (now.actors.length !== 1 || now.actors[0].what !== "duo") throw new Error(`${where}, sur le pont à ${t} s : à l'écran ${JSON.stringify(now.actors.map((b) => b.what))}`);
       const off = outside(now.screen, now.actors);
-      if (off.length) throw new Error(`${where}, sur le pont à ${t} s : la C3 hors de l'écran ${JSON.stringify(off.map(round))}`);
+      if (off.length) throw new Error(`${where}, sur le pont à ${t} s : les vélos hors de l'écran ${JSON.stringify(off.map(round))}`);
     }
   }
 
@@ -174,17 +203,17 @@ async function suite(page, vp) {
     await poster(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : sur la carte (?t= ${MAP_TIMES.map(fr).join(", ")}), la C3 seule et dans l'écran, « ${MAP_NAMES.join(" », « ")} » écrits, jamais coupés par le bord ni sous la C3 ; « ${trajet.depart} » dans l'écran au départ, puis « ${[...trajet.etapes, ile.lieu].join(" », « ")} » ; l'épingle dans l'écran à ${fr(PIN_AT)} s`, async () => {
+  await check(`${vp.width} × ${vp.height} : sur la carte (?t= ${MAP_TIMES.map(fr).join(", ")}), la C3 seule et dans l'écran, « ${MAP_NAMES.join(" », « ")} » écrits, jamais coupés par le bord, l'un sur l'autre (« ${PIN_NAME} » hors de « ${ROCHELLE} ») ni sous la C3 ; « ${trajet.depart} » dans l'écran au départ, puis « ${[...trajet.etapes, PIN_NAME].join(" », « ")} » ; l'épingle dans l'écran à ${fr(PIN_AT)} s, hors de « ${ROCHELLE} »`, async () => {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, la C3 seule et entièrement dans l'écran`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 
   if (vp.width === 1920)
-    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${CROSSING.map(fr).join(", ")} (la caméra suit la C3), chaque couche visible couvre toute la largeur de l'écran`, async () => {
-      for (const t of CROSSING) {
+    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), chaque couche visible couvre toute la largeur de l'écran`, async () => {
+      for (const t of FOLLOWED) {
         const layers = await heldAt(t, layersSeen);
         if (!layers.some((l) => l.name.startsWith("pont-"))) throw new Error(`à ${t} s : aucune couche « pont-* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
         const bare = layers.filter((l) => l.left > 0.5 || l.right < vp.width - 0.5);
@@ -205,9 +234,10 @@ async function suite(page, vp) {
     });
 
   if (SHOTS) {
-    // the middle of each moment, held still, on this screen (and the phone turned), plus the map and the finished
-    // poster; the demo banner hidden
-    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [30.5, "11-affiche-30-5s"]];
+    // the middle of each moment, held still, on this screen (and the phone turned), plus the map, the bridge and the
+    // finished poster; the demo banner hidden
+    const bridge = [5, 6, 7, 8, 9.2].map((t) => [t, `00-pont-${String(t).replace(".", "-")}s`]);
+    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], ...bridge, [30.5, "11-affiche-30-5s"]];
     for (const [width, height] of vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]]) {
       await page.resize(width, height);
       try {
@@ -226,6 +256,21 @@ async function suite(page, vp) {
   }
 
   if (vp === VIEWPORTS[0]) {
+    await check(`point 2 et la C3 : de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle » et « Le pont »), aucune C3 (toutes les 0,25 s ; seule celle de la carte s'efface avant ${DIVE_OVER} s, pendant la plongée) ; et de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue`, async () => {
+      const quarters = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.25) + 1 }, (_, k) => BIKES.from + k * 0.25);
+      for (const t of quarters) {
+        const now = await heldAt(t, bikesSeen);
+        const c3 = now.c3.filter((layer) => !(t < DIVE_OVER && layer === "carte-trajet"));
+        if (c3.length) throw new Error(`à ${t} s : une C3 à l'écran (${JSON.stringify(now.c3)})`);
+      }
+      const times = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.1) - 1 }, (_, k) => +(BIKES.from + 0.1 + k * 0.1).toFixed(2));
+      for (const t of [...times, ...[...times].reverse()]) {
+        await page.eval(holdAt(t));
+        const now = await page.eval(bikesSeen);
+        if (now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${BIKES.to} s) : ${now.looks} vue(s) des vélos`);
+      }
+    });
+
     await check(`les stickers demandés sous /assets/aventures/ : exactement ceux de ${ID}.stickers.js (${stickers.length}), aucun d'une autre sortie`, async () => {
       await page.goto(ILE);
       await page.waitFor(loaded, 8000);
@@ -233,7 +278,7 @@ async function suite(page, vp) {
       if (!stickers.length || JSON.stringify(asked) !== JSON.stringify([...stickers].sort())) throw new Error(`demandés ${JSON.stringify(asked)}, attendus ${JSON.stringify([...stickers].sort())}`);
     });
 
-    await check(`un sticker de scène bloqué (${SCENE}, celui de l'affiche) : il passe sur son remplaçant assets/cyrielle/joy.webp, et l'intro se termine ; aucune autre erreur que celle du fichier bloqué`, async () => {
+    await check(`un sticker de scène bloqué (${SCENE}, celui du pont et de l'affiche) : il passe sur son remplaçant assets/cyrielle/joy.webp, et l'intro se termine ; aucune autre erreur que celle du fichier bloqué`, async () => {
       const before = page.errors.length;
       await page.block([`*/${SCENE}.webp`]);
       try {
@@ -242,7 +287,7 @@ async function suite(page, vp) {
         const looks = `[...document.querySelectorAll(".st-actor__img")].filter((img) => img.dataset.fallback === "assets/cyrielle/joy.webp" && (img.dataset.fell || img.src.endsWith("/${SCENE}.webp")))`;
         await page.waitFor(`${loaded} && ${looks}.length > 0 && ${looks}.every((img) => img.naturalWidth > 0)`, 8000);
         const now = await page.eval(`${looks}.map((img) => new URL(img.src).pathname)`);
-        if (!now.length || now.some((src) => src !== "/assets/cyrielle/joy.webp")) throw new Error(`les vélos de l'affiche : ${JSON.stringify(now)}`);
+        if (!now.length || now.some((src) => src !== "/assets/cyrielle/joy.webp")) throw new Error(`les vélos du pont et de l'affiche : ${JSON.stringify(now)}`);
         await page.waitFor(atPassport, Number(await page.eval(length)) + 5000);
       } finally {
         await page.block([]);

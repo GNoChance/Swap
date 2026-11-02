@@ -428,6 +428,23 @@
   overflow: visible;
 }
 
+/* ── The bikes (recipes-velo.js): the speed lines behind the two of them riding right, by their sticker's left edge;
+   GSAP slides and fades them ── */
+.st-traits {
+  position: absolute;
+  right: 94%;
+  bottom: 18%;
+  width: 34%;
+  will-change: transform;
+}
+
+.st-traits svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
 /* a puff of paper smoke from a vehicle's back (smoke()) */
 .st-puff {
   position: absolute;
