@@ -110,7 +110,7 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
 
 ### Tâche 2 : les données de l'Île de Ré, et le retournement en carte
 
-> Faite. Ses données sont corrigées en tâche 4a (2026-11-02) : le trajet s'arrête à la tête du pont, avec `arrivee`.
+> Faite. Ses données sont corrigées en tâche 4a (2026-11-02) : le trajet s'arrête à la tête du pont, à La Pallice.
 
 **Fichiers :**
 - Modifier : `js/aventures/data.js`, `js/aventures/scene/actors.js` (`person.turn`)
@@ -220,16 +220,16 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
 
 ### Tâche 4a : la correction de Kevin : la C3 s'arrête au pied du pont, en selle, et le pont à vélo
 
-Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La spec (§ 0, § 2 temps 1 à 3, § 5, § 7) est corrigée en conséquence.
+Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». Puis ses réponses du même jour : l'épingle s'appelle « Île de Ré », les vélos sont loués au pied du pont, vous traversez côte à côte et tranquilles, et l'intro garde environ 31 s. La spec (§ 0, § 2 temps 1 à 3, § 4, § 5, § 7) est corrigée en conséquence.
 
 **Fichiers :**
 - Créer : `js/aventures/scene/recipes-velo.js`
 - Modifier :
   - `js/aventures/data.js`, `tests/intros.test.mjs` ;
   - `js/aventures/intros/index.js` (les `beats`) ;
-  - `js/aventures/scene/props-pont.js` (le pied du pont côté La Rochelle) ;
-  - `js/aventures/scene/props-carte.js`, seulement si l'épingle ou son nom le demandent ;
-  - `js/audio.js` (`bell`), `css/intros.css` ;
+  - `js/aventures/scene/props-pont.js` (le pied du pont côté La Rochelle, la boutique de location de vélos) ;
+  - `js/aventures/scene/props-carte.js`, seulement si l'épingle le demande ;
+  - `js/audio.js` (`bell`), `js/content.js` (le texte du panneau de la boutique), `css/intros.css` ;
   - `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`.
 
 **Interfaces :**
@@ -241,11 +241,11 @@ Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La 
       depart: "Bordeaux",
       etapes: ["Saintes", "La Rochelle"],
       etapesAt: [3, 5],
-      arrivee: "Pont de l'Île de Ré",
       // [lat, lon]: Bordeaux, Saint-André-de-Cubzac, Pons, Saintes, Rochefort, La Rochelle, the bridge's head at La Pallice
       points: [[44.837, -0.579], [45.0, -0.445], [45.578, -0.548], [45.746, -0.633], [45.937, -0.962], [46.16, -1.152], [46.172, -1.236]],
     },
     ```
+    Il n'y a pas d'`arrivee` : l'épingle porte le `lieu`, « Île de Ré » ;
   - **`SCENARIOS["ile-de-re"].beats`**, avec exactement :
     ```js
     [{ name: "La carte", at: 0 }, { name: "En selle", at: 4.5 }, { name: "Le pont", at: 6.5 }, { name: "La traversée", at: 9.5 },
@@ -257,14 +257,15 @@ Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La 
 
 - [ ] **Étape 1 : écrire les tests qui échouent.**
   - **Le test unitaire** devient `intros: the Île de Ré goes by C3 to the foot of Ré's bridge` :
-    - `stops(...)` donne `["Bordeaux", "Saintes", "La Rochelle", "Pont de l'Île de Ré"]` ;
+    - `stops(...)` donne `["Bordeaux", "Saintes", "La Rochelle", "Île de Ré"]` ;
     - le dernier point est `[46.172, -1.236]` ;
     - chaque point projeté est dans x 25 à 365 et y 120 à 700 ;
     - l'arrivée est au nord du départ.
 
-    Le test des noms vers le nord garde ses assertions, avec le nouveau nom.
+    Le test des noms vers le nord garde ses assertions.
   - **La suite du navigateur :**
-    - **la carte**, à 0,3, 2 et 3,9 s : les vérifications de la tâche 3, avec l'épingle « Pont de l'Île de Ré ». Elle est entièrement dans l'écran, et sa boîte ne croise pas celle de « La Rochelle » ;
+    - **la carte**, à 0,3, 2 et 3,9 s : les vérifications de la tâche 3, avec l'épingle « Île de Ré ». La C3 est dans l'écran à chacun de ces instants. L'épingle et son nom sont entièrement dans l'écran, et la boîte du nom ne croise pas celle de « La Rochelle » ;
+    - **En selle,** au milieu du temps : le panneau de la boutique de location est entier dans l'écran ;
     - **`CAST` :** « En selle » : duo ; « Le pont » : duo ; « L'affiche » : duo. Chacun est entièrement dans l'écran, sur tous les écrans et en 852 × 393 ;
     - **sur le pont,** à 7, 8 et 9,2 s : le duo seul, entièrement dans l'écran, pendant que la caméra le suit ;
     - **aucune C3 de 4,5 à 9,5 s** (un relevé toutes les 0,25 s) ;
@@ -273,11 +274,12 @@ Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La 
 - [ ] **Étape 2 :** `npm test` et `node tests/e2e/intros-ile-de-re.mjs`. Résultat attendu : ÉCHEC sur ces vérifications.
 - [ ] **Étape 3 : implémenter les temps 1 à 3 de la spec corrigée.**
   - **La carte (0 → 4,5 s) :**
-    - la C3 et son pointillé s'arrêtent à la tête du pont, à La Pallice ;
-    - l'épingle « Pont de l'Île de Ré » s'y pose ;
+    - la C3 roule, visible, jusqu'au bout de son trajet : elle et son pointillé s'arrêtent à la tête du pont, à La Pallice ;
+    - l'épingle « Île de Ré » s'y pose ;
     - le pont et l'île restent dessinés, mais le pointillé ne les traverse plus.
   - **En selle (4,5 → 6,5 s) :**
     - `plonge` de l'épingle vers le pied du pont : un bout de terre côté La Rochelle (de l'herbe, le début de la rampe), d'où la rampe monte vers la droite au-dessus de la mer ;
+    - une petite boutique de location de vélos en papier, une cabane avec son panneau et quelques vélos rangés devant. Le texte du panneau va dans `content.aventures.intros.ileDeRe` ;
     - vous deux de face (sticker 02, « de face tous les deux »), avec `bell` ;
     - puis `flip` vers la vue qui roule, et vous partez vers la rampe (`pedale`).
   - **Le pont (6,5 → 9,5 s) :**
@@ -285,11 +287,10 @@ Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La 
     - la caméra vous suit, comme elle suivait la C3 ;
     - les voiliers et les mouettes restent, avec `gulls`.
     - Il n'y a plus de `engine` ni de C3 sur le pont.
-  - **La vue qui roule :**
-    - parmi les stickers 01, 04, 05 et 06, prends celui qui se lit le mieux comme roulant vers la droite ;
-    - retourne-le en miroir s'il roule vers la gauche (les stickers n'ont pas de texte) ;
-    - garde la même échelle qu'en selle ;
-    - écris ton choix et sa raison dans le rapport.
+  - **La vue qui roule :** le sticker 01, « côte à côte », tranquilles. Il n'y a pas de traits de vitesse (`lines`) sur le pont.
+    - Retourne-le en miroir s'il roule vers la gauche (les stickers n'ont pas de texte).
+    - Garde la même échelle qu'en selle.
+    - Écris dans le rapport s'il est retourné et pourquoi.
   - **`bell` :** deux « dring » de sonnette, environ 0,4 s.
   - **La scène du phare,** en attente : elle se montre de 9,5 à 28,6 s (son `stage.frame` passe à 9,5 s).
   - **Avant de rendre la tâche, regarde tes captures** en 393 × 852, 852 × 393 et 1920 × 1080, à 2, 3,9, 5, 6, 7, 8 et 9,2 s :
