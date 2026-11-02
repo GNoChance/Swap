@@ -12,8 +12,8 @@ import { escape, WATER_LINE } from "./props-riviere.js";
 
 /** Where the sea meets the sky (props-riviere.js: its sky). */
 export const HORIZON = WATER_LINE;
-/** A layer `width` units wide, centred on the stage: its left and right x. */
-const edges = (width) => [-(width - 390) / 2, (width + 390) / 2];
+/** A layer `width` units wide, centred on the stage: its left and right x (the island's too: props-ile.js). */
+export const edges =(width) => [-(width - 390) / 2, (width + 390) / 2];
 
 // ── The sea ─────────────────────────────────────────────────
 

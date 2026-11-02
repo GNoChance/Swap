@@ -301,16 +301,18 @@ export function plage() {
 /** A text safe in markup (a sign's words; shared with props-pont.js). */
 export const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
-/** A wooden signpost at x, y (its post's foot), its arrow-shaped plank pointing right with `text` on it (ink on wood:
- *  css/intros.css, st-sign). */
-export function panneau(x, y, text) {
-  const plank = [[x - 54, y - 94], [x + 46, y - 94], [x + 58, y - 81], [x + 46, y - 68], [x - 54, y - 68]];
-  const post = poly([[x - 4, y], [x - 4, y - 100], [x + 4, y - 100], [x + 4, y]]);
-  const grain = [lens(x - 48, y - 90, 40, 0.5), lens(x + 6, y - 71, 34, 0.5), lens(x - 30, y - 70.5, 22, 0.4)].join("");
+/** A wooden signpost at x, y (its post's foot), its post `height` units tall, its arrow-shaped plank at its top pointing
+ *  right with `text` on it (ink on wood: css/intros.css, st-sign); the Île de Ré's km signs stand on taller posts
+ *  (props-ile.js). */
+export function panneau(x, y, text, height = 100) {
+  const top = y - height;
+  const plank = [[x - 54, top + 6], [x + 46, top + 6], [x + 58, top + 19], [x + 46, top + 32], [x - 54, top + 32]];
+  const post = poly([[x - 4, y], [x - 4, top], [x + 4, top], [x + 4, y]]);
+  const grain = [lens(x - 48, top + 10, 40, 0.5), lens(x + 6, top + 29, 34, 0.5), lens(x - 30, top + 29.5, 22, 0.4)].join("");
   return [
-    piece("paper", post, path(post, "#6b4b2e") + path(poly([[x - 4, y], [x - 4, y - 100], [x - 1.5, y - 100], [x - 1.5, y]]), "#8a6643"), "", 0.6),
+    piece("paper", post, path(post, "#6b4b2e") + path(poly([[x - 4, y], [x - 4, top], [x - 1.5, top], [x - 1.5, y]]), "#8a6643"), "", 0.6),
     piece("paper", poly(plank), path(poly(plank), "#c99a62") + path(grain, "#b5844f"), topEdge(plank), 0.8),
-    `<text class="st-sign" x="${x - 2}" y="${y - 76.5}" text-anchor="middle">${escape(text)}</text>`,
+    `<text class="st-sign" x="${x - 2}" y="${top + 23.5}" text-anchor="middle">${escape(text)}</text>`,
   ].join("");
 }
 

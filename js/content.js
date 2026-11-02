@@ -657,8 +657,15 @@ export const content = {
     prev: "Page précédente",
     nextPage: "Page suivante",
     // Les bulles des intros (« … » quand on attend, « Meuh ! » d'une vache, « Ouaf ! » du border collie), et les panneaux
-    // de leurs décors (l'Île de Ré : la boutique où vous louez les vélos, au pied du pont)
-    intros: { dots: "…", moo: "Meuh !", bark: "Ouaf !", canoe: { depart: "Carsac · 28 km", arrivee: "28 km !", gabare: "Norbert" }, ileDeRe: { location: "Location de vélos" } },
+    // de leurs décors (l'Île de Ré : la boutique où vous louez les vélos, au pied du pont, et les panneaux en bois de la
+    // traversée, qui comptent les kilomètres jusqu'au phare des Baleines)
+    intros: {
+      dots: "…",
+      moo: "Meuh !",
+      bark: "Ouaf !",
+      canoe: { depart: "Carsac · 28 km", arrivee: "28 km !", gabare: "Norbert" },
+      ileDeRe: { location: "Location de vélos", bornes: ["Phare · 25 km", "Phare · 12 km", "Phare · 6 km"] },
+    },
   },
 
   // L'accueil du swap (#/swap) : le parcours à revoir

@@ -152,6 +152,9 @@ export function roadOf({ layer, mover, points, short = SHORT }) {
   };
 }
 
+/** The slope of the line y = line(x) at x (degrees, a descent to the right positive): an actor along it leans so. */
+export const slope = (line, x) => (Math.atan((line(x + 1) - line(x - 1)) / 2) * 180) / Math.PI;
+
 /** along({ actor, from, to, line }) → { progress }: a getter/setter the timeline tweens (0 → 1), as roadOf()'s: the
  *  actor's point that share of the way from x `from` to x `to` (stage units, in its layer), on the line y = line(x) (a
  *  bridge's deck, a road), tilted with its slope. */
@@ -163,7 +166,7 @@ export function along({ actor, from, to, line }) {
       const x = from + p * (to - from);
       setX(x - actor.x);
       setY(line(x) - actor.y);
-      tilt((Math.atan((line(x + 1) - line(x - 1)) / 2) * 180) / Math.PI);
+      tilt(slope(line, x));
     }),
   };
 }

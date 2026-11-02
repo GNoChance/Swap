@@ -1,13 +1,15 @@
 // End-to-end checks of the Île de Ré's intro (js/aventures/intros/ile-de-re.js), in headless Chrome, on the kit's
 // screens (intro-kit.mjs) and the first phone turned sideways: its length and its closing poster « ÎLE DE RÉ », its map
 // going north (the C3 from Bordeaux by Saintes and La Rochelle to the pin at the foot of the bridge, La Pallice), the
-// two of them on their bikes at the bridge's foot and crossing it as the camera follows them (one view at a time, no
-// C3), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene sticker's stand-in, its
-// scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the browser's back. Needs the site
-// running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single
-// screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, of the map at 2, 3.9 and
-// 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s and of the finished poster). Stops at the first failure (exit code 1). A
-// check also fails if the page logged an error.
+// two of them on their bikes at the bridge's foot, crossing it as the camera follows them, then across the island as
+// the decor glides by (one view at a time, the speed lines with the flat-out views only, no C3, the km signs whole, the
+// phone turned meanwhile), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene
+// sticker's stand-in, its scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the
+// browser's back. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
+// `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of
+// each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s, of the island at
+// 9.6, 10.5, 12, 13.5 and 14.8 s and of the finished poster). Stops at the first failure (exit code 1). A check also
+// fails if the page logged an error.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
@@ -42,13 +44,19 @@ const CANOE_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), stamp
 const SCENE = "ile-de-re/scene-cycy-et-kevin-a-velo-01"; // the two of them side by side on their bikes, over the bridge and on the poster
 const beat = SCENARIOS[ID] ? beatsOf(ID) : {};
 // who shows in the middle of a moment (spec § 2), entirely on screen: the two of them on their bikes in a scene sticker
-// (« duo ») at the bridge's foot, over the bridge, and on the poster; the moments in between come with their own scenes
-// (tasks 4b to 6)
-const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "L'affiche": ["duo"] };
+// (« duo ») at the bridge's foot, over the bridge, across the island, and on the poster; the moments in between come
+// with their own scenes (tasks 5 and 6)
+const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "La traversée": ["duo"], "L'affiche": ["duo"] };
 const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
 const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
-// s: from « En selle » to « La traversée », the bikes and the bridge (Review Focus 2): no C3, a single view of the bikes
-const BIKES = { from: 4.5, to: 9.5 };
+const GLIDING = [10, 12.5, 14.8]; // s: across the island, the decor gliding by, the last once it has stopped
+// s: from « En selle » to « Le phare », the bikes on the bridge and across the island (Review Focus 2): no C3, a single
+// view of the bikes
+const BIKES = { from: 4.5, to: 15 };
+// the flat-out views (their numbers on the bike board): the speed lines show with them only, and with them most of the
+// time
+const FLAT_OUT = ["05", "06"];
+const KM = content.aventures.intros.ileDeRe?.bornes ?? []; // the km signs' words, counting down to the lighthouse
 const DIVE_OVER = 5; // s: the map, its C3 on it, gone under the bridge by then (recipes.plonge)
 const RENTAL = "En selle"; // in its middle, the bike rental's sign at the bridge's foot whole on screen
 const RENTAL_SIGN = content.aventures.intros.ileDeRe?.location; // its words
@@ -67,19 +75,29 @@ const onMap = `(() => {
 })()`;
 // the stage's layers that show, with their boxes (px)
 const layersSeen = `[...document.querySelectorAll(".st-layer")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { name: el.dataset.layer, left: r.left, right: r.right }; })`;
-// the bikes' looks that show (one at a time: never two views, never none), the tilt of the actor wearing them
-// (degrees), and each C3 that shows with its layer
+// the bikes' looks that show (one at a time: never two views, never none), the number of the one shown on the bike
+// board, its turn box squeezed (turning over), the speed lines that show, the tilt of the actor wearing them (degrees),
+// and each C3 that shows with its layer
 const bikesSeen = `(() => {
   const shows = ${SHOWS};
   const looks = [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].filter(shows);
-  const transform = looks[0] && getComputedStyle(looks[0].closest(".st-actor")).transform;
-  const m = transform && transform !== "none" ? new DOMMatrix(transform) : null;
+  const matrix = (el) => { const t = el && getComputedStyle(el).transform; return t && t !== "none" ? new DOMMatrix(t) : null; };
+  const m = looks[0] && matrix(looks[0].closest(".st-actor"));
+  const turn = looks[0] && matrix(looks[0].closest(".st-actor__turn"));
   return {
     looks: looks.length,
+    view: looks[0]?.src.match(/-a-velo-(\\d+)\\.webp$/)?.[1] ?? null,
+    turning: Boolean(turn && Math.abs(turn.a) < 0.999),
+    lines: [...document.querySelectorAll('[data-who="duo"] .st-traits')].filter(shows).length,
     tilt: m ? (Math.atan2(m.b, m.a) * 180) / Math.PI : 0,
     c3: [...document.querySelectorAll('[data-vehicle="c3"]')].filter((el) => [...el.querySelectorAll(".st-actor__img")].some(shows)).map((el) => el.closest(".st-layer")?.dataset.layer),
   };
 })()`;
+// the km signs that show (each its words and its box), with the screen's size
+const kmSeen = `({
+  screen: { width: innerWidth, height: innerHeight },
+  signs: [...document.querySelectorAll(".st-borne")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }),
+})`;
 // the rental's signs that show (each its board and its words), with the screen's size
 const signsSeen = `({
   screen: { width: innerWidth, height: innerHeight },
@@ -212,6 +230,30 @@ async function suite(page, vp) {
       const off = outside(now.screen, now.actors);
       if (off.length) throw new Error(`${where}, sur le pont à ${t} s : les vélos hors de l'écran ${JSON.stringify(off.map(round))}`);
     }
+    await kmSigns(where);
+  }
+
+  /** Across the island, from its start, sought on every 0.1 s to « Le phare »: each km sign that shows is whole on
+   *  screen, its words from content.js; and each of them shows on the way. */
+  async function kmSigns(where) {
+    const [from, to] = [beat["La traversée"]?.at, beat["Le phare"]?.at];
+    if (from === undefined || to === undefined) throw new Error("pas de temps « La traversée » ou « Le phare »");
+    if (KM.length < 2) throw new Error(`les panneaux kilométriques : ${JSON.stringify(KM)} dans content.js`);
+    await page.goto(`${BASE}?demo&t=${from}#/aventures/${ID}`);
+    await page.waitFor(playing, 8000);
+    const seen = new Set();
+    for (let k = 1; from + k * 0.1 < to - 0.05; k++) {
+      const t = +(from + k * 0.1).toFixed(2);
+      await page.eval(holdAt(t));
+      const { screen, signs } = await page.eval(kmSeen);
+      const odd = signs.filter((b) => !KM.includes(b.what));
+      if (odd.length) throw new Error(`${where}, à ${t} s : un panneau ${JSON.stringify(odd.map((b) => b.what))}, pas l'un de ${JSON.stringify(KM)}`);
+      const cut = outside(screen, signs);
+      if (cut.length) throw new Error(`${where}, à ${t} s : un panneau kilométrique coupé par le bord ${JSON.stringify(cut.map(round))}`);
+      signs.forEach((b) => seen.add(b.what));
+    }
+    const missed = KM.filter((what) => !seen.has(what));
+    if (missed.length) throw new Error(`${where} : jamais montré(s) pendant la traversée ${JSON.stringify(missed)}`);
   }
 
   await check(`?demo#/aventures/${ID} : data-length entre ${LENGTH.min} et ${LENGTH.max} ms, l'intro jouée en entier (pas moins de data-length − 300 ms), puis l'affiche dit exactement « ${TITLE} » et « ${LINE} », son cadre et son lettrage entièrement dans l'écran, le titre hors du coin du bouton du son ; puis le passeport`, async () => {
@@ -222,18 +264,19 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran ; pendant la traversée (de 0,1 en 0,1 s), chaque panneau kilométrique entier dans l'écran quand il se montre, et chacun (« ${KM.join(" », « ")} ») montré`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 
   if (vp.width === 1920)
-    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), chaque couche visible couvre toute la largeur de l'écran`, async () => {
-      for (const t of FOLLOWED) {
-        const layers = await heldAt(t, layersSeen);
-        if (!layers.some((l) => l.name.startsWith("pont-"))) throw new Error(`à ${t} s : aucune couche « pont-* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
-        const bare = layers.filter((l) => l.left > 0.5 || l.right < vp.width - 0.5);
-        if (bare.length) throw new Error(`à ${t} s : bord vide ${JSON.stringify(bare.map((l) => ({ ...l, left: Math.round(l.left), right: Math.round(l.right) })))}`);
-      }
+    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), chaque couche visible couvre toute la largeur de l'écran`, async () => {
+      for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING]])
+        for (const t of times) {
+          const layers = await heldAt(t, layersSeen);
+          if (!layers.some((l) => l.name.startsWith(scene))) throw new Error(`à ${t} s : aucune couche « ${scene}* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
+          const bare = layers.filter((l) => l.left > 0.5 || l.right < vp.width - 0.5);
+          if (bare.length) throw new Error(`à ${t} s : bord vide ${JSON.stringify(bare.map((l) => ({ ...l, left: Math.round(l.left), right: Math.round(l.right) })))}`);
+        }
     });
 
   if (vp.turned)
@@ -248,11 +291,48 @@ async function suite(page, vp) {
       }
     });
 
+  if (vp.turned)
+    await check("point 3 : le téléphone tourné pendant la traversée (portrait → paysage vers 10,5 s, puis 1 s plus tard → portrait) : la même intro, sa timeline avance tout du long (au moins 0,7 fois l'horloge entre les deux arrêts), et à chaque arrêt vous deux à vélo, seuls et entièrement dans l'écran", async () => {
+      const [from, to] = [beat["La traversée"].at, beat["Le phare"].at];
+      await page.goto(`${BASE}?demo&t=${from + 1}#/aventures/${ID}`);
+      await page.waitFor(playing, 8000); // turned at once
+      await page.eval(`void (window.__intro = document.querySelector(".screen-intro"))`);
+      /** At a stop on a width × height screen, read on a frame after the resize (its stage refitted): the intro still the
+       *  same, still across the island, the two of them on their bikes alone and entirely on screen. → its timeline's
+       *  time and the clock's. */
+      const stop = async (width, height) => {
+        await page.resize(width, height);
+        await page.waitFor(`innerWidth === ${width}`, 2000);
+        const now = await page.eval(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve({
+          same: window.__intro === document.querySelector(".screen-intro"), t: ${timeline}?.time(), clock: performance.now() / 1000, seen: ${sceneBoxes},
+        }))))`);
+        if (!now.same) throw new Error(`${width} × ${height} : l'intro a changé`);
+        if (!(now.t >= from && now.t < to)) throw new Error(`${width} × ${height} : arrêt à ${now.t?.toFixed(2)} s, pas pendant la traversée`);
+        const who = now.seen.actors.map((b) => b.what);
+        if (JSON.stringify(who) !== JSON.stringify(["duo"])) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : à l'écran ${JSON.stringify(who)}`);
+        const off = outside(now.seen.screen, now.seen.actors);
+        if (off.length) throw new Error(`${width} × ${height} à ${now.t.toFixed(2)} s : les vélos hors de l'écran ${JSON.stringify(off.map(round))}`);
+        return now;
+      };
+      try {
+        const turned = Date.now();
+        const sideways = await stop(852, 393);
+        await sleep(Math.max(0, 1000 - (Date.now() - turned)));
+        const back = await stop(vp.width, vp.height);
+        // never restarted nor held: the timeline keeps the clock's time
+        const [played, spent] = [back.t - sideways.t, back.clock - sideways.clock];
+        if (played < 0.7 * spent) throw new Error(`la timeline a avancé de ${played.toFixed(2)} s en ${spent.toFixed(2)} s (${sideways.t.toFixed(2)} s puis ${back.t.toFixed(2)} s)`);
+      } finally {
+        await page.resize(vp.width, vp.height);
+      }
+    });
+
   if (SHOTS) {
-    // the middle of each moment, held still, on this screen (and the phone turned), plus the map, the bridge and the
-    // finished poster; the demo banner hidden
+    // the middle of each moment, held still, on this screen (and the phone turned), plus the map, the bridge, the island
+    // and the finished poster; the demo banner hidden
     const bridge = [5, 6, 7, 8, 9.2].map((t) => [t, `00-pont-${String(t).replace(".", "-")}s`]);
-    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, [30.5, "11-affiche-30-5s"]];
+    const island = [9.6, 10.5, 12, 13.5, 14.8].map((t) => [t, `00-traversee-${String(t).replace(".", "-")}s`]);
+    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, ...island, [30.5, "11-affiche-30-5s"]];
     for (const [width, height] of vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]]) {
       await page.resize(width, height);
       try {
@@ -272,7 +352,7 @@ async function suite(page, vp) {
 
   if (vp === VIEWPORTS[0]) {
     const selle = beat["En selle"]?.mid;
-    await check(`point 2 et la C3 : de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle » et « Le pont »), aucune C3 (toutes les 0,25 s ; seule celle de la carte s'efface avant ${DIVE_OVER} s, pendant la plongée) ; et de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue ; au milieu d'« En selle » (${fr(selle)} s), ils penchent pareil qu'on y arrive en avançant ou en reculant`, async () => {
+    await check(`point 2 et la C3 : de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle », « Le pont » et « La traversée »), aucune C3 (toutes les 0,25 s ; seule celle de la carte s'efface avant ${DIVE_OVER} s, pendant la plongée) ; et de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, les traits de vitesse ne se montrent qu'avec les vues à fond (${FLAT_OUT.join(", ")}) ou en se retournant, avec chacune d'elles la plupart du temps, et plus à la fin ; au milieu d'« En selle » (${fr(selle)} s), ils penchent pareil qu'on y arrive en avançant ou en reculant`, async () => {
       // the middle of « En selle » reached forward: the page started before it, paused before it, then sought on to it
       await page.goto(`${BASE}?demo&t=${BIKES.from}#/aventures/${ID}`);
       await page.waitFor(playing, 8000);
@@ -287,13 +367,30 @@ async function suite(page, vp) {
         if (c3.length) throw new Error(`à ${t} s : une C3 à l'écran (${JSON.stringify(now.c3)})`);
       }
       const times = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.1) - 1 }, (_, k) => +(BIKES.from + 0.1 + k * 0.1).toFixed(2));
+      // for each pass, each flat-out view: [times worn (not turning over), times its speed lines showed]
+      const lined = [{}, {}];
       for (const [k, t] of [...times, ...[...times].reverse()].entries()) {
         await page.eval(holdAt(t));
         const now = await page.eval(bikesSeen);
-        if (now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${BIKES.to} s) : ${now.looks} vue(s) des vélos`);
         const back = k >= times.length; // the second pass: each time reached from a later one
+        const how = back ? "en reculant" : "en avançant";
+        if (now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${BIKES.to} s) : ${now.looks} vue(s) des vélos`);
         if (back && t === selle && !(Math.abs(now.tilt - forward) < 0.05)) throw new Error(`à ${t} s : penchés de ${forward?.toFixed(2)}° en avançant, de ${now.tilt.toFixed(2)}° en reculant`);
+        const flatOut = FLAT_OUT.includes(now.view);
+        if (now.lines && !flatOut && !now.turning) throw new Error(`à ${t} s ${how} : des traits de vitesse avec la vue ${now.view}`);
+        if (flatOut && !now.turning) {
+          const tally = (lined[Number(back)][now.view] ??= [0, 0]);
+          tally[0] += 1;
+          tally[1] += now.lines ? 1 : 0;
+        }
+        if (t === times.at(-1) && now.lines) throw new Error(`à ${t} s ${how} : encore des traits de vitesse à la fin`);
       }
+      lined.forEach((pass, back) =>
+        FLAT_OUT.forEach((view) => {
+          const [worn, shown] = pass[view] ?? [0, 0];
+          if (!worn || shown < worn / 2) throw new Error(`${back ? "en reculant" : "en avançant"} : la vue ${view} portée ${worn} fois, ses traits de vitesse montrés ${shown} fois`);
+        }),
+      );
     });
 
     await check(`les stickers demandés sous /assets/aventures/ : exactement ceux de ${ID}.stickers.js (${stickers.length}), aucun d'une autre sortie`, async () => {

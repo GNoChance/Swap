@@ -220,6 +220,11 @@
   transform: scaleX(-1);
 }
 
+/* a look drawn the other way round (the bikes flat out ride left on their board: ile-de-re.js); GSAP never moves a look */
+.st-actor__img.is-flipped {
+  transform: scaleX(-1);
+}
+
 .st-actor__pose {
   display: grid;
   transform-origin: 50% 100%;
@@ -412,18 +417,22 @@
 /* ── Ré's bridge (ile-de-re.js): the gulls, gliding and flapping, and the sailboats, sailing on and rocking on their
    waterline; GSAP moves them, each drawn apart ── */
 .st-mouette,
-.st-voilier {
+.st-voilier,
+.st-borne {
   position: absolute;
   display: block;
   will-change: transform;
 }
 
-.st-voilier {
+/* a km sign across the island (props-ile.js) pops up from its post's foot and folds down into it */
+.st-voilier,
+.st-borne {
   transform-origin: 50% 100%;
 }
 
 .st-mouette svg,
-.st-voilier svg {
+.st-voilier svg,
+.st-borne svg {
   display: block;
   overflow: visible;
 }
