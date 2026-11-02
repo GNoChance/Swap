@@ -3,8 +3,8 @@
 > **Pour les agents :** sous-skill requis : superpowers:subagent-driven-development (recommandé) ou superpowers:executing-plans. Les étapes se cochent (`- [ ]`).
 
 **Objectif :** `#/aventures/ile-de-re` joue la vraie intro de l'Île de Ré, environ 31 s en papier découpé, en 10 temps :
-- la carte (la C3 de Bordeaux à La Rochelle, puis le pont) ;
-- le pont, en selle, la traversée de l'île à vélo, le phare des Baleines, la glace, le retour doré ;
+- la carte (la C3 de Bordeaux à La Rochelle, jusqu'au pied du pont) ;
+- en selle, le pont à vélo, la traversée de l'île, le phare des Baleines, la glace, le retour doré ;
 - La Rochelle le lendemain, la côte ;
 - l'affiche « ÎLE DE RÉ ».
 
@@ -77,10 +77,10 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
 
 ## Points à surveiller (Review Focus)
 1. **Le passeport qui précharge l'Île de Ré.** Le canoë est tamponné et le livre est posé : le module `intros/ile-de-re.js` et ses stickers sont déjà demandés, et le toucher sur l'Île de Ré ne les retélécharge pas (`transferSize` 0). Testé en tâche 3.
-2. **Un `?demo&t=` au milieu d'un changement de vue du vélo.** Les vélos montrent exactement une vue, en avançant comme en reculant (un balayage toutes les 0,1 s sur la traversée). Testé en tâche 4.
-3. **Tourner le téléphone pendant la traversée** (portrait → paysage, puis 1 s plus tard → portrait). La timeline avance d'au moins 0,7 fois l'horloge, et les vélos restent entiers dans l'écran. Testé en tâche 4.
+2. **Un `?demo&t=` au milieu d'un changement de vue du vélo.** Les vélos montrent exactement une vue, en avançant comme en reculant (un balayage toutes les 0,1 s, de 4,5 à 15 s). Testé en tâches 4a (4,5 → 9,5 s) et 4b (9,5 → 15 s).
+3. **Tourner le téléphone pendant la traversée** (portrait → paysage, puis 1 s plus tard → portrait). La timeline avance d'au moins 0,7 fois l'horloge, et les vélos restent entiers dans l'écran. Testé en tâche 4b.
 4. **Entrer et sortir trois fois de suite,** dont une fois à La Rochelle : `gsap.globalTimeline.getChildren()` revient à son compte de départ, et aucune `.st-stage` ne reste. Testé en tâche 6.
-5. **Un PC en 1920 × 1080 pendant la traversée et à La Rochelle :** chaque couche couvre toute la largeur de l'écran, y compris au bout de sa course. Testé en tâches 4 et 6.
+5. **Un PC en 1920 × 1080 sur le pont, pendant la traversée et à La Rochelle :** chaque couche couvre toute la largeur de l'écran, y compris au bout de sa course. Testé en tâches 4a, 4b et 6.
 
 ---
 
@@ -109,6 +109,8 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
 - [ ] **Étape 4 : commit.** `git commit -m "Intros : les stickers de l'Île de Ré" -- assets/aventures/ile-de-re`
 
 ### Tâche 2 : les données de l'Île de Ré, et le retournement en carte
+
+> Faite. Ses données sont corrigées en tâche 4a (2026-11-02) : le trajet s'arrête à la tête du pont, avec `arrivee`.
 
 **Fichiers :**
 - Modifier : `js/aventures/data.js`, `js/aventures/scene/actors.js` (`person.turn`)
@@ -146,6 +148,8 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
 - [ ] **Étape 5 : commit.** `git commit -m "Intros : les données de l'Île de Ré, et les personnes qui se retournent comme une carte (bivouac compris)" -- js/aventures/data.js js/aventures/scene/actors.js tests/intros.test.mjs tests/e2e/intros.mjs`
 
 ### Tâche 3 : la carte vers le nord, le pont, l'affiche, et l'Île de Ré qui monte son scénario
+
+> Faite. Corrigée en tâche 4a (2026-11-02) : « En selle » passe avant « Le pont », et la C3 quitte le pont.
 
 **Fichiers :**
 - Créer :
@@ -214,36 +218,118 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
   - Résultat attendu : tout est vert. Un rouge de temps de réponse du passeport déjà connu se relance une fois, et le rapport le dit.
 - [ ] **Étape 6 : commit.** `git commit -m "Intros : l'Île de Ré monte son scénario (la carte vers le nord, le pont, et l'affiche « ÎLE DE RÉ »)" -- <les fichiers de la tâche>`
 
-### Tâche 4 : le vélo, en selle, la traversée
+### Tâche 4a : la correction de Kevin : la C3 s'arrête au pied du pont, en selle, et le pont à vélo
+
+Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La spec (§ 0, § 2 temps 1 à 3, § 5, § 7) est corrigée en conséquence.
 
 **Fichiers :**
 - Créer : `js/aventures/scene/recipes-velo.js`
-- Modifier : `js/aventures/scene/props-ile.js` (le pied du pont et les vélos, les vignes, les marais salants, les maisons rétaises, le clocher d'Ars, les panneaux kilométriques, la piste cyclable), `js/audio.js` (`bell`), `js/content.js` (les textes des panneaux), `css/intros.css`, `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`
+- Modifier :
+  - `js/aventures/data.js`, `tests/intros.test.mjs` ;
+  - `js/aventures/intros/index.js` (les `beats`) ;
+  - `js/aventures/scene/props-pont.js` (le pied du pont côté La Rochelle) ;
+  - `js/aventures/scene/props-carte.js`, seulement si l'épingle ou son nom le demandent ;
+  - `js/audio.js` (`bell`), `css/intros.css` ;
+  - `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`.
 
 **Interfaces :**
-- Consomme : `sceneActor` (`show`, `flip`), `stage.pan`.
+- Consomme : `recipes.along`, `recipes.plonge`, `sceneActor` (`show`, `flip`), `stage.pan` et `stage.frame`, `pont.deck(x)`, `gulls` (tâche 3).
 - Produit :
-  - **`pedale(tl, at, { actor, duration, speed = 1, lines = false }) → fin`** : le balancement de pédalage, avec la hauteur et une petite rotation, environ 0,4 s par coup de pédale à `speed` 1. Avec `lines`, des traits de vitesse sortent derrière l'acteur. Tout est fini et tient sous `seek` ;
-  - **`defile(tl, at, { stage, layers, distance, duration, ease }) → fin`** : le décor défile de côté. Chaque couche glisse de `distance × sa profondeur` vers la gauche (`stage.pan` avec `x`), et chaque couche est assez large pour sa course.
+  - **les données de l'Île de Ré**, avec exactement ce trajet (`lieu: "Île de Ré"` et les `transports` `["c3", "velo"]` ne changent pas) :
+    ```js
+    trajet: {
+      depart: "Bordeaux",
+      etapes: ["Saintes", "La Rochelle"],
+      etapesAt: [3, 5],
+      arrivee: "Pont de l'Île de Ré",
+      // [lat, lon]: Bordeaux, Saint-André-de-Cubzac, Pons, Saintes, Rochefort, La Rochelle, the bridge's head at La Pallice
+      points: [[44.837, -0.579], [45.0, -0.445], [45.578, -0.548], [45.746, -0.633], [45.937, -0.962], [46.16, -1.152], [46.172, -1.236]],
+    },
+    ```
+  - **`SCENARIOS["ile-de-re"].beats`**, avec exactement :
+    ```js
+    [{ name: "La carte", at: 0 }, { name: "En selle", at: 4.5 }, { name: "Le pont", at: 6.5 }, { name: "La traversée", at: 9.5 },
+     { name: "Le phare", at: 15 }, { name: "La glace", at: 18 }, { name: "Le retour", at: 20.5 }, { name: "La Rochelle", at: 23 },
+     { name: "La côte", at: 26.5 }, { name: "L'affiche", at: 28.6 }]
+    ```
+  - **`pedale(tl, at, { actor, duration, speed = 1, lines = false }) → fin`**, dans `recipes-velo.js` : le balancement de pédalage, avec la hauteur et une petite rotation, environ 0,4 s par coup de pédale à `speed` 1. Avec `lines`, des traits de vitesse sortent derrière l'acteur. Tout est fini et tient sous `seek` ;
+  - **à 9,5 s,** vous deux arrivez au bout du pont, côté île, et la tâche 4b prend la suite. En attendant, la scène du phare se montre de 9,5 à 28,6 s.
 
-- [ ] **Étape 1 : écrire les vérifications qui échouent** :
-  - au milieu de chaque temps : « En selle » : duo ; « La traversée » : duo. Chacun est entièrement dans l'écran, sur tous les écrans et en 852 × 393 ;
-  - **point 2 :** de 7,5 à 15 s, toutes les 0,1 s en avançant puis en reculant, les vélos (`[data-who="duo"]`) montrent exactement une vue ;
+- [ ] **Étape 1 : écrire les tests qui échouent.**
+  - **Le test unitaire** devient `intros: the Île de Ré goes by C3 to the foot of Ré's bridge` :
+    - `stops(...)` donne `["Bordeaux", "Saintes", "La Rochelle", "Pont de l'Île de Ré"]` ;
+    - le dernier point est `[46.172, -1.236]` ;
+    - chaque point projeté est dans x 25 à 365 et y 120 à 700 ;
+    - l'arrivée est au nord du départ.
+
+    Le test des noms vers le nord garde ses assertions, avec le nouveau nom.
+  - **La suite du navigateur :**
+    - **la carte**, à 0,3, 2 et 3,9 s : les vérifications de la tâche 3, avec l'épingle « Pont de l'Île de Ré ». Elle est entièrement dans l'écran, et sa boîte ne croise pas celle de « La Rochelle » ;
+    - **`CAST` :** « En selle » : duo ; « Le pont » : duo ; « L'affiche » : duo. Chacun est entièrement dans l'écran, sur tous les écrans et en 852 × 393 ;
+    - **sur le pont,** à 7, 8 et 9,2 s : le duo seul, entièrement dans l'écran, pendant que la caméra le suit ;
+    - **aucune C3 de 4,5 à 9,5 s** (un relevé toutes les 0,25 s) ;
+    - **point 2 (4,5 → 9,5 s) :** toutes les 0,1 s, en avançant puis en reculant, `[data-who="duo"]` montre exactement une vue ;
+    - **point 5 (le pont) :** en 1920 × 1080, à 7, 8, 9,2 et 9,45 s (la fin de la poursuite), chaque couche visible couvre toute la largeur.
+- [ ] **Étape 2 :** `npm test` et `node tests/e2e/intros-ile-de-re.mjs`. Résultat attendu : ÉCHEC sur ces vérifications.
+- [ ] **Étape 3 : implémenter les temps 1 à 3 de la spec corrigée.**
+  - **La carte (0 → 4,5 s) :**
+    - la C3 et son pointillé s'arrêtent à la tête du pont, à La Pallice ;
+    - l'épingle « Pont de l'Île de Ré » s'y pose ;
+    - le pont et l'île restent dessinés, mais le pointillé ne les traverse plus.
+  - **En selle (4,5 → 6,5 s) :**
+    - `plonge` de l'épingle vers le pied du pont : un bout de terre côté La Rochelle (de l'herbe, le début de la rampe), d'où la rampe monte vers la droite au-dessus de la mer ;
+    - vous deux de face (sticker 02, « de face tous les deux »), avec `bell` ;
+    - puis `flip` vers la vue qui roule, et vous partez vers la rampe (`pedale`).
+  - **Le pont (6,5 → 9,5 s) :**
+    - vous deux roulez sur le tablier avec `along()`, de son pied jusqu'au bout côté île en passant la bosse, avec `pedale` tout du long ;
+    - la caméra vous suit, comme elle suivait la C3 ;
+    - les voiliers et les mouettes restent, avec `gulls`.
+    - Il n'y a plus de `engine` ni de C3 sur le pont.
+  - **La vue qui roule :**
+    - parmi les stickers 01, 04, 05 et 06, prends celui qui se lit le mieux comme roulant vers la droite ;
+    - retourne-le en miroir s'il roule vers la gauche (les stickers n'ont pas de texte) ;
+    - garde la même échelle qu'en selle ;
+    - écris ton choix et sa raison dans le rapport.
+  - **`bell` :** deux « dring » de sonnette, environ 0,4 s.
+  - **La scène du phare,** en attente : elle se montre de 9,5 à 28,6 s (son `stage.frame` passe à 9,5 s).
+  - **Avant de rendre la tâche, regarde tes captures** en 393 × 852, 852 × 393 et 1920 × 1080, à 2, 3,9, 5, 6, 7, 8 et 9,2 s :
+    - les roues sont posées sur le tablier, jamais en l'air ni enfoncées ;
+    - rien n'est coupé par le bord ;
+    - le nom de l'épingle se lit et ne chevauche aucun autre nom ;
+    - un décor lointain n'est jamais devant un décor proche. Les mouettes, par exemple, ne passent pas derrière la mer qui est devant elles.
+- [ ] **Étape 4 : les vérifications.**
+  - `npm test`, `node tests/e2e/intros-ile-de-re.mjs`, `node tests/e2e/intros.mjs` et `node tests/e2e/intros-canoe.mjs` ;
+  - résultat attendu : tout est vert, et les cartes du bivouac et du canoë n'ont pas bougé.
+- [ ] **Étape 5 : commit.** `git commit -m "Intros : l'Île de Ré corrigée : la C3 s'arrête au pied du pont, et vous le traversez à vélo" -- <les fichiers de la tâche>`
+
+### Tâche 4b : la traversée de l'île
+
+**Fichiers :**
+- Modifier :
+  - `js/aventures/scene/recipes-velo.js` (`defile`) ;
+  - `js/aventures/scene/props-ile.js` : les vignes, les marais salants, les maisons rétaises, le clocher d'Ars, les panneaux kilométriques, la piste cyclable ;
+  - `js/content.js` (les textes des panneaux), `css/intros.css` ;
+  - `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`.
+
+**Interfaces :**
+- Consomme : `pedale` et le duo qui arrive au bout du pont à 9,5 s (tâche 4a), `sceneActor` (`show`, `flip`), `stage.pan`.
+- Produit : **`defile(tl, at, { stage, layers, distance, duration, ease }) → fin`**. Le décor défile de côté : chaque couche glisse de `distance × sa profondeur` vers la gauche (`stage.pan` avec `x`), et chaque couche est assez large pour sa course.
+
+- [ ] **Étape 1 : écrire les vérifications qui échouent.**
+  - au milieu de « La traversée », le duo est entièrement dans l'écran, sur tous les écrans et en 852 × 393 ;
+  - **point 2 (9,5 → 15 s) :** toutes les 0,1 s, en avançant puis en reculant, les vélos montrent exactement une vue ;
   - **point 3 :** le téléphone tourné pendant la traversée ;
   - **point 5 (traversée) :** en 1920 × 1080, à 10, 12,5 et 14,8 s, chaque couche visible couvre toute la largeur ;
   - **les panneaux kilométriques** sont entiers dans l'écran quand ils se montrent.
 - [ ] **Étape 2 :** `node tests/e2e/intros-ile-de-re.mjs`. Résultat attendu : ÉCHEC.
-- [ ] **Étape 3 : implémenter les temps 3 et 4 de la spec.**
-  - **En selle (7,5 → 9,5 s) :**
-    - au pied du pont, vous deux de face (le sticker « de face tous les deux »), avec `bell` ;
-    - puis `flip` vers « côte à côte », et vous partez (`pedale`).
-  - **La traversée (9,5 → 15 s) :**
-    - `defile` : les vignes, puis les marais salants et leurs tas de sel, puis les maisons blanches aux volets verts avec leurs roses trémières, puis le clocher d'Ars ;
-    - les vues des vélos s'enchaînent avec `flip` : à fond (Cycy, puis Kevin devant), avec `lines`, puis essoufflés sur le guidon à la fin ;
-    - les panneaux en bois comptent les kilomètres jusqu'au phare. Leurs textes vont dans `content.aventures.intros.ileDeRe` ;
-  - **`bell` :** deux « dring » de sonnette, environ 0,4 s.
+- [ ] **Étape 3 : implémenter le temps 4 de la spec, la traversée (9,5 → 15 s).**
+  - `defile` fait passer les vignes, puis les marais salants et leurs tas de sel, puis les maisons blanches aux volets verts avec leurs roses trémières, puis le clocher d'Ars.
+  - Les vues des vélos s'enchaînent avec `flip` :
+    - à fond, Cycy devant puis Kevin devant, avec `lines` ;
+    - puis essoufflés sur le guidon à la fin.
+  - Les panneaux en bois comptent les kilomètres jusqu'au phare. Leurs textes vont dans `content.aventures.intros.ileDeRe`.
 - [ ] **Étape 4 :** `node tests/e2e/intros-ile-de-re.mjs`, `node tests/e2e/intros.mjs`, `node tests/e2e/intros-canoe.mjs` et `npm test`. Résultat attendu : tout est vert.
-- [ ] **Étape 5 : commit.** `git commit -m "Intros : l'Île de Ré à vélo (en selle, la traversée des vignes, des marais salants et d'Ars)" -- <les fichiers de la tâche>`
+- [ ] **Étape 5 : commit.** `git commit -m "Intros : la traversée de l'Île de Ré à vélo (les vignes, les marais salants et Ars)" -- <les fichiers de la tâche>`
 
 ### Tâche 5 : le phare, la glace, le retour doré
 
@@ -251,7 +337,7 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
 - Modifier : `js/aventures/scene/props-ile.js` (le phare des Baleines vu de près, la piste au bord de l'eau, le ciel doré), `css/intros.css`, `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`
 
 **Interfaces :**
-- Consomme : `pedale`, `defile` (tâche 4), `sceneActor`, le ciel doré du canoë (`cielDore` dans `props-riviere.js` : on le partage s'il convient, sinon on le généralise sans le copier).
+- Consomme : `pedale` (tâche 4a), `defile` (tâche 4b), `sceneActor`, le ciel doré du canoë (`cielDore` dans `props-riviere.js` : on le partage s'il convient, sinon on le généralise sans le copier).
 
 - [ ] **Étape 1 : écrire les vérifications qui échouent.** Au milieu de chaque temps, sur chaque écran : « Le phare » : duo ; « La glace » : duo ; « Le retour » : duo. Chacun est entièrement dans l'écran, et le phare est visible et entier au-dessus d'eux sur le téléphone.
 - [ ] **Étape 2 :** `node tests/e2e/intros-ile-de-re.mjs`. Résultat attendu : ÉCHEC.

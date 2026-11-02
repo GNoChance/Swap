@@ -1,18 +1,19 @@
 # L'intro de l'Île de Ré : design
 
-Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la technique, et pas de Fort Boyard. Ce document suit la spec du Premier canoë (`docs/specs/2026-10-31-intros-canoe-design.md`) et celle de la tranche 3a (`docs/specs/2026-10-30-intros-3a-design.md`). Il réutilise leur boîte à outils, et leurs règles s'appliquent là où il ne dit pas autre chose.
+Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la technique, et pas de Fort Boyard. Corrigé avec Kevin le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La C3 s'arrête au pied du pont, et « En selle » passe avant le pont. Ce document suit la spec du Premier canoë (`docs/specs/2026-10-31-intros-canoe-design.md`) et celle de la tranche 3a (`docs/specs/2026-10-30-intros-3a-design.md`). Il réutilise leur boîte à outils, et leurs règles s'appliquent là où il ne dit pas autre chose.
 
 ## 0. Vue d'ensemble
 - **La troisième sortie du passeport :** l'Île de Ré, les 17 et 18 août 2025, en C3 puis à vélo. Une tranche par sortie, comme le canoë.
 - **La journée vraie, d'après Kevin :**
-  - **le premier jour :** la C3 jusqu'à La Rochelle et le pont. Ils ont pris les vélos au pied du pont et fait toute l'île jusqu'au phare des Baleines. Ils ont mangé une glace, puis ils sont rentrés à vélo ;
+  - **le premier jour :** la C3 jusqu'à La Rochelle, au pied du pont. Ils ont pris les vélos là, traversé le pont à vélo et fait toute l'île jusqu'au phare des Baleines. Ils ont mangé une glace, puis ils sont rentrés à vélo ;
   - **le soir :** ils ont dormi à La Rochelle ;
   - **le lendemain :** une balade sur le Vieux-Port de La Rochelle, puis le retour en longeant la côte, par Rochefort et Royan.
   - Il n'y a pas d'anecdote à part : le clin d'œil, c'est **le phare et la glace**.
 - **Les décisions de Kevin :**
   - environ 30 s : l'intro dure entre 30 et 32 s, et la première fois elle se regarde en entier ;
   - l'histoire du § 2 ;
-  - pas de Fort Boyard.
+  - pas de Fort Boyard ;
+  - le pont se traverse à vélo, jamais en C3.
 - **Ce qui ne change pas :**
   - les intros du bivouac et du canoë, l'écran de l'intro, le passeport, le tampon, Mini Cycy, le hub, le Swap et la Galerie UBB ;
   - les 12 autres sorties gardent l'intro provisoire.
@@ -34,15 +35,17 @@ Les temps sont indicatifs.
 
 1. **La carte (0 → 4,5 s).**
    - La carte du Sud-Ouest en papier, cette fois vers le nord, avec l'Île de Ré, l'Île d'Oléron et l'anse de La Rochelle.
-   - La C3 (vue « roule ») part de Bordeaux. Son pointillé remonte par Saintes et Rochefort jusqu'à La Rochelle, puis passe le pont.
-   - L'épingle « Île de Ré » se pose à Rivedoux, au pied du pont, sur l'île.
-2. **Le pont (4,5 → 7,5 s).**
+   - La C3 (vue « roule ») part de Bordeaux. Son pointillé remonte par Saintes et Rochefort jusqu'à La Rochelle, et s'arrête au pied du pont, côté La Rochelle (La Pallice).
+   - L'épingle « Pont de l'Île de Ré » se pose là. Le pont et l'île restent dessinés sur la carte, mais le pointillé ne les traverse pas.
+2. **En selle (4,5 → 6,5 s).**
+   - La caméra plonge de l'épingle vers le pied du pont : un bout de terre côté La Rochelle, d'où la rampe du pont monte au-dessus de la mer.
+   - Vous deux de face, sur vos vélos, avec un « dring » de sonnette.
+   - Puis vous partez côte à côte vers la rampe.
+3. **Le pont (6,5 → 9,5 s).**
    - Vu de côté, le grand pont courbe de l'île, en papier, au-dessus de la mer, avec sa bosse au milieu.
    - Des voiliers passent dessous et des mouettes volent, avec leur cri.
-   - La C3 le traverse de gauche à droite, suivie par la caméra.
-3. **En selle (7,5 → 9,5 s).**
-   - Au pied du pont, vous deux de face, sur vos vélos, avec un « dring » de sonnette.
-   - Puis vous partez côte à côte.
+   - Vous le traversez à vélo de gauche à droite, en pédalant, suivis par la caméra.
+   - La C3 n'est pas sur le pont : après la carte, on ne la revoit que sur la route du retour (temps 9).
 4. **La traversée (9,5 → 15 s).**
    - Le décor défile de côté, en plusieurs profondeurs : les vignes, puis les marais salants et leurs tas de sel, puis les maisons blanches aux volets verts avec leurs roses trémières, puis le clocher noir et blanc d'Ars.
    - Vous filez à fond, avec des traits de vitesse (les deux stickers à fond), puis vous arrivez essoufflés sur le guidon.
@@ -91,7 +94,7 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
   - les îles de Ré et d'Oléron, l'anse de La Rochelle et le pont, dessinés en papier, aux vraies coordonnées ;
   - les noms au bon endroit pour un trajet qui monte. La carte du bivouac et celle du canoë ne bougent pas.
 - **Les accessoires, en papier, un fichier par famille :**
-  - **le pont :** la mer, les voiliers, les mouettes ;
+  - **le pont :** la mer, les voiliers, les mouettes, et son pied côté La Rochelle ;
   - **l'île :** les vignes, les marais salants, les maisons rétaises, le clocher d'Ars, les panneaux kilométriques, la piste cyclable et le phare des Baleines ;
   - **La Rochelle :** les deux tours, les mâts et le quai ;
   - **la côte :** la route, la plage et le soleil.
@@ -115,8 +118,9 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
   - `trajet` :
     - `depart: "Bordeaux"` ;
     - `etapes: ["Saintes", "La Rochelle"]`, chacune écrite à son point ;
-    - `points` : Bordeaux [44.837, -0.579], Saint-André-de-Cubzac [45.000, -0.445], Pons [45.578, -0.548], Saintes [45.746, -0.633], Rochefort [45.937, -0.962], La Rochelle [46.160, -1.152], la tête du pont [46.172, -1.236] et Rivedoux [46.158, -1.272].
-- L'arrivée porte le `lieu`. Il n'y a ni `arrivee` ni `relais`.
+    - `arrivee: "Pont de l'Île de Ré"`, le nom de l'épingle ;
+    - `points` : Bordeaux [44.837, -0.579], Saint-André-de-Cubzac [45.000, -0.445], Pons [45.578, -0.548], Saintes [45.746, -0.633], Rochefort [45.937, -0.962], La Rochelle [46.160, -1.152] et la tête du pont à La Pallice [46.172, -1.236]. Le trajet de la C3 s'arrête là : Rivedoux n'en fait plus partie.
+- Il n'y a pas de `relais` : le vélo se raconte dans les scènes, pas sur la carte.
 - Les transports restent « C3, vélo ».
 - **Aucun id ne change.**
 
@@ -140,7 +144,8 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
   - la règle de passage de la première fois, « Passer ▸ » en démo, et le retour du navigateur au milieu ;
   - l'affiche dit « ÎLE DE RÉ » et « Île de Ré · 17–18 août 2025 » ;
   - à chaque temps, ce qui compte est entièrement dans l'écran ;
-  - sur la carte, la C3, « Bordeaux », « Saintes », « La Rochelle » et l'épingle « Île de Ré » sont dans l'écran quand ils comptent ;
+  - sur la carte, la C3, « Bordeaux », « Saintes », « La Rochelle » et l'épingle « Pont de l'Île de Ré » sont dans l'écran quand ils comptent, et aucun nom n'en chevauche un autre ;
+  - après la carte, la C3 ne se montre qu'à « La côte » ;
   - aucune erreur dans la console ;
   - entrer et sortir trois fois : la timeline de GSAP revient à son compte de départ ;
   - les suites du bivouac, du canoë, du passeport et du hub passent telles quelles.
