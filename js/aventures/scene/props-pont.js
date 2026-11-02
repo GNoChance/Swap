@@ -75,7 +75,7 @@ export function large() {
 /** Ré's bridge: its road on the deck at `base` (y), rising `rise` to its hump at x `hump` over `half` units each way
  *  (the ramp starting on the land); over the water from its abutment on La Pallice's land at x `from` to Ré's at `to`;
  *  its deck `thick` units thick; its piers standing in the water at `foot` (y), `span` apart, the channel's span wider. */
-export const DECK = { hump: 560, half: 380, rise: 44, base: 500, thick: 18, foot: 604, span: 72, channel: 120, from: 300, to: 820 };
+export const DECK = { hump: 560, half: 350, rise: 44, base: 500, thick: 18, foot: 604, span: 72, channel: 120, from: 300, to: 820 };
 
 /** The y of the road at x (stage units), on the bridge and on the land at its ends: flat far off, rising smoothly to the
  *  hump. */
@@ -156,8 +156,11 @@ export function rail() {
  *  before the bridge) and a few trees on it; land } */
 function rive(far, at, water, r) {
   const away = (from, step, count) => Array.from({ length: count }, (_, k) => at - water * (from + k * step + r() * 60)).filter((x) => (x - far) * water > 30);
-  const hinter = [[far, 476], [at - water * 140, 478], [at - water * 70, 486], [at - water * 30, deck(at - water * 30) + 1]];
-  const back = `${curve(hinter)}L${n(hinter.at(-1)[0])} 512L${far} 512Z`;
+  // its coast behind the road: straight from the layer's edge, then curving down to the road through points about as far
+  // apart (a smooth line through unevenly spaced points would loop)
+  const turn = [[at - water * 210, 477], [at - water * 140, 479], [at - water * 75, 486], [at - water * 30, deck(at - water * 30) + 1]];
+  const hinter = `M${far} 476L${curve(turn).slice(1)}`;
+  const back = `${hinter}L${n(turn.at(-1)[0])} 512L${far} 512Z`;
   const top = [];
   for (let x = far; (at - x) * water > 0; x += water * 10) top.push([x, deck(x)]);
   top.push([at, deck(at)]);
@@ -186,7 +189,7 @@ function rive(far, at, water, r) {
   const foam = `<path d="${curve([...bank.slice(1), ...shore].map(([x, y]) => [x + water * 2, y + 1.5]))}" fill="none" stroke="#f4fbff" stroke-width="2" stroke-dasharray="22 8 10 6" stroke-linecap="round"/>`;
   const bushes = away(260, 170, 7).map((x) => [x, 560 + r() * 50, 13 + r() * 8]);
   return {
-    behind: cutPiece({ silhouette: back, markup: path(back, "#a3bf74"), edge: curve(hinter), lift: 0.5 }) + roundTrees(away(330, 140, 9).map((x) => [x, 488, 14 + r() * 8])),
+    behind: cutPiece({ silhouette: back, markup: path(back, "#a3bf74"), edge: hinter, lift: 0.5 }) + roundTrees(away(330, 140, 9).map((x) => [x, 488, 14 + r() * 8])),
     land: [
       cutPiece({ silhouette: poly(outline), markup: path(poly(outline), "#86ab58") + path(streaks, "#93b766") + path(beach, "#e8dcbc") + path(strip, "#d9d1bf") + path(tufts, "#6f9446") + path(flowers[0], "#fbf6ee") + path(flowers[1], "#f2cf5b"), edge: curve(top), lift: 0.8 }),
       ...rocks.map(([x, y], k) => rock(x - 12 + water * 3, y + 4, 20 + (k % 3) * 5, "paper")),
@@ -212,14 +215,14 @@ function velo(x, y, frame) {
 // the bike rental behind the road at the bridge's foot: its cabin from x0 to x1, its base `foot` under the land's top
 // edge, its eaves and its ridge, its sign on the roof (its board's top and bottom); its bikes parked in front of it:
 // [x, frame]
-const RENTAL = { x0: 30, x1: 142, foot: 506, eave: 440, ridge: 421, sign: { y0: 394, y1: 415 } };
+const CABIN = { x0: 30, x1: 142, foot: 506, eave: 440, ridge: 421, sign: { y0: 394, y1: 415 } };
 const PARKED = [[40, "#2f8f9d"], [62, "#e3b23c"], [84, "#d0573f"]];
 
 /** The bike rental (paper), behind the road: a white wooden cabin, its planks, its green door and shuttered window, its
  *  tiled roof; on the roof its sign, a cream board on two posts with `text` in ink (css/intros.css, st-sign; the board
  *  and its words in a group of class st-enseigne); three rental bikes parked in a row in front of it. */
-function location(text) {
-  const { x0, x1, foot, eave, ridge, sign } = RENTAL;
+function rental(text) {
+  const { x0, x1, foot, eave, ridge, sign } = CABIN;
   const walls = poly([[x0, foot], [x0, eave], [x1, eave], [x1, foot]]);
   let planks = "";
   for (let y = eave + 6; y < foot; y += 6) planks += `M${x0} ${y}H${x1}`;
@@ -247,7 +250,7 @@ export function rives(width, sign) {
   const [l, r] = edges(width);
   const rand = random(441);
   const ends = [rive(l, DECK.from, 1, rand), rive(r, DECK.to, -1, rand)];
-  return ends.map((end) => end.behind).join("") + location(sign) + ends.map((end) => end.land).join("");
+  return ends.map((end) => end.behind).join("") + rental(sign) + ends.map((end) => end.land).join("");
 }
 
 // ── The sailboats and the gulls ─────────────────────────────

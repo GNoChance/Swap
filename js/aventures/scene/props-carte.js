@@ -343,9 +343,10 @@ const escape = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`
  *  the side the road does not take; on a trip going east (further across than down), under the road where the car
  *  never covers them, the start's beginning by its point (past the car on the start), each stage's centred on its
  *  point, and the arrival's over its pin, ending by it (in the stage). On a trip going north, the start's as going
- *  south, each stage's away from the road's two ways out of its point (a little up or down too), and the arrival's under
- *  its pin, on the side its last stretch does not come from. The text at tx, ty, anchored there. A stage without its
- *  point throws, naming it. */
+ *  south, each stage's away from the road's two ways out of its point, well up or down (the car drives on through the
+ *  last one and parks over its dot, by the pin), and the arrival's beside its pin at its tip's height, ending clear of it
+ *  on the side its last stretch does not come from (where the car parks). The text at tx, ty, anchored there. A stage
+ *  without its point throws, naming it. */
 export function stops({ trajet, lieu }, project) {
   const road = pts(project, trajet.points);
   const last = road.length - 1;
@@ -369,9 +370,9 @@ export function stops({ trajet, lieu }, project) {
     const away = back.map((v) => v / (Math.hypot(...back) || 1));
     const [tx, ty, anchor] =
       north && kind === "etape"
-        ? [away[0] < 0 ? x - gap : x + gap, y + 5 + away[1] * 12, away[0] < 0 ? "end" : "start"]
+        ? [away[0] < 0 ? x - gap : x + gap, y + 5 + away[1] * 40, away[0] < 0 ? "end" : "start"]
         : north && kind === "end"
-          ? [side === "left" ? x - 25 : x + 25, y + 21, "middle"]
+          ? [side === "left" ? x - 20 : x + 20, y - 4, side === "left" ? "end" : "start"]
           : !sideways
             ? [side === "left" ? x - gap : x + gap, y + 5, side === "left" ? "end" : "start"]
             : kind === "start"

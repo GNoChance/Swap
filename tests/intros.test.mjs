@@ -195,13 +195,14 @@ test("intros: the Île de Ré goes by C3 to the foot of Ré's bridge", () => {
   assert.deepEqual(stops({ trajet, lieu }, project).map((s) => s.name), ["Bordeaux", "Saintes", "La Rochelle", "Île de Ré"]);
 });
 
-// Going north, La Rochelle's name keeps clear of the road coming from Rochefort and leaving west for the bridge, and the
-// arrival's of its pin at La Pallice (the road comes to it from La Rochelle, east): out over the strait.
+// Going north, La Rochelle's name keeps clear of the road coming from Rochefort and leaving west for the bridge, well up
+// (the C3 drives on through La Rochelle and parks over its dot, by the pin at La Pallice), and the arrival's (« Île de
+// Ré ») stands west of its pin, at its tip's height, on the island: the road comes to the pin from the east.
 test("intros: on a trip north, each name stands away from the road and from the pin", () => {
   const [start, saintes, rochelle, ile] = stops(byId("ile-de-re"), projection(ILE_MAP));
   assert.ok(start.anchor === "end" && start.tx < start.x, `start: ${JSON.stringify(start)}`); // the road leaves it going right
-  for (const s of [saintes, rochelle]) assert.ok(s.anchor === "start" && s.tx > s.x && s.ty < s.y + 5, `${s.name}: ${JSON.stringify(s)}`); // right of it, a little up
-  assert.ok(ile.anchor === "middle" && ile.tx < ile.x && ile.ty - ile.y > 14, `end: ${JSON.stringify(ile)}`); // under its pin, west of it
+  for (const s of [saintes, rochelle]) assert.ok(s.anchor === "start" && s.tx > s.x && s.ty < s.y - 15, `${s.name}: ${JSON.stringify(s)}`); // right of it, well up
+  assert.ok(ile.anchor === "end" && ile.tx < ile.x - 14 && Math.abs(ile.ty - ile.y) <= 10, `end: ${JSON.stringify(ile)}`); // west of its pin (14 units either side of its tip)
   for (const s of [start, saintes, rochelle, ile]) assert.ok(s.box.x0 >= 25 && s.box.x1 <= 365, `${s.name}: ${JSON.stringify(s.box)}`);
 });
 

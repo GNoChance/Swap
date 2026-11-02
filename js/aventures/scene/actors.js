@@ -75,12 +75,13 @@ function turnOver(tl, self, box, at, key) {
   tl.to(box, { scaleX: 1, duration: 0.1, ease: "power1.out" }, at + 0.08);
 }
 
-/** sceneActor({ layer, who, looks, look, x, y, height }): a scene sticker (the two of them drawn together, or one of
- *  them in a scene of its own), `height` units tall, with its views: looks = { [key]: { src, fallback } } (sceneUrl(),
- *  and the stand-in of its main person in the nearest pose, fallbackUrl()); it shows `look` first. SceneActor = Actor +
- *  { show, flip } (its `turn` stays its turn box). */
-export function sceneActor({ layer, who, looks, look, x, y, height }) {
-  const self = cast({ layer, x, y, size: height });
+/** sceneActor({ layer, who, looks, look, x, y, height, wide }): a scene sticker (the two of them drawn together, or one
+ *  of them in a scene of its own), `height` units tall (with `wide`, that many units wide: the views of a board, all cut
+ *  at one width, then keep one scale), with its views: looks = { [key]: { src, fallback } } (sceneUrl(), and the
+ *  stand-in of its main person in the nearest pose, fallbackUrl()); it shows `look` first. SceneActor = Actor + { show,
+ *  flip } (its `turn` stays its turn box). */
+export function sceneActor({ layer, who, looks, look, x, y, height, wide = false }) {
+  const self = cast({ layer, x, y, size: height, wide });
   self.el.dataset.who = who;
   for (const [key, { src, fallback }] of Object.entries(looks)) self.look(key, src, fallback);
   self.wear(look);

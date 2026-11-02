@@ -1,5 +1,5 @@
-// The props' shared geometry (props*.js): path data in stage units, rounded to a tenth. Pure: the same markup for the
-// same arguments.
+// The props' shared geometry (props*.js): path data in stage units, rounded to a tenth; and the recipes' wave ease.
+// Pure: the same markup for the same arguments.
 
 export const n = (v) => Math.round(v * 10) / 10;
 export const xy = ([x, y]) => `${n(x)} ${n(y)}`;
@@ -67,6 +67,9 @@ export function random(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+/** An ease that makes a wave of `cycles` whole periods: 0 at both ends, the tween's end value at its crests (a boat's
+ *  or a bike's rocking: recipes-eau.js, recipes-velo.js). */
+export const wave = (cycles) => (p) => Math.sin(2 * Math.PI * cycles * p);
 /** Points mirrored in the water line `y0`, squashed by `k` (a reflection seen from the shore). */
 export const mirror = (list, y0, k) => list.map(([x, y]) => [x, y0 + Math.max(0, y0 - y) * k]);
 export const dot = (x, y, r) => `M${n(x - r)} ${n(y)}a${n(r)} ${n(r)} 0 1 0 ${n(2 * r)} 0a${n(r)} ${n(r)} 0 1 0 ${n(-2 * r)} 0`;

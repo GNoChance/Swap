@@ -5,9 +5,9 @@
 // C3), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene sticker's stand-in, its
 // scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the browser's back. Needs the site
 // running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single
-// screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, of the map at 2 and 3.9 s, of
-// the bridge at 5, 6, 7, 8 and 9.2 s and of the finished poster). Stops at the first failure (exit code 1). A check also
-// fails if the page logged an error.
+// screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, of the map at 2, 3.9 and
+// 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s and of the finished poster). Stops at the first failure (exit code 1). A
+// check also fails if the page logged an error.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
@@ -31,9 +31,12 @@ const ile = AVENTURES.find((a) => a.id === ID);
 const { trajet } = ile;
 const PIN_NAME = ile.lieu; // the pin's name (the trip has no arrivee), at the foot of the bridge
 const MAP_NAMES = [trajet.depart, ...trajet.etapes, PIN_NAME]; // written on the map, from the data
-const MAP_TIMES = [0.3, 2, 3.9]; // s: the C3 on the map
+const MAP_TIMES = [0.3, 2, 3.9, 4.4]; // s: the C3 on the map, the last just before the dive
 const PIN_AT = 3.9; // s: from then on, the pin plopped at the bridge's head, La Pallice
 const ROCHELLE = "La Rochelle"; // its name, next to the pin's: their boxes never cross
+// s: the end of the map, the C3 parked at the pin: its middle within that share of its width from the pin's tip (2/3:
+// 40 units for the C3's 60)
+const PARKED = { at: 4.4, near: 2 / 3 };
 // a save whose welcome is seen, the Premier bivouac and the Premier canoë stamped: the Île de Ré to live, the first time
 const CANOE_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), stamped: ["bivouac-1", "canoe"] };
 const SCENE = "ile-de-re/scene-cycy-et-kevin-a-velo-01"; // the two of them side by side on their bikes, over the bridge and on the poster
@@ -64,11 +67,16 @@ const onMap = `(() => {
 })()`;
 // the stage's layers that show, with their boxes (px)
 const layersSeen = `[...document.querySelectorAll(".st-layer")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { name: el.dataset.layer, left: r.left, right: r.right }; })`;
-// the bikes' looks that show (one at a time: never two views, never none), and each C3 that shows with its layer
+// the bikes' looks that show (one at a time: never two views, never none), the tilt of the actor wearing them
+// (degrees), and each C3 that shows with its layer
 const bikesSeen = `(() => {
   const shows = ${SHOWS};
+  const looks = [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].filter(shows);
+  const transform = looks[0] && getComputedStyle(looks[0].closest(".st-actor")).transform;
+  const m = transform && transform !== "none" ? new DOMMatrix(transform) : null;
   return {
-    looks: [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].filter(shows).length,
+    looks: looks.length,
+    tilt: m ? (Math.atan2(m.b, m.a) * 180) / Math.PI : 0,
     c3: [...document.querySelectorAll('[data-vehicle="c3"]')].filter((el) => [...el.querySelectorAll(".st-actor__img")].some(shows)).map((el) => el.closest(".st-layer")?.dataset.layer),
   };
 })()`;
@@ -144,7 +152,7 @@ async function suite(page, vp) {
   /** The map, held at given moments: the C3 alone and in sight, the names of the data written, none cut by the screen's
    *  edge, none over another (the pin's « Île de Ré » clear of « La Rochelle ») nor under the C3; « Bordeaux » in the
    *  screen at the start, then « Saintes », « La Rochelle » and « Île de Ré »; the pin at La Pallice in the screen once it
-   *  has plopped, clear of « La Rochelle » too. */
+   *  has plopped, clear of « La Rochelle » too; at the map's end, the C3 parked at the pin's tip. */
   async function maps(where) {
     const offScreen = (now, t, boxes, what) => {
       const off = outside(now.screen, boxes);
@@ -167,6 +175,13 @@ async function suite(page, vp) {
         offScreen(now, t, now.pins, "l'épingle");
         const rochelle = now.names.find((b) => b.what === ROCHELLE);
         if (gap(now.pins[0], rochelle) === 0) throw new Error(`${where}, à ${t} s : l'épingle sur « ${ROCHELLE} » ${JSON.stringify([now.pins[0], rochelle].map(round))}`);
+      }
+      if (t >= PARKED.at) {
+        // the pin's tip: its box's middle, 38 of its 42 units down (props-carte.js, PIN)
+        const [pin, car] = [now.pins[0], now.actors[0]];
+        const tip = { x: (pin.left + pin.right) / 2, y: pin.top + ((pin.bottom - pin.top) * 38) / 42 };
+        const far = Math.hypot((car.left + car.right) / 2 - tip.x, (car.top + car.bottom) / 2 - tip.y) / (car.right - car.left);
+        if (!(far <= PARKED.near)) throw new Error(`${where}, à ${t} s : la C3 garée à ${far.toFixed(2)} de sa largeur de la pointe de l'épingle, pas à ${PARKED.near.toFixed(2)} au plus ${JSON.stringify([car, pin].map(round))}`);
       }
       const under = now.names.filter((b) => gap(b, now.actors[0]) === 0);
       if (under.length) throw new Error(`${where}, à ${t} s : ${JSON.stringify(under.map((b) => b.what))} sous la C3 ${JSON.stringify([...under, now.actors[0]].map(round))}`);
@@ -203,7 +218,7 @@ async function suite(page, vp) {
     await poster(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : sur la carte (?t= ${MAP_TIMES.map(fr).join(", ")}), la C3 seule et dans l'écran, « ${MAP_NAMES.join(" », « ")} » écrits, jamais coupés par le bord, l'un sur l'autre (« ${PIN_NAME} » hors de « ${ROCHELLE} ») ni sous la C3 ; « ${trajet.depart} » dans l'écran au départ, puis « ${[...trajet.etapes, PIN_NAME].join(" », « ")} » ; l'épingle dans l'écran à ${fr(PIN_AT)} s, hors de « ${ROCHELLE} »`, async () => {
+  await check(`${vp.width} × ${vp.height} : sur la carte (?t= ${MAP_TIMES.map(fr).join(", ")}), la C3 seule et dans l'écran, « ${MAP_NAMES.join(" », « ")} » écrits, jamais coupés par le bord, l'un sur l'autre (« ${PIN_NAME} » hors de « ${ROCHELLE} ») ni sous la C3 ; « ${trajet.depart} » dans l'écran au départ, puis « ${[...trajet.etapes, PIN_NAME].join(" », « ")} » ; l'épingle dans l'écran à ${fr(PIN_AT)} s, hors de « ${ROCHELLE} » ; à ${fr(PARKED.at)} s, la C3 garée à la pointe de l'épingle (son milieu à ${Math.round(PARKED.near * 100)} % de sa largeur au plus)`, async () => {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
@@ -237,7 +252,7 @@ async function suite(page, vp) {
     // the middle of each moment, held still, on this screen (and the phone turned), plus the map, the bridge and the
     // finished poster; the demo banner hidden
     const bridge = [5, 6, 7, 8, 9.2].map((t) => [t, `00-pont-${String(t).replace(".", "-")}s`]);
-    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], ...bridge, [30.5, "11-affiche-30-5s"]];
+    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, [30.5, "11-affiche-30-5s"]];
     for (const [width, height] of vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]]) {
       await page.resize(width, height);
       try {
@@ -256,7 +271,15 @@ async function suite(page, vp) {
   }
 
   if (vp === VIEWPORTS[0]) {
-    await check(`point 2 et la C3 : de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle » et « Le pont »), aucune C3 (toutes les 0,25 s ; seule celle de la carte s'efface avant ${DIVE_OVER} s, pendant la plongée) ; et de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue`, async () => {
+    const selle = beat["En selle"]?.mid;
+    await check(`point 2 et la C3 : de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle » et « Le pont »), aucune C3 (toutes les 0,25 s ; seule celle de la carte s'efface avant ${DIVE_OVER} s, pendant la plongée) ; et de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue ; au milieu d'« En selle » (${fr(selle)} s), ils penchent pareil qu'on y arrive en avançant ou en reculant`, async () => {
+      // the middle of « En selle » reached forward: the page started before it, paused before it, then sought on to it
+      await page.goto(`${BASE}?demo&t=${BIKES.from}#/aventures/${ID}`);
+      await page.waitFor(playing, 8000);
+      const before = await page.eval(`${timeline}.pause().time()`);
+      if (!(before < selle)) throw new Error(`la page a joué jusqu'à ${before.toFixed(2)} s : pas d'arrivée en avançant à ${selle} s`);
+      await page.eval(holdAt(selle));
+      const { tilt: forward } = await page.eval(bikesSeen);
       const quarters = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.25) + 1 }, (_, k) => BIKES.from + k * 0.25);
       for (const t of quarters) {
         const now = await heldAt(t, bikesSeen);
@@ -264,10 +287,12 @@ async function suite(page, vp) {
         if (c3.length) throw new Error(`à ${t} s : une C3 à l'écran (${JSON.stringify(now.c3)})`);
       }
       const times = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.1) - 1 }, (_, k) => +(BIKES.from + 0.1 + k * 0.1).toFixed(2));
-      for (const t of [...times, ...[...times].reverse()]) {
+      for (const [k, t] of [...times, ...[...times].reverse()].entries()) {
         await page.eval(holdAt(t));
         const now = await page.eval(bikesSeen);
         if (now.looks !== 1) throw new Error(`à ${t} s (cherché depuis la page de ${BIKES.to} s) : ${now.looks} vue(s) des vélos`);
+        const back = k >= times.length; // the second pass: each time reached from a later one
+        if (back && t === selle && !(Math.abs(now.tilt - forward) < 0.05)) throw new Error(`à ${t} s : penchés de ${forward?.toFixed(2)}° en avançant, de ${now.tilt.toFixed(2)}° en reculant`);
       }
     });
 

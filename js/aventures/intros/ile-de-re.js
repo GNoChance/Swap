@@ -27,9 +27,10 @@ export { stickers } from "./ile-de-re.stickers.js";
 const gsap = window.gsap;
 const beat = (name) => SCENARIOS["ile-de-re"].beats.find((b) => b.name === name).at;
 const MAP = { at: { x: 260, y: 640 }, unitsPerDegree: 258 }; // Bordeaux (its first point) there, 258 units a degree
-// the trip on the map: its pin plopped well before the dive; the C3 pulls up short of La Rochelle, its dot and its name
-// clear of it, the last dots running on to the pin
-const TRIP = { duration: 4, short: 70 };
+// the trip on the map: its pin plopped well before the dive; the C3 drives on through La Rochelle and parks over its dot,
+// its nose at the pin's tip at the bridge's foot (the names stand clear of it: props-carte.js, stops()), the last dots
+// running on to the pin
+const TRIP = { duration: 4, short: 37 };
 const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 /** A scene sticker of the Île de Ré's boards (`board`, its number `k`), and its stand-in (spec § 3). */
 const scene = (board, k, who, pose) => sceneLook("ile-de-re", board, k, who, pose);
@@ -70,15 +71,17 @@ const BRIDGE = [
   ["pont-rambarde", 1, pont.rail],
   ["pont-devant", 1.3],
 ];
-// the two of them on their rented bikes, on the road at the bridge's foot, just short of the ramp and clear of the
-// rental's sign, then on it to Ré's end; each view `width` units wide (the board's stickers are all 600 px wide, cut
-// at one scale: so the two of them keep theirs when it turns over)
+// the two of them on their rented bikes, on the road at the bridge's foot, on the flat just short of the ramp (level
+// there, whichever way the timeline is sought) and clear of the rental's sign, then on it to Ré's end; each view `width`
+// units wide (the board's stickers are all 600 px wide, cut at one scale: so the two of them keep theirs when it turns
+// over)
 const RIDE = { from: 205, to: 870, width: 116 };
 const DIVE_TO = { x: 140, y: 450 }; // the dive comes close on the rental and on them
 // the gulls in the sky: [x, y (their bottom), width, glide (units)]; the sailboats: [layer, x, waterline, height, hull,
-// glide]: far off behind the bridge, seen under it, and one near in front
+// glide]: far off behind the bridge, seen under it, and one near in front. The far ones (depth 0.6) stay between the
+// two banks (depth 1) all along the follow: from x 360 to 550, gliding left as the banks pass by faster
 const GULLS = [[70, 300, 58, 130], [215, 236, 44, 90], [330, 352, 52, 150], [-120, 270, 48, 110], [480, 288, 50, 120], [640, 246, 42, 100]];
-const SAILS = [["pont-voiliers", 130, 576, 58, "#24456b", -50], ["pont-voiliers", 480, 586, 66, "#b5433a", -40], ["pont-voiliers", -190, 568, 50, "#f0ece2", -30], ["pont-voiliers", 720, 580, 54, "#f0ece2", -45], ["pont-devant", 640, 726, 150, "#b5433a", -90]];
+const SAILS = [["pont-voiliers", 395, 576, 58, "#24456b", -50], ["pont-voiliers", 460, 586, 66, "#b5433a", -40], ["pont-voiliers", 520, 580, 50, "#f0ece2", -40], ["pont-devant", 640, 726, 150, "#b5433a", -90]];
 // the lighthouse's scene, back to front, paper and poster
 const PHARE = [
   ["phare-ciel", 0.04, riviere.sky],
@@ -121,8 +124,8 @@ export function mount(host, { aventure }) {
     x: RIDE.from,
     y: pont.deck(RIDE.from),
     height: RIDE.width,
+    wide: true, // its size a width: every view as wide, the two of them at one scale
   });
-  for (const img of rider.imgs) Object.assign(img.style, { width: `${RIDE.width}px`, height: "auto" }); // as wide: one scale
   const air = layerOf(bridgeScene, "pont-mouettes");
   const gulls = GULLS.map(([x, y, width, glide]) => ({ el: prop(air, "st-mouette", pont.mouette(width), [x, y], [width, (width * 13) / 42]), glide }));
   const sails = SAILS.map(([name, x, y, height, hull, glide]) => ({ el: prop(layerOf(bridgeScene, name), "st-voilier", pont.voilier(height, hull), [x, y + height * 0.02], [height * 0.8, height * 1.04]), glide }));
@@ -154,22 +157,22 @@ export function mount(host, { aventure }) {
   const timeline = gsap.timeline({ paused: true });
   timeline.to(texture, { autoAlpha: 1, duration: 0.6, ease: "power1.out" }, ENTER); // once the screen is in
 
-  // 1. the map: the C3 from Bordeaux up to La Rochelle, its dots on to the pin at the bridge's foot
+  // 1. the map: the C3 from Bordeaux through La Rochelle to the pin at the bridge's foot, its dots on to the pin
   recipes.carte(timeline, beat("La carte"), { stage, layers: map, car, trajet, lieu, project, ...TRIP });
 
   // 2. « En selle »: the camera dives onto the pin and comes down at the bridge's foot, by the rental, framed on the
-  // action band; the two of them from the front ring their bells, bouncing with each « dring »; turned over, side by
-  // side, they set off
+  // action band; the two of them from the front ring their bells, bouncing with each « dring »; once the dive has
+  // settled, turned over, side by side, they set off
   const selle = beat("En selle");
   const bridge = beat("Le pont");
   const crossing = beat("La traversée");
-  recipes.plonge(timeline, selle, { stage, from: { layers: map, x: end.x, y: end.y }, layers: bridgeScene, to: DIVE_TO });
+  const settled = recipes.plonge(timeline, selle, { stage, from: { layers: map, x: end.x, y: end.y }, layers: bridgeScene, to: DIVE_TO });
   stage.frame(timeline, selle, { whole: false, duration: 0.45 });
   const ring = selle + 0.5;
   stage.sound(timeline, ring, "dring");
   timeline.fromTo(rider.pose, { scaleX: 1, scaleY: 1 }, { scaleX: 0.97, scaleY: 1.05, duration: 0.1, ease: "sine.out", yoyo: true, repeat: 3, immediateRender: false }, ring);
-  rider.flip(timeline, selle + 1.1, "cote");
-  const off = selle + 1.2;
+  rider.flip(timeline, settled, "cote");
+  const off = settled + 0.1;
 
   // 3. « Le pont »: from the set-off they ride up the ramp (at its foot as the moment begins), over the hump and down
   // to Ré's end, pedalling, the camera following them on the same pace (they keep their place on screen); the gulls

@@ -2,8 +2,7 @@
 // the moment it ends (s): pedalling (pedale: their height rising from the wheels at each stroke, a little rock from side
 // to side, and speed lines streaming out behind them when they go flat out). Everything is a tween of the timeline,
 // nothing is worked out as it plays: it holds under any seek. Reads `window` only in its functions.
-import { lens, path } from "./geom.js";
-import { wave } from "./recipes-eau.js";
+import { lens, path, wave } from "./geom.js";
 import { HIDDEN } from "./stage.js";
 
 const STROKE = 0.4; // s a stroke of the pedals, at speed 1
