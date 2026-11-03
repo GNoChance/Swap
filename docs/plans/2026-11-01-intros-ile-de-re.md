@@ -2,7 +2,7 @@
 
 > **Pour les agents :** sous-skill requis : superpowers:subagent-driven-development (recommandé) ou superpowers:executing-plans. Les étapes se cochent (`- [ ]`).
 
-**Objectif :** `#/aventures/ile-de-re` joue la vraie intro de l'Île de Ré, environ 31 s en papier découpé, en 10 temps :
+**Objectif :** `#/aventures/ile-de-re` joue la vraie intro de l'Île de Ré, environ 33,5 s en papier découpé, en 10 temps :
 - la carte (la C3 de Bordeaux à La Rochelle, jusqu'au pied du pont) ;
 - en selle, le pont à vélo, la traversée de l'île, le phare des Baleines, la glace, le retour doré ;
 - La Rochelle le lendemain, la côte ;
@@ -65,7 +65,7 @@ Les retournements des personnes deviennent des cartes retournées, bivouac compr
   - 390 × 760 unités, zone sûre de x = 25 à x = 365 ;
   - chaque décor couvre au moins 1600 unités de large, déplacements compris (1920 × 1080). Un décor qui défile de côté couvre aussi toute sa course.
 - **Les durées :**
-  - l'intro de l'Île de Ré dure entre 30 et 32 s, avec les temps de `SCENARIOS["ile-de-re"].beats` (tâche 3) ;
+  - l'intro de l'Île de Ré dure entre 32,5 et 34,5 s, avec les temps de `SCENARIOS["ile-de-re"].beats` (tâche 3, puis les tâches 4a et 5) ;
   - la fin vient toujours de la timeline.
 - **Les stickers :**
   - planches hors git ;
@@ -332,24 +332,61 @@ Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». Pui
 - [ ] **Étape 4 :** `node tests/e2e/intros-ile-de-re.mjs`, `node tests/e2e/intros.mjs`, `node tests/e2e/intros-canoe.mjs` et `npm test`. Résultat attendu : tout est vert.
 - [ ] **Étape 5 : commit.** `git commit -m "Intros : la traversée de l'Île de Ré à vélo (les vignes, les marais salants et Ars)" -- <les fichiers de la tâche>`
 
-### Tâche 5 : le phare, la glace, le retour doré
+### Tâche 5 : le phare, la glace, et le retour sur un pont sans fin
+
+Kevin, le 2026-11-02 : « juste pour le retour j'ai été super lent donc fait le pont comme si il faisait 150000000000000000 metres de long ». Puis ses réponses :
+- le retour, c'est le pont seulement ;
+- les piles défilent sans fin et un escargot vous double ;
+- d'abord Cycy en forme et Kevin à la traîne, puis vous deux essoufflés ;
+- le retour dure 5 s au lieu de 2,5 s.
+
+La spec (§ 0, § 2 temps 7 à 10, § 7) est corrigée en conséquence.
 
 **Fichiers :**
-- Modifier : `js/aventures/scene/props-ile.js` (le phare des Baleines vu de près, la piste au bord de l'eau, le ciel doré), `css/intros.css`, `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`
+- Modifier :
+  - `js/aventures/scene/props-ile.js` (le phare des Baleines vu de près) ;
+  - `js/aventures/scene/props-pont.js` (le pont du retour sans rive, l'escargot) ;
+  - `js/aventures/intros/index.js` (les `beats`) ;
+  - `css/intros.css`, `ile-de-re.js`, `ile-de-re.stickers.js`, `tests/e2e/intros-ile-de-re.mjs`.
 
 **Interfaces :**
-- Consomme : `pedale` (tâche 4a), `defile` (tâche 4b), `sceneActor`, le ciel doré du canoë (`cielDore` dans `props-riviere.js` : on le partage s'il convient, sinon on le généralise sans le copier).
+- Consomme : `pedale` (tâche 4a), `defile` (tâche 4b), `sceneActor` (`show`, `flip`), le pont, la mer et les mouettes de `props-pont.js` (tâches 3 et 4a), et le ciel doré du canoë (`cielDore` dans `props-riviere.js` : on le partage s'il convient, sinon on le généralise sans le copier).
+- Produit :
+  - **`SCENARIOS["ile-de-re"].beats`**, avec exactement :
+    ```js
+    [{ name: "La carte", at: 0 }, { name: "En selle", at: 4.5 }, { name: "Le pont", at: 6.5 }, { name: "La traversée", at: 9.5 },
+     { name: "Le phare", at: 15 }, { name: "La glace", at: 18 }, { name: "Le retour", at: 20.5 }, { name: "La Rochelle", at: 25.5 },
+     { name: "La côte", at: 29 }, { name: "L'affiche", at: 31.1 }]
+    ```
+  - **Tout ce qui venait après 23 s est décalé de 2,5 s.** L'affiche commence à 31,1 s, et l'intro dure entre 32,5 et 34,5 s. En attendant la tâche 6, la scène du phare se montre de 25,5 à 31,1 s.
 
-- [ ] **Étape 1 : écrire les vérifications qui échouent.** Au milieu de chaque temps, sur chaque écran : « Le phare » : duo ; « La glace » : duo ; « Le retour » : duo. Chacun est entièrement dans l'écran, et le phare est visible et entier au-dessus d'eux sur le téléphone.
+- [ ] **Étape 1 : écrire les vérifications qui échouent.**
+  - **Au milieu de chaque temps, sur chaque écran et en 852 × 393 :** « Le phare » : duo ; « La glace » : duo ; « Le retour » : duo. Chacun est entièrement dans l'écran.
+  - **Le phare** est visible et entier au-dessus d'eux sur le téléphone.
+  - **La durée :** `data-length` entre 32500 et 34500 ms (la constante `LENGTH` de la suite).
+  - **Le retour sans fin :**
+    - de 21 à 25,3 s, un relevé toutes les 0,25 s : aucune des deux rives du pont n'est dans l'écran, et une pile au moins y est ;
+    - l'escargot est entièrement dans l'écran au milieu du retour ;
+    - il est derrière le duo (à sa droite) au début du retour et devant lui (à sa gauche) à la fin. Il les double.
+  - **Point 2 (20,5 → 25,5 s) :** toutes les 0,1 s, en avançant puis en reculant, le duo montre exactement une vue.
+  - **Point 5 (le retour) :** en 1920 × 1080, à 21, 23 et 25,3 s, chaque couche visible couvre toute la largeur.
 - [ ] **Étape 2 :** `node tests/e2e/intros-ile-de-re.mjs`. Résultat attendu : ÉCHEC.
 - [ ] **Étape 3 : implémenter les temps 5 à 7 de la spec.**
   - **Le phare (15 → 18 s) :** la grande tour de pierre et sa lanterne, avec la mer derrière. Vous deux devant, bras en l'air (le sticker 12), avec un « pop ». On n'utilise pas le sticker « devant le phare » (il a son propre petit phare).
   - **La glace (18 → 20,5 s) :** au pied du phare, `flip` vers « les glaces ».
-  - **Le retour (20,5 → 23 s) :**
-    - vous deux de dos à vélo (`pedale`) sur la piste au bord de l'eau, et le décor qui défile ;
-    - la lumière dorée du soir : un ciel doré sur sa propre couche (opacité seulement), et un voile léger qui réchauffe la terre et l'eau. Le résultat doit se lire doré, pas gris.
-- [ ] **Étape 4 :** `node tests/e2e/intros-ile-de-re.mjs`, `node tests/e2e/intros-canoe.mjs` (si le ciel doré est partagé) et `npm test`. Résultat attendu : tout est vert.
-- [ ] **Étape 5 : commit.** `git commit -m "Intros : le phare des Baleines, la glace, et le retour doré à vélo" -- <les fichiers de la tâche>`
+  - **Le retour (20,5 → 25,5 s) :**
+    - **Le décor :** le pont de l'aller, vu de côté au-dessus de la mer, partagé et non recopié. Vous le retraversez de droite à gauche, vers La Rochelle.
+    - **La lumière dorée du soir :** un ciel doré sur sa propre couche (opacité seulement), et un voile léger qui réchauffe la mer et le tablier. Le résultat doit se lire doré, pas gris.
+    - **Le pont sans fin :** vous pédalez sur place pendant que le tablier et ses piles défilent vers la droite, avec `defile` et une distance négative. Si `defile` ne prend pas une distance négative, généralise-le sans le recopier.
+      - Les couches sont assez larges pour que les rives n'entrent jamais dans l'écran.
+      - Les mouettes restent.
+    - **Vous deux :**
+      - d'abord le sticker 05 (Cycy devant, en forme, Kevin derrière), qui roule déjà vers la gauche sur la planche, avec `pedale` lent ;
+      - vers 24 s, `flip` vers le sticker 08 (essoufflés sur le guidon), qui pédale encore plus lentement.
+    - **L'escargot :** un petit escargot en papier, posé sur le tablier, avance vers la gauche plus vite que vous et vous double tranquillement.
+  - **Le décalage :** les temps suivants, la scène du phare en attente et l'affiche passent après le retour, comme dans les `beats` ci-dessus.
+- [ ] **Étape 4 :** `node tests/e2e/intros-ile-de-re.mjs`, `node tests/e2e/intros.mjs`, `node tests/e2e/intros-canoe.mjs` et `npm test`. Résultat attendu : tout est vert.
+- [ ] **Étape 5 : commit.** `git commit -m "Intros : le phare des Baleines, la glace, et le retour sur un pont sans fin" -- <les fichiers de la tâche>`
 
 ### Tâche 6 : La Rochelle, la côte, et l'Île de Ré en entier
 
@@ -363,22 +400,22 @@ Kevin, le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». Pui
 - [ ] **Étape 1 : écrire les vérifications qui échouent** :
   - au milieu de chaque temps, sur chaque écran : « La Rochelle » : cycy, kevin ; « La côte » : c3. Plus la liste complète `CAST` des 9 temps après la carte, sur les 4 écrans et en 852 × 393 ;
   - **La Rochelle :** au milieu du retournement, le `scaleX` des boîtes de retournement est inférieur à 0,6 ; à la fin, il vaut ±1 ;
-  - **point 4 :** entrer et sortir trois fois par le retour du navigateur, à `?demo&t=` 5, 15 et 24 ;
-  - **point 5 (La Rochelle) :** en 1920 × 1080, à 24 et 26 s, chaque couche visible couvre toute la largeur.
+  - **point 4 :** entrer et sortir trois fois par le retour du navigateur, à `?demo&t=` 5, 15 et 27 ;
+  - **point 5 (La Rochelle) :** en 1920 × 1080, à 26,5 et 28,5 s, chaque couche visible couvre toute la largeur.
 - [ ] **Étape 2 :** `node tests/e2e/intros-ile-de-re.mjs`. Résultat attendu : ÉCHEC.
 - [ ] **Étape 3 : implémenter les temps 8 et 9 de la spec.**
-  - **La Rochelle (23 → 26,5 s) :**
+  - **La Rochelle (25,5 → 29 s) :**
     - la lumière du matin, le Vieux-Port, ses deux tours à l'entrée, les mâts des voiliers et le quai ;
     - vous deux de dos (`person`, `side: "dos"`, « joie ») avec `marche`, puis vous vous retournez en carte (`turn`), de face, en « joie » ;
     - les mouettes (`gulls`) ;
-  - **La côte (26,5 → 28,6 s) :**
+  - **La côte (29 → 31,1 s) :**
     - la C3 (« roule ») longe la mer sur la route, avec la plage, le soleil et des vaguelettes ;
-    - `engine` s'arrête à 28,6 s (`until`) ;
-  - **À 28,6 s,** retour de jour sur le phare pour l'affiche (tâche 3).
+    - `engine` s'arrête à 31,1 s (`until`) ;
+  - **À 31,1 s,** retour de jour sur le phare pour l'affiche (tâche 3).
 - [ ] **Étape 4 : les vérifications.**
   - `node tests/e2e/intros-ile-de-re.mjs`, `node tests/e2e/intros.mjs`, `node tests/e2e/intros-canoe.mjs`, `node tests/e2e/aventures.mjs`, `node tests/e2e/hub.mjs` et `npm test` ;
   - résultat attendu : tout est vert ;
-  - `data-length` reste entre 30000 et 32000 ms.
+  - `data-length` reste entre 32500 et 34500 ms.
 - [ ] **Étape 5 : commit.** `git commit -m "Intros : La Rochelle le lendemain et le retour par la côte : l'Île de Ré en entier" -- <les fichiers de la tâche>`
 
 ### Tâche 7 : le README, et le contrôle à l'œil

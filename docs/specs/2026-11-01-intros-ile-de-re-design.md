@@ -1,6 +1,6 @@
 # L'intro de l'Île de Ré : design
 
-Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la technique, et pas de Fort Boyard. Corrigé avec Kevin le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La C3 s'arrête au pied du pont, et « En selle » passe avant le pont. Puis ses réponses du même jour : l'épingle s'appelle « Île de Ré », les vélos sont loués au pied du pont, vous traversez côte à côte et tranquilles, et l'intro garde environ 31 s. Ce document suit la spec du Premier canoë (`docs/specs/2026-10-31-intros-canoe-design.md`) et celle de la tranche 3a (`docs/specs/2026-10-30-intros-3a-design.md`). Il réutilise leur boîte à outils, et leurs règles s'appliquent là où il ne dit pas autre chose.
+Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la technique, et pas de Fort Boyard. Corrigé avec Kevin le 2026-11-02 : « on a traversé le pont à vélo pas en voiture ». La C3 s'arrête au pied du pont, et « En selle » passe avant le pont. Puis ses réponses du même jour : l'épingle s'appelle « Île de Ré », les vélos sont loués au pied du pont, et vous traversez côte à côte et tranquilles. Enfin, pour le retour : « j'ai été super lent donc fait le pont comme si il faisait 150000000000000000 metres de long ». Le retour retraverse donc un pont sans fin, et l'intro passe à environ 33,5 s. Ce document suit la spec du Premier canoë (`docs/specs/2026-10-31-intros-canoe-design.md`) et celle de la tranche 3a (`docs/specs/2026-10-30-intros-3a-design.md`). Il réutilise leur boîte à outils, et leurs règles s'appliquent là où il ne dit pas autre chose.
 
 ## 0. Vue d'ensemble
 - **La troisième sortie du passeport :** l'Île de Ré, les 17 et 18 août 2025, en C3 puis à vélo. Une tranche par sortie, comme le canoë.
@@ -10,7 +10,7 @@ Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la techni
   - **le lendemain :** une balade sur le Vieux-Port de La Rochelle, puis le retour en longeant la côte, par Rochefort et Royan.
   - Il n'y a pas d'anecdote à part : le clin d'œil, c'est **le phare et la glace**.
 - **Les décisions de Kevin :**
-  - environ 30 s : l'intro dure entre 30 et 32 s, et la première fois elle se regarde en entier ;
+  - environ 33,5 s : l'intro dure entre 32,5 et 34,5 s, et la première fois elle se regarde en entier. Elle faisait environ 31 s, et le retour sur le pont sans fin l'allonge de 2,5 s ;
   - l'histoire du § 2 ;
   - pas de Fort Boyard ;
   - le pont se traverse à vélo, jamais en C3.
@@ -21,7 +21,7 @@ Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la techni
 
 ## 1. Ce que contient la tranche
 - **La découpe** des 5 planches de la sortie : 60 stickers (§ 3). La C3 est déjà découpée.
-- **Le scénario** `js/aventures/intros/ile-de-re.js`, en 10 temps, d'environ 31 s.
+- **Le scénario** `js/aventures/intros/ile-de-re.js`, en 10 temps, d'environ 33,5 s.
 - **Ce que la boîte à outils gagne** (§ 4) :
   - la recette vélo ;
   - la carte vers le nord avec les îles ;
@@ -30,7 +30,7 @@ Validé par Kevin le 2026-11-01 : la journée, l'histoire en 10 temps, la techni
 - **Les données de l'Île de Ré :** le lieu et le trajet (§ 5).
 - **La page `?test`** et les vérifications (§ 7).
 
-## 2. Le scénario (environ 31 s)
+## 2. Le scénario (environ 33,5 s)
 Les temps sont indicatifs.
 
 1. **La carte (0 → 4,5 s).**
@@ -57,14 +57,16 @@ Les temps sont indicatifs.
    - Vous deux devant, bras en l'air.
    - On n'utilise pas le sticker « devant le phare » : il a son propre petit phare rouge et blanc, qui ferait doublon.
 6. **La glace (18 → 20,5 s).** Au pied du phare, vous deux avec vos glaces.
-7. **Le retour (20,5 → 23 s).**
-   - Vous deux à vélo, de dos, sur la piste au bord de l'eau.
-   - La lumière dorée du soir, sur sa propre couche de ciel, comme au plouf du canoë.
-8. **La Rochelle (23 → 26,5 s).**
+7. **Le retour (20,5 → 25,5 s).**
+   - **Le clin d'œil :** Kevin était « super lent », alors le pont du retour paraît sans fin, « comme s'il faisait 150 000 000 000 000 000 mètres ».
+   - **La scène :** le soir, vous retraversez le pont à vélo, de droite à gauche, vers La Rochelle. La lumière dorée du soir est sur sa propre couche de ciel, comme au plouf du canoë.
+   - **Le pont sans fin :** les piles défilent sans fin et on ne voit jamais l'autre rive. Un petit escargot en papier vous double tranquillement sur le tablier.
+   - **Vous deux :** d'abord Cycy en forme devant et Kevin à la traîne (le sticker « Cycy à fond »), puis tous les deux essoufflés sur le guidon.
+8. **La Rochelle (25,5 → 29 s).**
    - Le lendemain matin : le Vieux-Port, avec ses deux tours à l'entrée (Saint-Nicolas et la tour de la Chaîne) et les mâts des voiliers.
    - Vous marchez de dos sur le quai (la marche du bivouac), puis vous vous retournez, de face, en « joie ».
-9. **La côte (26,5 → 28,6 s).** La C3 (« roule ») longe la mer sur la route du retour, avec la plage et le soleil.
-10. **L'affiche (28,6 → environ 31 s).**
+9. **La côte (29 → 31,1 s).** La C3 (« roule ») longe la mer sur la route du retour, avec la plage et le soleil.
+10. **L'affiche (31,1 → environ 33,5 s).**
     - Le retour sur le phare et la mer, avec vous deux à vélo, côte à côte, devant.
     - Puis la recette de l'affiche : **ÎLE DE RÉ**, et « Île de Ré · 17–18 août 2025 ».
 
@@ -96,7 +98,7 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
   - les îles de Ré et d'Oléron, l'anse de La Rochelle et le pont, dessinés en papier, aux vraies coordonnées ;
   - les noms au bon endroit pour un trajet qui monte. La carte du bivouac et celle du canoë ne bougent pas.
 - **Les accessoires, en papier, un fichier par famille :**
-  - **le pont :** la mer, les voiliers, les mouettes, et son pied côté La Rochelle avec la boutique de location de vélos ;
+  - **le pont :** la mer, les voiliers, les mouettes, son pied côté La Rochelle avec la boutique de location de vélos, et l'escargot du retour ;
   - **l'île :** les vignes, les marais salants, les maisons rétaises, le clocher d'Ars, les panneaux kilométriques, la piste cyclable et le phare des Baleines ;
   - **La Rochelle :** les deux tours, les mâts et le quai ;
   - **la côte :** la route, la plage et le soleil.
@@ -139,7 +141,8 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
   - le trajet tient sur la carte ;
   - chaque sticker cité existe.
 - **De bout en bout, en Chrome automatisé** (les mêmes écrans que le canoë, paysage compris), une suite `tests/e2e/intros-ile-de-re.mjs` sur le kit `intro-kit.mjs` :
-  - l'intro dure entre 30 et 32 s ;
+  - l'intro dure entre 32,5 et 34,5 s ;
+  - au retour, les rives du pont n'entrent jamais dans l'écran, et l'escargot double le duo ;
   - seuls ses stickers sont chargés ;
   - un sticker de scène bloqué passe sur son remplaçant, et l'intro se termine ;
   - la règle de passage de la première fois, « Passer ▸ » en démo, et le retour du navigateur au milieu ;
@@ -157,7 +160,7 @@ Les stickers exacts se choisissent sur les planches de contrôle (§ 3).
 ## 8. Risques et parades
 - **La fluidité sous Safari :** c'est la même parade que pour le canoë. Chaque décor n'est affiché que pendant son temps et, si ça saccade, chaque couche est transformée en image.
 - **Le défilement de côté du décor** pendant la traversée demande des couches larges. Elles restent dessinées une fois et ne font que glisser.
-- **31 s à regarder la première fois :** c'est le choix de Kevin, comme pour le canoë.
+- **33,5 s à regarder la première fois :** c'est le choix de Kevin, comme pour le canoë.
 
 ## 9. Hors de cette tranche
 - Les sorties suivantes : Marquèze (train), etc.
