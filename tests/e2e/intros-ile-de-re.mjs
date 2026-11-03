@@ -18,7 +18,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
-import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
+import { beatsOf, blockedScene, firstTime, gap, holdAt, inAndOut, LANDING, loaded, outside, playedThrough, playing, REJECT, round, sceneBoxes, SEED, SHOWS, skipped, sleep, timeline, VIEWPORTS, warmedOnPassport } from "./intro-kit.mjs";
 import { content } from "../../js/content.js";
 import { AVENTURES } from "../../js/aventures/data.js";
 import { pageOf } from "../../js/aventures/logic.js";
@@ -98,12 +98,6 @@ const DIVE_OVER = 5; // s: the map, its C3 on it, gone under the bridge by then 
 const RENTAL = "En selle"; // in its middle, the bike rental's sign at the bridge's foot whole on screen
 const RENTAL_SIGN = content.aventures.intros.ileDeRe?.location; // its words
 
-// an element shows: visible, and not see-through up its tree
-const SHOWS = `(el) => {
-  if (getComputedStyle(el).visibility !== "visible") return false;
-  for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
-  return true;
-}`;
 // what shows on the map: the actors as the kit sees them, the names and the pin that show, with the screen's size
 const onMap = `(() => {
   const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
@@ -174,25 +168,6 @@ const signsSeen = `({
   screen: { width: innerWidth, height: innerHeight },
   signs: [...document.querySelectorAll(".st-enseigne")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }),
 })`;
-// the requests for the Île de Ré's scenario file
-const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => new URL(e.name).pathname === "/js/aventures/intros/${ID}.js")`;
-// the poster in place: its line and every letter of its title fully shown
-const built = `(() => {
-  const parts = [...document.querySelectorAll(".af-title .af-letter, .af-line")];
-  return parts.length > 1 && parts.every((el) => getComputedStyle(el).opacity === "1");
-})()`;
-// the boxes (px) of the poster's frame, title and line, and of each letter, with the screen's size
-const posterBoxes = `(() => {
-  const box = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-  return {
-    screen: { width: innerWidth, height: innerHeight },
-    title: document.querySelector(".af-title")?.textContent,
-    line: document.querySelector(".af-line")?.textContent,
-    boxes: [".af-frame", ".af-title", ".af-line", ".af-title .af-letter"].flatMap((s) => [...document.querySelectorAll(s)].map((el) => ({ what: s, ...box(el) }))),
-  };
-})()`;
-/** How far apart two boxes are (px; 0 if they touch or overlap). */
-const gap = (a, b) => Math.max(0, a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
 /** A box at least partly in the screen. */
 const inView = (screen, b) => b.right > 0 && b.left < screen.width && b.bottom > 0 && b.top < screen.height;
 const fr = (t) => String(t).replace(".", ",");
@@ -211,34 +186,7 @@ async function suite(page, vp) {
 
   /** The intro played through, as long as it says (32.5 to 34.5 s) and not shorter: its poster says the lieu, then the
    *  stamp's name and dates, all of it on screen, its title out of the sound button's corner; then the passport. */
-  async function poster(where) {
-    await page.goto(ILE);
-    await page.waitFor(`document.querySelector(".screen-intro .st-stage") && ${length} > 0`, 6000).catch(async () => {
-      throw new Error(`${where} : pas de scène (data-length ${await page.eval(length)})`);
-    });
-    const ms = await page.eval(length);
-    if (!(ms >= LENGTH.min && ms <= LENGTH.max)) throw new Error(`${where} : data-length ${ms}, pas entre ${LENGTH.min} et ${LENGTH.max}`);
-    // the page's own clock: when its timeline started playing, when it left its address
-    await page.eval(`(() => {
-      window.__played = window.__ended = null;
-      const watch = setInterval(() => {
-        const tl = ${timeline};
-        if (tl && tl.time() > 0 && window.__played === null) window.__played = performance.now() - tl.time() * 1000;
-        if (location.hash !== "#/aventures/${ID}") (window.__ended = performance.now()), clearInterval(watch);
-      }, 10);
-    })()`);
-    await page.waitFor(built, ms + 4000);
-    const seen = await page.eval(posterBoxes);
-    if (seen.title !== TITLE) throw new Error(`${where} : titre « ${seen.title} »`);
-    if (seen.line !== LINE) throw new Error(`${where} : ligne « ${seen.line} »`);
-    inside(seen, where);
-    // the sound button's corner (the screen's top right 56 px): the title stays out of it
-    const corner = seen.boxes.filter((b) => b.what === ".af-title .af-letter" && b.right > seen.screen.width - 56 && b.top < 56);
-    if (corner.length) throw new Error(`${where} : le titre sous le bouton du son ${JSON.stringify(corner.map(round))}`);
-    await page.waitFor(atPassport, 5000);
-    const { played, ended } = await page.eval(`({ played: window.__played, ended: window.__ended })`);
-    if (played === null || ended === null || ended - played < ms - 300) throw new Error(`${where} : jouée ${Math.round(ended - played)} ms pour ${ms}`);
-  }
+  const poster = (where) => playedThrough(page, { url: ILE, id: ID, span: LENGTH, title: TITLE, line: LINE }, where);
 
   /** The map, held at given moments: the C3 alone and in sight, the names of the data written, none cut by the screen's
    *  edge, none over another (the pin's « Île de Ré » clear of « La Rochelle ») nor under the C3; « Bordeaux » in the
@@ -561,119 +509,23 @@ async function suite(page, vp) {
     });
 
     await check(`un sticker de scène bloqué (${SCENE}, celui du pont et de l'affiche) : il passe sur son remplaçant assets/cyrielle/joy.webp, et l'intro se termine ; aucune autre erreur que celle du fichier bloqué`, async () => {
-      const before = page.errors.length;
-      await page.block([`*/${SCENE}.webp`]);
-      try {
-        await page.goto(ILE);
-        // the blocked sticker's look, before and after it goes to its stand-in
-        const looks = `[...document.querySelectorAll(".st-actor__img")].filter((img) => img.dataset.fallback === "assets/cyrielle/joy.webp" && (img.dataset.fell || img.src.endsWith("/${SCENE}.webp")))`;
-        await page.waitFor(`${loaded} && ${looks}.length > 0 && ${looks}.every((img) => img.naturalWidth > 0)`, 8000);
-        const now = await page.eval(`${looks}.map((img) => new URL(img.src).pathname)`);
-        if (!now.length || now.some((src) => src !== "/assets/cyrielle/joy.webp")) throw new Error(`les vélos du pont et de l'affiche : ${JSON.stringify(now)}`);
-        await page.waitFor(atPassport, Number(await page.eval(length)) + 5000);
-      } finally {
-        await page.block([]);
-      }
-      const errors = page.errors.slice(before);
-      if (errors.some((e) => !e.includes(`${SCENE.split("/")[1]}.webp`))) throw new Error(`erreurs : ${JSON.stringify(errors)}`);
+      await blockedScene(page, { url: ILE, scene: SCENE, what: "les vélos du pont et de l'affiche" });
     }, { allowErrors: true });
 
     await check("point 1 : le passeport posé, le Premier canoë tamponné (l'Île de Ré à vivre) : le fichier intros/ile-de-re.js est déjà demandé, une fois le livre arrivé, et ses stickers aussi ; une fois qu'ils sont arrivés, le toucher sur l'Île de Ré ne redemande pas le fichier et ne retélécharge aucun sticker", async () => {
-      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(CANOE_STAMPED))}#/aventures`);
-      await page.waitFor(`window.__landedAt`, 8000);
-      await page.waitFor(`${scenarioAsked}.length === 1`, 3000).catch(async () => {
-        throw new Error(`demandé ${await page.eval(`${scenarioAsked}.length`)} fois, le passeport posé`);
-      });
-      const after = await page.eval(`${scenarioAsked}[0].startTime - window.__landedAt`);
-      if (after < -20) throw new Error(`demandé ${Math.round(-after)} ms avant que le livre soit posé`); // a frame's leeway
-      await page.waitFor(`${settled(pageOf(AVENTURES, ID))} && document.querySelector('.pp-slot[data-id="${ID}"][data-status="open"]')`, 8000);
-      // its stickers: all asked once the book landed, before any touch, each once (an entry is added once its
-      // response has ended); then the touch downloads none again (the passport holds them, then its intro until its own
-      // are there: screen.js, warm(); intro.js, held)
-      const paths = JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`));
-      const mine = `performance.getEntriesByType("resource").filter((e) => ${paths}.includes(new URL(e.name).pathname))`;
-      await page.waitFor(`${stickers.length} > 0 && ${paths}.every((p) => ${mine}.some((e) => new URL(e.name).pathname === p && e.responseEnd > 0))`, 8000).catch(async () => {
-        throw new Error(`stickers arrivés avant le toucher : ${await page.eval(`${mine}.filter((e) => e.responseEnd > 0).length`)} sur ${stickers.length}`);
-      });
-      const early = await page.eval(`${mine}.length`);
-      await page.tap(`.pp-slot[data-id="${ID}"]`);
-      await page.waitFor(loaded, 8000);
-      const asked = await page.eval(`${scenarioAsked}.length`);
-      const late = await page.eval(`${mine}.slice(${early}).map((e) => e.transferSize)`); // an entry per image, but from the cache
-      await page.goto("about:blank");
-      if (asked !== 1) throw new Error(`redemandé au toucher : ${asked} demandes`);
-      if (early !== stickers.length) throw new Error(`stickers demandés avant le toucher : ${early} demandes pour ${stickers.length}`);
-      if (late.some((size) => size > 0)) throw new Error(`stickers retéléchargés au toucher : ${late.filter((size) => size > 0).length}`);
+      await warmedOnPassport(page, { base: BASE, id: ID, save: CANOE_STAMPED, book: pageOf(AVENTURES, ID), stickers });
     });
 
     await check("la première fois (Premier canoë tamponné, l'Île de Ré à vivre, hors démo) : un toucher au milieu ne passe pas l'intro ; puis le retour du navigateur vers 10 s : le passeport, sans erreur, aucune scène restée, et l'Île de Ré n'est pas marquée vue", async () => {
-      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(CANOE_STAMPED))}#/aventures`);
-      await page.waitFor(`${settled(pageOf(AVENTURES, ID))} && document.querySelector('.pp-slot[data-id="${ID}"][data-status="open"]')`, 8000);
-      await page.tap(`.pp-slot[data-id="${ID}"]`);
-      await page.waitFor(`location.hash === "#/aventures/${ID}" && ${playing}`, 8000);
-      if ((await page.eval(`document.querySelector(".screen-intro").dataset.skippable`)) !== "false") throw new Error("passable la première fois");
-      await page.waitFor(`${timeline}.time() > 6`, 9000);
-      const touched = await page.eval(`${timeline}.time()`);
-      await page.tap(".screen-intro");
-      // still there and playing on, a second of its timeline later (by its own clock: a slow frame only delays it)
-      await page.waitFor(`location.hash !== "#/aventures/${ID}" || ${timeline}?.time() > ${touched + 1}`, 6000).catch(() => {});
-      const later = await page.eval(`({ hash: location.hash, intro: Boolean(document.querySelector(".screen-intro .st-stage")), t: ${timeline}?.time(), paused: ${timeline}?.paused() })`);
-      if (later.hash !== `#/aventures/${ID}` || !later.intro || later.paused || !(later.t > touched + 1)) throw new Error(`après le toucher à ${touched.toFixed(2)} s : ${JSON.stringify(later)}`);
-      await page.waitFor(`${timeline}.time() > 10`, 10000);
-      await page.eval(`history.back()`);
-      await page.waitFor(atPassport, 4000);
-      await sleep(1500); // what the intro would have left behind
-      const now = await page.eval(`({ hash: location.hash, stages: document.querySelectorAll(".st-stage").length, intro: Boolean(document.querySelector(".screen-intro")),
-        slot: document.querySelector('.pp-slot[data-id="${ID}"]')?.dataset.status, save: JSON.parse(localStorage.getItem("${KEY}")) })`);
-      if (now.hash !== "#/aventures" || now.stages || now.intro || now.slot !== "open") throw new Error(JSON.stringify({ ...now, save: undefined }));
-      if (now.save?.pending?.includes(ID) || now.save?.stamped?.includes(ID)) throw new Error(`enregistré : ${JSON.stringify(now.save)}`);
-      await page.goto("about:blank");
+      await firstTime(page, { base: BASE, id: ID, save: CANOE_STAMPED, book: pageOf(AVENTURES, ID) });
     });
 
     await check(`point 4 : sur le passeport, entrer dans l'intro de l'Île de Ré et en sortir trois fois de suite par le retour du navigateur, à ?demo&t= ${EXITS.join(", ")} (la dernière à La Rochelle) : gsap.globalTimeline.getChildren() revient à son compte de départ et aucune .st-stage ne reste`, async () => {
-      await page.goto(`${BASE}?demo&t=${EXITS[0]}#/aventures`);
-      const still = `${atPassport} && !document.querySelector(".screen-intro") && document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
-      const count = `gsap.globalTimeline.getChildren().length`;
-      /** The count of GSAP's children once the passport is still: only its own endless loops left (no screen fading, no
-       *  timeline still going: a timeline left behind keeps this false). */
-      const steady = async () => {
-        await page.waitFor(still, 8000);
-        await page.waitFor(`gsap.globalTimeline.getChildren().every((child) => child.repeat() === -1)`, 8000);
-        return page.eval(count);
-      };
-      const before = await steady();
-      for (const t of EXITS) {
-        await page.eval(`history.replaceState(null, "", "?demo&t=${t}#/aventures")`); // where the next one starts
-        await page.eval(`location.hash = "#/aventures/${ID}"`);
-        await page.waitFor(`${playing} && ${timeline}.time() >= ${t}`, 8000);
-        await sleep(700);
-        // the last one at La Rochelle: its scene on show
-        const now = await page.eval(`({ t: ${timeline}.time(), harbour: [...document.querySelectorAll('.st-layer[data-layer^="rochelle-"]')].some(${SHOWS}) })`);
-        if (t === EXITS.at(-1) && !(now.t > beat["La Rochelle"].at && now.t < beat["La côte"].at && now.harbour)) throw new Error(`à ${now.t.toFixed(2)} s, pas à La Rochelle ${JSON.stringify(now)}`);
-        await page.eval(`history.back()`);
-        await page.waitFor(still, 8000);
-      }
-      const after = await steady();
-      const stages = await page.eval(`document.querySelectorAll(".st-stage").length`);
-      if (after !== before || stages) throw new Error(`compte ${before} au départ, ${after} après ; ${stages} .st-stage`);
+      await inAndOut(page, { base: BASE, id: ID, exits: EXITS, last: { prefix: "rochelle-", from: beat["La Rochelle"].at, to: beat["La côte"].at, where: "à La Rochelle" } });
     });
 
     await check(`?demo (tamponné) : « Passer ▸ » au début du pont la termine, sa timeline s'arrête au toucher, et ramène au passeport`, async () => {
-      const { at } = beat["Le pont"] ?? { at: 4.5 };
-      await page.goto(`${BASE}?demo&t=${at}#/aventures/${ID}`);
-      await page.waitFor(`${playing} && ${skipIs("shown")}`, 8000);
-      await page.eval(`(() => {
-        const tl = ${timeline};
-        document.addEventListener("click", () => {
-          window.__skipped = { paused: tl.paused(), t: tl.time() };
-          setTimeout(() => (window.__later = tl.time()), 250);
-        }, { once: true });
-      })()`);
-      await page.tap(".intro-skip");
-      await page.waitFor(`window.__later !== undefined`, 2000);
-      const now = await page.eval(`({ ...window.__skipped, later: window.__later })`);
-      if (!now.paused || now.later !== now.t) throw new Error(`la timeline continue après le toucher : ${JSON.stringify(now)}`);
-      await page.waitFor(atPassport, 3000);
+      await skipped(page, { base: BASE, id: ID, at: (beat["Le pont"] ?? { at: 4.5 }).at });
     });
   }
 }

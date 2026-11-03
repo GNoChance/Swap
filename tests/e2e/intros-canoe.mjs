@@ -10,7 +10,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
-import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
+import { beatsOf, blockedScene, firstTime, gap, holdAt, inAndOut, LANDING, loaded, outside, playedThrough, playing, REJECT, round, sceneBoxes, SEED, SHOWS, skipped, sleep, timeline, VIEWPORTS, warmedOnPassport } from "./intro-kit.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
 
 // read here rather than imported: without its scenario, the suite still runs and says what fails
@@ -58,12 +58,6 @@ const PLOUF_VIEWS = [18.65, 19.34];
 const SPIN = [7.5, 7.9, 8.3, 10.6]; // s: in the middle of the canoe's half-turns, then off again after the last one
 const OFF_AGAIN = 10.6; // s: its width whole again
 
-// a look shows: visible, and not see-through up its tree
-const SHOWS = `(el) => {
-  if (getComputedStyle(el).visibility !== "visible") return false;
-  for (let up = el; up; up = up.parentElement) if (Number(getComputedStyle(up).opacity) === 0) return false;
-  return true;
-}`;
 // the words that show on the wooden signs (the start's « Carsac · 28 km », the finish board's) and on the gabare's hull
 const SIGNS = `[...document.querySelectorAll(".st-sign")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; })`;
 // the actors as the kit sees them, a bubble by its disc (what shows of the look cropped in it); the signs' words; the
@@ -106,23 +100,6 @@ const descentOrder = `(() => {
   return [...document.querySelector(".st-world").children].filter((el) => el.dataset.layer?.startsWith("descente-")).map((el) => ({ name: el.dataset.layer, shows: shows(el), z: getComputedStyle(el).zIndex }));
 })()`;
 
-// the requests for the canoe's scenario file
-const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => new URL(e.name).pathname === "/js/aventures/intros/canoe.js")`;
-// the poster in place: its line and every letter of its title fully shown
-const built = `(() => {
-  const parts = [...document.querySelectorAll(".af-title .af-letter, .af-line")];
-  return parts.length > 1 && parts.every((el) => getComputedStyle(el).opacity === "1");
-})()`;
-// the boxes (px) of the poster's frame, title and line, and of each letter, with the screen's size
-const posterBoxes = `(() => {
-  const box = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-  return {
-    screen: { width: innerWidth, height: innerHeight },
-    title: document.querySelector(".af-title")?.textContent,
-    line: document.querySelector(".af-line")?.textContent,
-    boxes: [".af-frame", ".af-title", ".af-line", ".af-title .af-letter"].flatMap((s) => [...document.querySelectorAll(s)].map((el) => ({ what: s, ...box(el) }))),
-  };
-})()`;
 // what shows on the maps (the regional map's and the valley's are both in the page, one hidden): the actors as the kit
 // sees them, the names and pins that show, the parking's P, the valley's places (.st-place, data-place), and the
 // stage's scale (px a unit)
@@ -134,8 +111,6 @@ const onMap = `(() => {
   const scale = document.querySelector(".st-world").getBoundingClientRect().height / 760;
   return { ...${sceneBoxes}, names: seen(".st-name"), pins: seen(".st-pin", "épingle"), parking: seen(".st-parking", "P"), places, scale };
 })()`;
-/** How far apart two boxes are (px; 0 if they touch or overlap). */
-const gap = (a, b) => Math.max(0, a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
 
 async function suite(page, vp) {
   const check = checker(page);
@@ -151,34 +126,7 @@ async function suite(page, vp) {
 
   /** The canoe's intro played through, as long as it says (30 to 32 s) and not shorter: its poster says the lieu, then
    *  the stamp's name and dates, all of it on screen, its title out of the sound button's corner; then the passport. */
-  async function poster(where) {
-    await page.goto(CANOE);
-    await page.waitFor(`document.querySelector(".screen-intro .st-stage") && ${length} > 0`, 6000).catch(async () => {
-      throw new Error(`${where} : pas de scène (data-length ${await page.eval(length)})`);
-    });
-    const ms = await page.eval(length);
-    if (!(ms >= LENGTH.min && ms <= LENGTH.max)) throw new Error(`${where} : data-length ${ms}, pas entre ${LENGTH.min} et ${LENGTH.max}`);
-    // the page's own clock: when its timeline started playing, when it left its address
-    await page.eval(`(() => {
-      window.__played = window.__ended = null;
-      const watch = setInterval(() => {
-        const tl = ${timeline};
-        if (tl && tl.time() > 0 && window.__played === null) window.__played = performance.now() - tl.time() * 1000;
-        if (location.hash !== "#/aventures/canoe") (window.__ended = performance.now()), clearInterval(watch);
-      }, 10);
-    })()`);
-    await page.waitFor(built, ms + 4000);
-    const seen = await page.eval(posterBoxes);
-    if (seen.title !== TITLE) throw new Error(`${where} : titre « ${seen.title} »`);
-    if (seen.line !== LINE) throw new Error(`${where} : ligne « ${seen.line} »`);
-    inside(seen, where);
-    // the sound button's corner (the screen's top right 56 px): the title stays out of it
-    const corner = seen.boxes.filter((b) => b.what === ".af-title .af-letter" && b.right > seen.screen.width - 56 && b.top < 56);
-    if (corner.length) throw new Error(`${where} : le titre sous le bouton du son ${JSON.stringify(corner.map(round))}`);
-    await page.waitFor(atPassport, 5000);
-    const { played, ended } = await page.eval(`({ played: window.__played, ended: window.__ended })`);
-    if (played === null || ended === null || ended - played < ms - 300) throw new Error(`${where} : jouée ${Math.round(ended - played)} ms pour ${ms}`);
-  }
+  const poster = (where) => playedThrough(page, { url: CANOE, id: "canoe", span: LENGTH, title: TITLE, line: LINE }, where);
 
   /** The map in two steps, held at given moments. On the regional map: the C3 alone and in sight, the three names of
    *  the data written, none cut by the screen's edge, all of them in the screen at the start, Bergerac never under the
@@ -402,120 +350,23 @@ async function suite(page, vp) {
     });
 
     await check(`un sticker de scène bloqué (${SCENE}) : il passe sur son remplaçant assets/cyrielle/joy.webp, et l'intro se termine ; aucune autre erreur que celle du fichier bloqué`, async () => {
-      const before = page.errors.length;
-      await page.block([`*/${SCENE}.webp`]);
-      try {
-        await page.goto(CANOE);
-        // the blocked sticker's look, before and after it goes to its stand-in (the other scenes of the two of them share it)
-        const looks = `[...document.querySelectorAll(".st-actor__img")].filter((img) => img.dataset.fallback === "assets/cyrielle/joy.webp" && (img.dataset.fell || img.src.endsWith("/${SCENE}.webp")))`;
-        await page.waitFor(`${loaded} && ${looks}.length > 0 && ${looks}.every((img) => img.naturalWidth > 0)`, 8000);
-        const now = await page.eval(`${looks}.map((img) => new URL(img.src).pathname)`);
-        if (!now.length || now.some((src) => src !== "/assets/cyrielle/joy.webp")) throw new Error(`le canoë devant la falaise : ${JSON.stringify(now)}`);
-        await page.waitFor(atPassport, Number(await page.eval(length)) + 5000);
-      } finally {
-        await page.block([]);
-      }
-      const errors = page.errors.slice(before);
-      if (errors.some((e) => !e.includes(`${SCENE.split("/")[1]}.webp`))) throw new Error(`erreurs : ${JSON.stringify(errors)}`);
+      await blockedScene(page, { url: CANOE, scene: SCENE, what: "le canoë devant la falaise" });
     }, { allowErrors: true });
 
     await check("point 1 : le passeport posé, le Premier bivouac tamponné (le canoë à vivre) : le fichier intros/canoe.js est déjà demandé, une fois le livre arrivé, et ses stickers aussi ; une fois qu'ils sont arrivés, le toucher sur le Premier canoë ne redemande pas le fichier et ne retélécharge aucun sticker", async () => {
-      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(BIVOUAC_STAMPED))}#/aventures`);
-      await page.waitFor(`window.__landedAt`, 8000);
-      await page.waitFor(`${scenarioAsked}.length === 1`, 3000).catch(async () => {
-        throw new Error(`demandé ${await page.eval(`${scenarioAsked}.length`)} fois, le passeport posé`);
-      });
-      const after = await page.eval(`${scenarioAsked}[0].startTime - window.__landedAt`);
-      if (after < -20) throw new Error(`demandé ${Math.round(-after)} ms avant que le livre soit posé`); // a frame's leeway
-      await page.waitFor(`${settled(1)} && document.querySelector('.pp-slot[data-id="canoe"][data-status="open"]')`, 8000);
-      // its stickers too: all asked once the book landed, before any touch, each once (an entry is added once its
-      // response has ended); then the touch downloads none again (the passport holds them, then its intro until its own
-      // are there: screen.js, warm(); intro.js, held)
-      const paths = JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`));
-      const mine = `performance.getEntriesByType("resource").filter((e) => ${paths}.includes(new URL(e.name).pathname))`;
-      await page.waitFor(`${stickers.length} > 0 && ${paths}.every((p) => ${mine}.some((e) => new URL(e.name).pathname === p && e.responseEnd > 0))`, 8000).catch(async () => {
-        throw new Error(`stickers arrivés avant le toucher : ${await page.eval(`${mine}.filter((e) => e.responseEnd > 0).length`)} sur ${stickers.length}`);
-      });
-      const early = await page.eval(`${mine}.length`);
-      await page.tap('.pp-slot[data-id="canoe"]');
-      await page.waitFor(loaded, 8000);
-      const asked = await page.eval(`${scenarioAsked}.length`);
-      const late = await page.eval(`${mine}.slice(${early}).map((e) => e.transferSize)`); // an entry per image, but from the cache
-      await page.goto("about:blank");
-      if (asked !== 1) throw new Error(`redemandé au toucher : ${asked} demandes`);
-      if (early !== stickers.length) throw new Error(`stickers demandés avant le toucher : ${early} demandes pour ${stickers.length}`);
-      if (late.some((size) => size > 0)) throw new Error(`stickers retéléchargés au toucher : ${late.filter((size) => size > 0).length}`);
+      await warmedOnPassport(page, { base: BASE, id: "canoe", save: BIVOUAC_STAMPED, book: 1, stickers });
     });
 
     await check("la première fois (Premier bivouac tamponné, le canoë à vivre, hors démo) : un toucher au milieu ne passe pas l'intro ; puis le retour du navigateur vers 10 s : le passeport, sans erreur, aucune scène restée, et le canoë n'est pas marqué vu", async () => {
-      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(BIVOUAC_STAMPED))}#/aventures`);
-      await page.waitFor(`${settled(1)} && document.querySelector('.pp-slot[data-id="canoe"][data-status="open"]')`, 8000);
-      await page.tap('.pp-slot[data-id="canoe"]');
-      await page.waitFor(`location.hash === "#/aventures/canoe" && ${playing}`, 8000);
-      if ((await page.eval(`document.querySelector(".screen-intro").dataset.skippable`)) !== "false") throw new Error("passable la première fois");
-      await page.waitFor(`${timeline}.time() > 6`, 9000);
-      const touched = await page.eval(`${timeline}.time()`);
-      await page.tap(".screen-intro");
-      // still there and playing on, a second of its timeline later (by its own clock: a slow frame only delays it)
-      await page.waitFor(`location.hash !== "#/aventures/canoe" || ${timeline}?.time() > ${touched + 1}`, 6000).catch(() => {});
-      const later = await page.eval(`({ hash: location.hash, intro: Boolean(document.querySelector(".screen-intro .st-stage")), t: ${timeline}?.time(), paused: ${timeline}?.paused() })`);
-      if (later.hash !== "#/aventures/canoe" || !later.intro || later.paused || !(later.t > touched + 1)) throw new Error(`après le toucher à ${touched.toFixed(2)} s : ${JSON.stringify(later)}`);
-      await page.waitFor(`${timeline}.time() > 10`, 10000);
-      await page.eval(`history.back()`);
-      await page.waitFor(atPassport, 4000);
-      await sleep(1500); // what the intro would have left behind
-      const now = await page.eval(`({ hash: location.hash, stages: document.querySelectorAll(".st-stage").length, intro: Boolean(document.querySelector(".screen-intro")),
-        slot: document.querySelector('.pp-slot[data-id="canoe"]')?.dataset.status, save: JSON.parse(localStorage.getItem("${KEY}")) })`);
-      if (now.hash !== "#/aventures" || now.stages || now.intro || now.slot !== "open") throw new Error(JSON.stringify({ ...now, save: undefined }));
-      if (now.save?.pending?.includes("canoe") || now.save?.stamped?.includes("canoe")) throw new Error(`enregistré : ${JSON.stringify(now.save)}`);
-      await page.goto("about:blank");
+      await firstTime(page, { base: BASE, id: "canoe", save: BIVOUAC_STAMPED, book: 1 });
     });
 
     await check(`point 4 : sur le passeport, entrer dans l'intro du canoë et en sortir trois fois de suite par le retour du navigateur, à ?demo&t= ${EXITS.join(", ")} (la dernière dans la nuit de ${NIGHT}, les grillons) : gsap.globalTimeline.getChildren() revient à son compte de départ et aucune .st-stage ne reste`, async () => {
-      await page.goto(`${BASE}?demo&t=${EXITS[0]}#/aventures`);
-      const still = `${atPassport} && !document.querySelector(".screen-intro") && document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
-      const count = `gsap.globalTimeline.getChildren().length`;
-      /** The count of GSAP's children once the passport is still: only its own endless loops left (no screen fading, no
-       *  timeline still going: a timeline left behind keeps this false). */
-      const steady = async () => {
-        await page.waitFor(still, 8000);
-        await page.waitFor(`gsap.globalTimeline.getChildren().every((child) => child.repeat() === -1)`, 8000);
-        return page.eval(count);
-      };
-      const before = await steady();
-      const night = beat[NIGHT];
-      for (const t of EXITS) {
-        await page.eval(`history.replaceState(null, "", "?demo&t=${t}#/aventures")`); // where the next one starts
-        await page.eval(`location.hash = "#/aventures/canoe"`);
-        await page.waitFor(`${playing} && ${timeline}.time() >= ${t}`, 8000);
-        await sleep(700);
-        // the last one in the night: its scene on show, its crickets heard by now
-        const now = await page.eval(`({ t: ${timeline}.time(), night: [...document.querySelectorAll('.st-layer[data-layer^="roque-"]')].some(${SHOWS}) })`);
-        if (t === EXITS.at(-1) && !(now.t > night.at && now.t < beat["L'affiche"].at && now.night)) throw new Error(`à ${now.t.toFixed(2)} s, pas dans la nuit de ${NIGHT} ${JSON.stringify(now)}`);
-        await page.eval(`history.back()`);
-        await page.waitFor(still, 8000);
-      }
-      const after = await steady();
-      const stages = await page.eval(`document.querySelectorAll(".st-stage").length`);
-      if (after !== before || stages) throw new Error(`compte ${before} au départ, ${after} après ; ${stages} .st-stage`);
+      await inAndOut(page, { base: BASE, id: "canoe", exits: EXITS, last: { prefix: "roque-", from: beat[NIGHT].at, to: beat["L'affiche"].at, where: `dans la nuit de ${NIGHT}` } });
     });
 
     await check("?demo (tamponné) : « Passer ▸ » au début de « La descente » la termine, sa timeline s'arrête au toucher, et ramène au passeport", async () => {
-      const { at } = beatsOf("canoe")["La descente"];
-      await page.goto(`${BASE}?demo&t=${at}#/aventures/canoe`);
-      await page.waitFor(`${playing} && ${skipIs("shown")}`, 8000);
-      await page.eval(`(() => {
-        const tl = ${timeline};
-        document.addEventListener("click", () => {
-          window.__skipped = { paused: tl.paused(), t: tl.time() };
-          setTimeout(() => (window.__later = tl.time()), 250);
-        }, { once: true });
-      })()`);
-      await page.tap(".intro-skip");
-      await page.waitFor(`window.__later !== undefined`, 2000);
-      const now = await page.eval(`({ ...window.__skipped, later: window.__later })`);
-      if (!now.paused || now.later !== now.t) throw new Error(`la timeline continue après le toucher : ${JSON.stringify(now)}`);
-      await page.waitFor(atPassport, 3000);
+      await skipped(page, { base: BASE, id: "canoe", at: beat["La descente"].at });
     });
   }
 }

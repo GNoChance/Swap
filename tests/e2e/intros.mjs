@@ -9,7 +9,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
-import { AHEAD, atPassport, beatsOf, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
+import { AHEAD, atPassport, beatsOf, built, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, posterBoxes, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
 import { stickers } from "../../js/aventures/intros/bivouac-1.stickers.js";
 
@@ -41,21 +41,6 @@ const scenarioAsked = `performance.getEntriesByType("resource").filter((e) => ne
 // has ended). A hold set after it makes the intro fetch them again, held (page.hold turns the cache off); set while
 // they are still on their way, the intro's images would come with them, unheld
 const warmedUp = `${JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`))}.every((p) => performance.getEntriesByType("resource").some((e) => new URL(e.name).pathname === p))`;
-// the poster in place: its line and every letter of its title fully shown
-const built = `(() => {
-  const parts = [...document.querySelectorAll(".af-title .af-letter, .af-line")];
-  return parts.length > 1 && parts.every((el) => getComputedStyle(el).opacity === "1");
-})()`;
-// the boxes (px) of the poster's frame, title and line, and of each letter, with the screen's size
-const posterBoxes = `(() => {
-  const box = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-  return {
-    screen: { width: innerWidth, height: innerHeight },
-    title: document.querySelector(".af-title")?.textContent,
-    line: document.querySelector(".af-line")?.textContent,
-    boxes: [".af-frame", ".af-title", ".af-line", ".af-title .af-letter"].flatMap((s) => [...document.querySelectorAll(s)].map((el) => ({ what: s, ...box(el) }))),
-  };
-})()`;
 
 async function suite(page, vp) {
   const check = checker(page);
