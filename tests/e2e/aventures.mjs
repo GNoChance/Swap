@@ -1049,7 +1049,7 @@ async function suite(page, vp) {
   });
 
   // the outing after a stamp, on its provisional intro: Marquèze (the canoe and the Île de Ré have their own scenarios,
-  // of 31 s)
+  // of about 31 and 33.6 s)
   await check("?demo&tampon=ile-de-re : après le tampon, toucher Marquèze ouvre son intro, une seule entrée d'historique de plus ; à sa fin, le tampon encreur attend sur Marquèze ; rien n'est enregistré", async () => {
     await page.goto(`${BASE}?demo&tampon=ile-de-re#/aventures`);
     const kept = await page.eval(`localStorage.getItem("${KEY}")`);
@@ -1057,7 +1057,7 @@ async function suite(page, vp) {
     await toolOn("ile-de-re");
     await page.tap(".pp-tool");
     const lit = `document.querySelector('${slot("marqueze")}[data-status="open"] .slot-body')`;
-    // the Île de Ré stamped, the book turned to Marquèze's page and still
+    // the Île de Ré stamped, the book open on its page, Marquèze's too (no turn), and still
     await page.waitFor(`${stampOn("ile-de-re")} && ${lit} && !gsap.isTweening(${lit}) && ${opened} && ${onPage(its)} && !${book}.classList.contains("is-turning")`, 6000);
     // the entries the page writes from now on (history.length stops at 50, which a long run reaches)
     await page.eval(`window.__entries = { push: 0, replace: 0 };

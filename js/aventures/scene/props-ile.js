@@ -16,7 +16,7 @@ import { panneau } from "./props-riviere.js";
 
 const L = -605; // a 1600-wide layer's edges
 const R = 995;
-/** The lighthouse's foot (the middle of its plinth on the ground), and the stage units it spans. */
+/** The lighthouse's foot: the middle of its plinth on the ground (stage units). */
 export const PHARE = { x: 282, y: 604 };
 
 // ── The crossing: the island going by ───────────────────────

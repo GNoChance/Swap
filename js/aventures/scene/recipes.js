@@ -173,22 +173,29 @@ export function along({ actor, from, to, line }) {
 }
 
 /** `target` from `start` (GSAP vars) to `end` and back, over and over from `from` to `to` s, about `half` s each way (a
- *  whole count of times: as it was at the end); with `ease` each way out (its way back the same, reversed). */
+ *  whole count of times: as it was at the end); with `ease` each way out (its way back the same, reversed). → `to` */
 export function throb(tl, target, [from, to], half, start, end, ease = "sine.inOut") {
   const times = Math.max(1, Math.round((to - from) / (2 * half)));
   tl.fromTo(target, start, { ...end, duration: (to - from) / (2 * times), ease, yoyo: true, repeat: 2 * times - 1, immediateRender: false }, from);
+  return to;
 }
+
+const FLAP = 0.13; // s a gull's wings take down or up
 
 /** The gulls ({ el, glide }) from `at` s for `duration` s (5 s at least): each gliding `glide` units and bobbing three
  *  times, flapping in three flurries of three flaps each, out of step (an even count of halves: the wings up again after
- *  each). */
+ *  each). → when they are done (s): their glide's end, or a later flurry's */
 export function fly(tl, gulls, at, duration) {
+  let end = at + duration;
   gulls.forEach(({ el, glide }, k) => {
     tl.fromTo(el, { x: 0 }, { x: glide, duration, ease: "none", immediateRender: false }, at);
     throb(tl, el, [at, at + duration], duration / 6, { y: 0 }, { y: -7 });
-    for (const t of [at + 0.2 + k * 0.23, at + 1.9 + k * 0.31, at + 3.6 + k * 0.15])
-      tl.fromTo(el, { scaleY: 1 }, { scaleY: -0.45, duration: 0.13, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, t);
+    for (const t of [at + 0.2 + k * 0.23, at + 1.9 + k * 0.31, at + 3.6 + k * 0.15]) {
+      tl.fromTo(el, { scaleY: 1 }, { scaleY: -0.45, duration: FLAP, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, t);
+      end = Math.max(end, t + 6 * FLAP);
+    }
   });
+  return end;
 }
 
 /** The pin of an arrival at `point` ({ x, y }, stage units), in `layer` over what it holds, hidden until it plops:

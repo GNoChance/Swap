@@ -5,8 +5,8 @@
 // (massive, its corner turret, its stair turret over its parapet) and the Tour de la Chaîne (round, its little turret
 // and its pepper-pot roof), on their battered plinths in the water; the basin, calm, their pale reflections on it; the
 // sailboats moored in it, their sails furled under their covers, their masts up; the quay in front, its limestone
-// paving, its bollards and its rings. Paper only, its layers 1600 units wide (x −605 to 995). Pure: markup only, the
-// same for the same arguments.
+// paving and its bollards. Paper only, its layers 1600 units wide (x −605 to 995). Pure: markup only, the same for the
+// same arguments.
 import { cutPiece } from "./decor.js";
 import { blob, dot, edgeAt, lens, mirror, n, path, poly, random } from "./geom.js";
 import { piece, sheetOf, slab } from "./props.js";
