@@ -445,7 +445,7 @@ async function suite(page, vp) {
       if (late) throw new Error(`un ramasse-miettes à l'arrivée de l'intro : ${late} stickers retéléchargés`);
       await gone("l'intro qui joue");
       await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(WELCOMED))}#/aventures`);
-      await page.waitFor(`${settled(1)} && ${all("__ahead")}`, 8000);
+      await page.waitFor(`${settled(1)} && ${all("__ahead")} && ${warmedUp}`, 8000);
       await page.tap(".world-back");
       await page.waitFor(`document.querySelector(".screen-hub") && !document.querySelector(".screen-passport")`, 6000);
       await gone("le passeport quitté pour le hub");
