@@ -33,8 +33,8 @@ const CLOUDS = [
 ];
 
 /** A summer cloud `w` wide, its top left corner at x, y: puffed white paper, a blue-grey belly (the poster: cream); on
- *  paper, `tones` ({ body, belly }) for another light. */
-function cloud(x, y, w, skin, tones = { body: "#fffdf8", belly: "#dde9f2" }) {
+ *  paper, `tones` ({ body, belly }) for another light (the coast's sky too: props-cote.js). */
+export function cloud(x, y, w, skin, tones = { body: "#fffdf8", belly: "#dde9f2" }) {
   const k = w / 100;
   const at = ([px, py]) => [x + px * k, y + py * k];
   const body = blob([[6, 34], [0, 26], [10, 18], [26, 14], [36, 4], [56, 6], [66, 14], [84, 12], [96, 22], [92, 34]].map(at));

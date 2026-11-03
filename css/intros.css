@@ -444,6 +444,21 @@
   overflow: visible;
 }
 
+/* ── The coast road home (ile-de-re.js): the sun's rays turning round its middle, the little waves lapping on the sand;
+   GSAP turns and moves them, each drawn apart ── */
+.st-soleil,
+.st-vaguelettes {
+  position: absolute;
+  display: block;
+  will-change: transform;
+}
+
+.st-soleil svg,
+.st-vaguelettes svg {
+  display: block;
+  overflow: visible;
+}
+
 /* ── The bikes (recipes-velo.js): the speed lines behind the two of them riding right, by their sticker's left edge;
    GSAP slides and fades them ── */
 .st-traits {
@@ -543,6 +558,12 @@
    sky, warmest along the horizon and the deck, fainter on the water below */
 .st-veil--soir {
   background: linear-gradient(to bottom, rgba(255, 184, 104, 0), rgba(255, 184, 104, 0) 380px, rgba(255, 180, 102, 0.16) 452px, rgba(255, 174, 98, 0.24) 505px, rgba(250, 168, 98, 0.12) 590px, rgba(246, 162, 98, 0.06));
+}
+
+/* the haze of the morning over La Rochelle's Vieux-Port (ile-de-re.js), pale and cool: clear over the sky, thickest
+   along the water at the towers' feet, thinning over the boats, clear over the quay; it lifts as they walk */
+.st-veil--matin {
+  background: linear-gradient(to bottom, rgba(250, 252, 255, 0), rgba(250, 252, 255, 0.04) 330px, rgba(246, 250, 252, 0.34) 476px, rgba(240, 247, 250, 0.24) 540px, rgba(236, 244, 248, 0.05) 620px, rgba(236, 244, 248, 0));
 }
 
 .st-veil--nuit {

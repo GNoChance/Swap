@@ -1,7 +1,8 @@
 // The intros' recipes (spec § 4): reusable pieces of timeline, each → the moment it ends (s): the trip on a paper map
 // and its relay on a map of its own after the camera's dive (the canoe's spec, § 4), the vehicle arriving with its
 // people, the walk up a path, and the closing poster (spec § 5, moments 1, 2, 3 and 7). Both maps drive their vehicle
-// along the same road (roadOf); an actor follows a line of the decor, a bridge's deck, by along().
+// along the same road (roadOf); an actor follows a line of the decor, a bridge's deck, by along(); a piece goes to and
+// fro on and on by throb(), and gulls fly by fly().
 import { sfx } from "../../audio.js";
 import { h } from "../../dom.js";
 import { posterize, sheet } from "./decor.js";
@@ -169,6 +170,25 @@ export function along({ actor, from, to, line }) {
       tilt(slope(line, x));
     }),
   };
+}
+
+/** `target` from `start` (GSAP vars) to `end` and back, over and over from `from` to `to` s, about `half` s each way (a
+ *  whole count of times: as it was at the end); with `ease` each way out (its way back the same, reversed). */
+export function throb(tl, target, [from, to], half, start, end, ease = "sine.inOut") {
+  const times = Math.max(1, Math.round((to - from) / (2 * half)));
+  tl.fromTo(target, start, { ...end, duration: (to - from) / (2 * times), ease, yoyo: true, repeat: 2 * times - 1, immediateRender: false }, from);
+}
+
+/** The gulls ({ el, glide }) from `at` s for `duration` s (5 s at least): each gliding `glide` units and bobbing three
+ *  times, flapping in three flurries of three flaps each, out of step (an even count of halves: the wings up again after
+ *  each). */
+export function fly(tl, gulls, at, duration) {
+  gulls.forEach(({ el, glide }, k) => {
+    tl.fromTo(el, { x: 0 }, { x: glide, duration, ease: "none", immediateRender: false }, at);
+    throb(tl, el, [at, at + duration], duration / 6, { y: 0 }, { y: -7 });
+    for (const t of [at + 0.2 + k * 0.23, at + 1.9 + k * 0.31, at + 3.6 + k * 0.15])
+      tl.fromTo(el, { scaleY: 1 }, { scaleY: -0.45, duration: 0.13, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, t);
+  });
 }
 
 /** The pin of an arrival at `point` ({ x, y }, stage units), in `layer` over what it holds, hidden until it plops:

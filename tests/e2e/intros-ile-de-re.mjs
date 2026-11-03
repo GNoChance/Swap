@@ -4,14 +4,15 @@
 // two of them on their bikes at the bridge's foot, crossing it as the camera follows them, then across the island as
 // the decor glides by (one view at a time, the speed lines with the flat-out views only, no C3, the km signs whole, the
 // phone turned meanwhile), the lighthouse whole over the two of them, the way back over a bridge that never ends (no
-// bank in sight, its piers going by, the snail overtaking them, one view at a time), who shows in its moments, its
-// decor over a wide screen, the stickers it loads and a scene sticker's stand-in, its scenario warmed on the passport, a
-// touch the first time, « Passer ▸ » in the demo, the browser's back. Needs the site running
-// (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen;
-// SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the
-// bridge at 5, 6, 7, 8 and 9.2 s, of the island at 9.6, 10.5, 12, 13.5 and 14.8 s, of the way back at 21, 22.5, 24 and
-// 25.3 s and of the finished poster). Stops at the first failure (exit code 1). A check also fails if the page logged
-// an error.
+// bank in sight, its piers going by, the snail overtaking them, one view at a time), La Rochelle (the two of them
+// turning round like cards), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene
+// sticker's stand-in, its scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the
+// browser's back, in and out three times. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
+// `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of
+// each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s, of the island at
+// 9.6, 10.5, 12, 13.5 and 14.8 s, of the way back at 21, 22.5, 24 and 25.3 s, of La Rochelle at 26, 27.5 and 28.8 s,
+// of the coast at 29.5 and 30.8 s and of the finished poster). Stops at the first failure (exit code 1). A check also
+// fails if the page logged an error.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
@@ -47,8 +48,25 @@ const SCENE = "ile-de-re/scene-cycy-et-kevin-a-velo-01"; // the two of them side
 const beat = SCENARIOS[ID] ? beatsOf(ID) : {};
 // who shows in the middle of a moment (spec § 2), entirely on screen: the two of them on their bikes in a scene sticker
 // (« duo ») at the bridge's foot, over the bridge, across the island, at the lighthouse (arms in the air, then their ice
-// creams), on the way back, and on the poster; La Rochelle and the coast come with their own scenes (task 6)
-const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "La traversée": ["duo"], "Le phare": ["duo"], "La glace": ["duo"], "Le retour": ["duo"], "L'affiche": ["duo"] };
+// creams), on the way back, and on the poster; Cycy and Kevin each on their own at La Rochelle; the C3 alone on the
+// coast
+const CAST = {
+  "En selle": ["duo"],
+  "Le pont": ["duo"],
+  "La traversée": ["duo"],
+  "Le phare": ["duo"],
+  "La glace": ["duo"],
+  "Le retour": ["duo"],
+  "La Rochelle": ["cycy", "kevin"],
+  "La côte": ["c3"],
+  "L'affiche": ["duo"],
+};
+// s: at La Rochelle, the two of them turning round like cards (Cycy, then Kevin a little later): both their turn boxes
+// squeezed (scaleX under `squeezed`) in the middle of it, whole (±1) at its end
+const TURN = { mid: 27.8, end: 28.5, squeezed: 0.6 };
+const HARBOUR = [26.5, 28.5]; // s: La Rochelle over a wide screen (point 5), as its decor closes in, then once they have turned
+// s: in and out of the intro three times from the passport (Review Focus 4), the last at La Rochelle
+const EXITS = [5, 15, 27];
 // the moments at the lighthouse: in their middles, the lighthouse whole on screen, its top over their heads and its
 // upper share `clear` out of their sticker's box
 const LIGHTHOUSE = { moments: ["Le phare", "La glace"], clear: 0.25 };
@@ -371,8 +389,8 @@ async function suite(page, vp) {
   });
 
   if (vp.width === 1920)
-    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), puis au retour, à ?t= ${BACK_WIDE.map(fr).join(", ")} (le pont défile), chaque couche visible couvre toute la largeur de l'écran`, async () => {
-      for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING], ["retour-", BACK_WIDE]])
+    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), puis au retour, à ?t= ${BACK_WIDE.map(fr).join(", ")} (le pont défile), puis à La Rochelle, à ?t= ${HARBOUR.map(fr).join(", ")}, chaque couche visible couvre toute la largeur de l'écran`, async () => {
+      for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING], ["retour-", BACK_WIDE], ["rochelle-", HARBOUR]])
         for (const t of times) {
           const layers = await heldAt(t, layersSeen);
           if (!layers.some((l) => l.name.startsWith(scene))) throw new Error(`à ${t} s : aucune couche « ${scene}* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
@@ -435,7 +453,9 @@ async function suite(page, vp) {
     const bridge = [5, 6, 7, 8, 9.2].map((t) => [t, `00-pont-${String(t).replace(".", "-")}s`]);
     const island = [9.6, 10.5, 12, 13.5, 14.8].map((t) => [t, `00-traversee-${String(t).replace(".", "-")}s`]);
     const back = [21, 22.5, 24, 25.3].map((t) => [t, `00-retour-${String(t).replace(".", "-")}s`]);
-    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, ...island, ...back, [33, "11-affiche-33s"]];
+    const harbour = [26, 27.5, 28.8].map((t) => [t, `00-rochelle-${String(t).replace(".", "-")}s`]);
+    const coast = [29.5, 30.8].map((t) => [t, `00-cote-${String(t).replace(".", "-")}s`]);
+    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, ...island, ...back, ...harbour, ...coast, [33, "11-affiche-33s"]];
     for (const [width, height] of vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]]) {
       await page.resize(width, height);
       try {
@@ -516,6 +536,13 @@ async function suite(page, vp) {
       });
     });
 
+    await check(`La Rochelle : vous vous retournez comme des cartes (à ${fr(TURN.mid)} s, au milieu du retournement, les boîtes .st-actor__turn de Cycy et de Kevin écrasées, un scaleX sous ${fr(TURN.squeezed)} ; à ${fr(TURN.end)} s, entières, ±1)`, async () => {
+      const scales = `["cycy", "kevin"].map((who) => { const el = document.querySelector('.st-actor[data-who="' + who + '"] .st-actor__turn'); return el ? +gsap.getProperty(el, "scaleX") : null; })`;
+      const mid = await heldAt(TURN.mid, scales);
+      const end = await heldAt(TURN.end, scales);
+      if (!mid.every((s) => s !== null && Math.abs(s) < TURN.squeezed) || !end.every((s) => s !== null && Math.abs(Math.abs(s) - 1) <= 0.01)) throw new Error(`scaleX (Cycy, Kevin) au milieu ${JSON.stringify(mid)}, à la fin ${JSON.stringify(end)}`);
+    });
+
     await check(`les stickers demandés sous /assets/aventures/ : exactement ceux de ${ID}.stickers.js (${stickers.length}), aucun d'une autre sortie`, async () => {
       await page.goto(ILE);
       await page.waitFor(loaded, 8000);
@@ -591,6 +618,34 @@ async function suite(page, vp) {
       if (now.hash !== "#/aventures" || now.stages || now.intro || now.slot !== "open") throw new Error(JSON.stringify({ ...now, save: undefined }));
       if (now.save?.pending?.includes(ID) || now.save?.stamped?.includes(ID)) throw new Error(`enregistré : ${JSON.stringify(now.save)}`);
       await page.goto("about:blank");
+    });
+
+    await check(`point 4 : sur le passeport, entrer dans l'intro de l'Île de Ré et en sortir trois fois de suite par le retour du navigateur, à ?demo&t= ${EXITS.join(", ")} (la dernière à La Rochelle) : gsap.globalTimeline.getChildren() revient à son compte de départ et aucune .st-stage ne reste`, async () => {
+      await page.goto(`${BASE}?demo&t=${EXITS[0]}#/aventures`);
+      const still = `${atPassport} && !document.querySelector(".screen-intro") && document.querySelector('.pp:not(.is-arriving) .pp-book[data-open="true"]') && !gsap.isTweening(document.querySelector(".screen-passport"))`;
+      const count = `gsap.globalTimeline.getChildren().length`;
+      /** The count of GSAP's children once the passport is still: only its own endless loops left (no screen fading, no
+       *  timeline still going: a timeline left behind keeps this false). */
+      const steady = async () => {
+        await page.waitFor(still, 8000);
+        await page.waitFor(`gsap.globalTimeline.getChildren().every((child) => child.repeat() === -1)`, 8000);
+        return page.eval(count);
+      };
+      const before = await steady();
+      for (const t of EXITS) {
+        await page.eval(`history.replaceState(null, "", "?demo&t=${t}#/aventures")`); // where the next one starts
+        await page.eval(`location.hash = "#/aventures/${ID}"`);
+        await page.waitFor(`${playing} && ${timeline}.time() >= ${t}`, 8000);
+        await sleep(700);
+        // the last one at La Rochelle: its scene on show
+        const now = await page.eval(`({ t: ${timeline}.time(), harbour: [...document.querySelectorAll('.st-layer[data-layer^="rochelle-"]')].some(${SHOWS}) })`);
+        if (t === EXITS.at(-1) && !(now.t > beat["La Rochelle"].at && now.t < beat["La côte"].at && now.harbour)) throw new Error(`à ${now.t.toFixed(2)} s, pas à La Rochelle ${JSON.stringify(now)}`);
+        await page.eval(`history.back()`);
+        await page.waitFor(still, 8000);
+      }
+      const after = await steady();
+      const stages = await page.eval(`document.querySelectorAll(".st-stage").length`);
+      if (after !== before || stages) throw new Error(`compte ${before} au départ, ${after} après ; ${stages} .st-stage`);
     });
 
     await check(`?demo (tamponné) : « Passer ▸ » au début du pont la termine, sa timeline s'arrête au toucher, et ramène au passeport`, async () => {
