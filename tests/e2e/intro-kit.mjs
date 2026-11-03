@@ -41,6 +41,31 @@ export const LANDING = `new MutationObserver((_, watch) => {
   window.__landedAt = performance.now();
   watch.disconnect();
 }).observe(document, { subtree: true, attributes: true, attributeFilter: ["class", "data-open"] });`;
+// the stickers loaded ahead of an intro (a new Image() of one, js/aventures/screen.js, warm()), watched: __ahead, their
+// paths; __collected, those the garbage collector has taken since. Once __gcAtIntro is set, a garbage collection (gc():
+// cdp.mjs gives it) as an intro's screen comes in: past the passport's leave(), before the intro's mount() (main.js, show())
+export const AHEAD = `{
+  window.__ahead = [];
+  window.__collected = [];
+  const gone = new FinalizationRegistry((path) => window.__collected.push(path));
+  window.Image = new Proxy(window.Image, {
+    construct(target, args) {
+      const img = Reflect.construct(target, args);
+      queueMicrotask(() => {
+        const path = new URL(img.src, location.href).pathname;
+        if (!path.startsWith("/assets/aventures/") || !path.endsWith(".webp")) return;
+        window.__ahead.push(path);
+        gone.register(img, path);
+      });
+      return img;
+    },
+  });
+  const append = Element.prototype.append;
+  Element.prototype.append = function (...nodes) {
+    if (window.__gcAtIntro && this.id === "app" && nodes[0]?.classList?.contains("screen-intro")) gc();
+    return append.apply(this, nodes);
+  };
+}`;
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const length = `Number(document.querySelector(".screen-intro")?.dataset.length)`; // ms, as the intro says

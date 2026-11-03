@@ -551,7 +551,8 @@ async function suite(page, vp) {
       if (after < -20) throw new Error(`demandé ${Math.round(-after)} ms avant que le livre soit posé`); // a frame's leeway
       await page.waitFor(`${settled(pageOf(AVENTURES, ID))} && document.querySelector('.pp-slot[data-id="${ID}"][data-status="open"]')`, 8000);
       // its stickers: all asked once the book landed, before any touch, each once (an entry is added once its
-      // response has ended); then the touch downloads none again (the passport holds them: screen.js, warm())
+      // response has ended); then the touch downloads none again (the passport holds them, then its intro until its own
+      // are there: screen.js, warm(); intro.js, held)
       const paths = JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`));
       const mine = `performance.getEntriesByType("resource").filter((e) => ${paths}.includes(new URL(e.name).pathname))`;
       await page.waitFor(`${stickers.length} > 0 && ${paths}.every((p) => ${mine}.some((e) => new URL(e.name).pathname === p && e.responseEnd > 0))`, 8000).catch(async () => {

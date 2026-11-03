@@ -30,6 +30,7 @@ export async function launch({ width = 393, height = 852, mobile = true } = {}) 
     "--use-angle=swiftshader", // WebGL without a GPU, for the 3D gallery
     "--enable-unsafe-swiftshader",
     "--autoplay-policy=no-user-gesture-required",
+    "--js-flags=--expose-gc", // gc() in the page: a check can collect garbage at an exact moment (intro-kit.mjs, AHEAD)
     "about:blank",
   ]);
   const wsUrl = await new Promise((resolve, reject) => {

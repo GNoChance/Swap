@@ -1,14 +1,15 @@
 // End-to-end checks of the outings' own intros (js/aventures/intros/), in headless Chrome, on two phones (the first one
 // also turned sideways) and two PCs: the Premier bivouac's length, its map and each of its moments with their actors on
 // screen, the phone turned while it plays, the stickers it loads (and their stand-ins), its closing poster and its
-// framing, its scenario file missing, leaving at once, entering and leaving three times, ?demo&t=. Needs the site
+// framing, its scenario file missing, leaving at once, entering and leaving three times, ?demo&t=, the stickers the
+// passport loads ahead held by the intro until its own are there, then let go. Needs the site
 // running (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen). Stops
 // at the first failure (exit code 1). A check also fails if the page logged an error.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
-import { atPassport, beatsOf, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
+import { AHEAD, atPassport, beatsOf, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
 import { stickers } from "../../js/aventures/intros/bivouac-1.stickers.js";
 
@@ -423,6 +424,33 @@ async function suite(page, vp) {
       await page.goto("about:blank");
       if (asked !== 1) throw new Error(`redemandé au toucher : ${asked} demandes`);
     });
+
+    await check("les stickers du Premier bivouac chargés d'avance par le passeport (Premier bivouac à vivre) : son intro les garde jusqu'à ce que les siens soient là (un ramasse-miettes à son arrivée, le passeport déjà quitté : aucun retéléchargé), puis les lâche (un ramasse-miettes une fois qu'elle joue : tous ramassés) ; quitté pour le hub, le passeport les lâche aussi", async () => {
+      const paths = JSON.stringify(stickers.map((p) => `/assets/aventures/${p}.webp`));
+      const mine = `performance.getEntriesByType("resource").filter((e) => ${paths}.includes(new URL(e.name).pathname))`;
+      const all = (list) => `${paths}.every((p) => ${list}.includes(p))`;
+      const gone = async (where) => {
+        await page.eval(`gc()`);
+        await page.waitFor(all("__collected"), 3000).catch(async () => {
+          throw new Error(`${where}, après un ramasse-miettes : ${await page.eval(`${paths}.filter((p) => __collected.includes(p)).length`)} ramassés sur ${stickers.length}`);
+        });
+      };
+      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(WELCOMED))}#/aventures`);
+      await page.waitFor(`${settled(1)} && document.querySelector('.pp-slot[data-id="bivouac-1"][data-status="open"]') && ${all("__ahead")} && ${warmedUp}`, 8000);
+      const early = await page.eval(`${mine}.length`);
+      await page.eval(`window.__gcAtIntro = true`);
+      await page.tap('.pp-slot[data-id="bivouac-1"]');
+      await page.waitFor(playing, 8000);
+      const late = await page.eval(`${mine}.slice(${early}).filter((e) => e.transferSize > 0).length`);
+      if (late) throw new Error(`un ramasse-miettes à l'arrivée de l'intro : ${late} stickers retéléchargés`);
+      await gone("l'intro qui joue");
+      await page.goto(`${BASE}?graine=${encodeURIComponent(JSON.stringify(WELCOMED))}#/aventures`);
+      await page.waitFor(`${settled(1)} && ${all("__ahead")}`, 8000);
+      await page.tap(".world-back");
+      await page.waitFor(`document.querySelector(".screen-hub") && !document.querySelector(".screen-passport")`, 6000);
+      await gone("le passeport quitté pour le hub");
+      await page.goto("about:blank");
+    });
   }
 
   // Chrome logs nothing for a file the bench blocks (a real 404 logs the network's failure): at most that one error
@@ -502,6 +530,7 @@ for (const vp of VIEWPORTS.filter((v) => !process.env.ONLY || v.name.includes(pr
   await page.beforeLoad(SEED);
   await page.beforeLoad(REJECT);
   await page.beforeLoad(LANDING);
+  await page.beforeLoad(AHEAD);
   await suite(page, vp);
   await page.close();
 }

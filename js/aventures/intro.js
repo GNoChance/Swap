@@ -46,9 +46,10 @@ function startAt() {
   return isDemo && t >= 0 ? t : 0;
 }
 
-/** introScreen({ aventure, ink, skippable, scenario, onDone }): a screen ({ el, noHome, enter, leave }) playing
- *  `scenario` (loadScenario()). */
-export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
+/** introScreen({ aventure, ink, skippable, scenario, held, onDone }): a screen ({ el, noHome, enter, leave }) playing
+ *  `scenario` (loadScenario()); `held`: images of its stickers loaded ahead (the passport's), held until its own have
+ *  loaded (ready) or it is left: its own find them among the page's images, never fetched again. */
+export function introScreen({ aventure, ink, skippable, scenario, held = [], onDone }) {
   const skip = skippable ? h("button", { class: "intro-skip", type: "button" }, content.aventures.skip) : null;
   const el = h(
     "section",
@@ -102,6 +103,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
       // first time it is seen in full (keepTime() drops the time it was hidden, and only that)
       timeline.call(finish, null, end);
       await Promise.resolve(ready).catch(() => {}); // it resolves; were it to reject, the intro plays all the same
+      held = null; // its own stickers there (or their stand-ins): those loaded ahead can go
       if (finished) return; // left (or skipped) while it was getting ready
       const start = startAt();
       if (start >= end) return finish(); // ?t= past its end: over at once, not frozen on its last frame
@@ -111,6 +113,7 @@ export function introScreen({ aventure, ink, skippable, scenario, onDone }) {
     },
     leave() {
       stop();
+      held = null;
       removeEventListener("popstate", left);
       release?.();
       appear?.kill();
