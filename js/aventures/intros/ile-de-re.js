@@ -81,9 +81,10 @@ function timeOf(ease, share) {
 }
 
 // the camera follows the two of them FOLLOW units to the right over the bridge; WIDEST: half what the widest screen
-// shows (1920 × 1080: 1351 units across)
+// shows (1920 × 1080: 1351 units across; a browser maximised on it, 1920 × 947: 1541; a laptop at 125 %, about
+// 1536 × 730: 1600)
 const FOLLOW = 640;
-const WIDEST = 676;
+const WIDEST = 800;
 /** A centred layer's width (units, by hundreds, 1600 at least) that covers the widest screen at the end of a course
  *  `reach` units from its place (the bridge's follow; half the island's glide), at `depth`. */
 const across = (depth, reach = FOLLOW) => Math.max(1600, Math.ceil((WIDEST + depth * reach) / 50) * 100);
@@ -91,7 +92,7 @@ const across = (depth, reach = FOLLOW) => Math.max(1600, Math.ceil((WIDEST + dep
 // (none: a layer for props)]: the sky, the far coast, the sea, the gulls over it, the sailboats far off, the bridge,
 // the land at its ends (the rental at its foot), the road (the two of them), the near rail, a sailboat near in front
 const BRIDGE = [
-  ["pont-ciel", 0.04, () => riviere.sky("paper")],
+  ["pont-ciel", 0.04, (width) => riviere.sky("paper", width)],
   ["pont-large", 0.12, pont.large],
   ["pont-mer", 0.55, (width) => pont.mer("paper", width)],
   ["pont-mouettes", 0.58],
@@ -127,7 +128,7 @@ const ARS = 140;
 // signs, the cycle path and the fields below it; then in front of the bridge as it goes (the two of them take over from
 // its own at once), the two of them on their bikes, and the grass in front
 const ISLAND = [
-  ["traversee-ciel", 0.04, () => riviere.sky("paper")],
+  ["traversee-ciel", 0.04, (width) => riviere.sky("paper", width)],
   ["traversee-loin", 0.15, ile.loin],
   ["traversee-champs", 0.45, ile.champs],
   ["traversee-bornes", 0.6],
@@ -171,7 +172,7 @@ const CHEER = { jumps: [0.85, 1.45], jump: 9, hop: 0.15, sway: 0.3, tilt: 1.5 };
 // going on and on (no land at either end), the two of them on their bikes (on the spot), the snail on the deck, the
 // near rail; the golden light over them all on a layer of its own (css/intros.css, st-veil--soir)
 const RETOUR = [
-  ["retour-ciel", 0.04, () => riviere.cielDore()],
+  ["retour-ciel", 0.04, riviere.cielDore],
   ["retour-mer", 0.55, (width) => pont.mer("paper", width, pont.SOIR)],
   ["retour-mouettes", 0.58],
   ["retour-pont", 1, (width) => pont.pont(width, { endless: true })],

@@ -5,9 +5,10 @@
 // the decor glides by (one view at a time, the speed lines with the flat-out views only, no C3, the km signs whole, the
 // phone turned meanwhile), the lighthouse whole over the two of them, the way back over a bridge that never ends (no
 // bank in sight, its piers going by, the snail overtaking them, one view at a time), La Rochelle (the two of them
-// turning round like cards), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene
-// sticker's stand-in, its scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the
-// browser's back, in and out three times. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
+// turning round like cards), who shows in its moments, its decor over a wide screen (a 1080p one, and a browser
+// maximised on it), the stickers it loads and a scene sticker's stand-in, its scenario warmed on the passport, a touch
+// the first time, « Passer ▸ » in the demo, the browser's back, in and out three times. Needs the site running
+// (`node tests/e2e/serve.mjs`, port 5173), then
 // `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of
 // each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s, of the island at
 // 9.6, 10.5, 12, 13.5 and 14.8 s, of the way back at 21, 22.5, 24 and 25.3 s, of La Rochelle at 26, 27.5 and 28.8 s,
@@ -80,6 +81,9 @@ const SNAIL_WHOLE = 23;
 // in the air at the lighthouse (12), the ice creams (11), Cycy in front on the way back (05), out of breath again (08)
 const BACK = { from: 15, to: 25.5, views: ["08", "12", "11", "05", "08"] };
 const BACK_WIDE = [21, 23, 25.3]; // s: and over a wide screen (point 5), as its decor glides by
+const COAST_WIDE = [29.05, 30, 31.3]; // s: the coast over a wide screen (point 5), its decor gliding by from its start to its end
+// the wide screens of point 5: a 1080p one, and a browser maximised on it (its bars and the taskbar: more units across)
+const PCS = [[1920, 1080], [1920, 947]];
 const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
 const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
 const GLIDING = [9.55, 10, 12.5, 14.8]; // s: across the island, the decor gliding by from its start (its layers furthest right) to once it has stopped
@@ -389,15 +393,21 @@ async function suite(page, vp) {
   });
 
   if (vp.width === 1920)
-    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), puis au retour, à ?t= ${BACK_WIDE.map(fr).join(", ")} (le pont défile), puis à La Rochelle, à ?t= ${HARBOUR.map(fr).join(", ")}, chaque couche visible couvre toute la largeur de l'écran`, async () => {
-      for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING], ["retour-", BACK_WIDE], ["rochelle-", HARBOUR]])
-        for (const t of times) {
-          const layers = await heldAt(t, layersSeen);
-          if (!layers.some((l) => l.name.startsWith(scene))) throw new Error(`à ${t} s : aucune couche « ${scene}* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
-          const bare = layers.filter((l) => l.left > 0.5 || l.right < vp.width - 0.5);
-          if (bare.length) throw new Error(`à ${t} s : bord vide ${JSON.stringify(bare.map((l) => ({ ...l, left: Math.round(l.left), right: Math.round(l.right) })))}`);
+    for (const [width, height] of PCS)
+      await check(`${width} × ${height} (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), puis au retour, à ?t= ${BACK_WIDE.map(fr).join(", ")} (le pont défile), puis à La Rochelle, à ?t= ${HARBOUR.map(fr).join(", ")}, puis sur la côte, à ?t= ${COAST_WIDE.map(fr).join(", ")} (le décor défile, d'un bout à l'autre de sa course), chaque couche visible couvre toute la largeur de l'écran`, async () => {
+        await page.resize(width, height);
+        try {
+          for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING], ["retour-", BACK_WIDE], ["rochelle-", HARBOUR], ["cote-", COAST_WIDE]])
+            for (const t of times) {
+              const layers = await heldAt(t, layersSeen);
+              if (!layers.some((l) => l.name.startsWith(scene))) throw new Error(`à ${t} s : aucune couche « ${scene}* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
+              const bare = layers.filter((l) => l.left > 0.5 || l.right < width - 0.5);
+              if (bare.length) throw new Error(`à ${t} s : bord vide ${JSON.stringify(bare.map((l) => ({ ...l, left: Math.round(l.left), right: Math.round(l.right) })))}`);
+            }
+        } finally {
+          await page.resize(vp.width, vp.height);
         }
-    });
+      });
 
   if (vp.turned)
     await check("852 × 393 (le téléphone tourné) : la carte et les temps comme sur les autres écrans, puis l'affiche jouée en entier, son lettrage dans l'écran ; puis le passeport", async () => {

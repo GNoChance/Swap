@@ -32,6 +32,15 @@ const CLOUDS = [
   [760, 112, 110],
 ];
 
+/** A sky in `skin` across a layer `width` units wide (1600 or more): its first tone from the layer's left edge to its
+ *  right one, down to `foot`, and its strips (their top edges, `strips`, from L to R) in the next tones, each carried on
+ *  flat to the layer's edges if it is wider. */
+export function skySheets(skin, width, strips, tones, foot) {
+  const [l, r] = [-(width - 390) / 2, (width + 390) / 2];
+  const across = (edge) => (width > 1600 ? [[l, edge[0][1]], ...edge, [r, edge.at(-1)[1]]] : edge);
+  return [`<rect x="${l}" y="-30" width="${width}" height="${foot + 40}" fill="${tones[0]}"/>`, ...strips.map((edge, k) => sheetOf(skin, across(edge), tones[k + 1], "", foot + 10))];
+}
+
 /** A summer cloud `w` wide, its top left corner at x, y: puffed white paper, a blue-grey belly (the poster: cream); on
  *  paper, `tones` ({ body, belly }) for another light (the coast's sky too: props-cote.js). */
 export function cloud(x, y, w, skin, tones = { body: "#fffdf8", belly: "#dde9f2" }) {
@@ -43,34 +52,28 @@ export function cloud(x, y, w, skin, tones = { body: "#fffdf8", belly: "#dde9f2"
   return piece(skin, body, path(body, tones.body) + path(belly, tones.belly), "", 0.8);
 }
 
-/** The summer sky: blue paper strips paler down to the hills, white clouds, the sun high on the left (the poster: its
- *  bands, navy at the top for the lettering, the sun striped). */
-export function sky(skin) {
+/** The summer sky, across a layer `width` units wide: blue paper strips paler down to the hills, white clouds, the sun
+ *  high on the left (the poster: its bands, navy at the top for the lettering, the sun striped). */
+export function sky(skin, width = 1600) {
   const p = paper(skin);
   const tones = p ? ["#80b4de", "#97c3e5", "#b0d2ec", "#cbe2f1"] : [A.navy, "#2f5d7a", A.teal, "#6aa7a3"];
   const [sx, sy] = [-30, 150];
   const sun = p
     ? [[40, "#fff2c4"], [28, "#fff8e2"]].map(([r, fill]) => piece(skin, dot(sx, sy, r), path(dot(sx, sy, r), fill), "", 0.5)).join("")
     : `<clipPath id="st-sun-riviere"><path d="${dot(sx, sy, 36)}"/></clipPath>${path(dot(sx, sy, 36), A.sun)}<g clip-path="url(#st-sun-riviere)" fill="${A.cream}">${[[154, 3], [164, 4.5], [175, 6]].map(([y, h]) => `<rect x="${sx - 40}" y="${y}" width="80" height="${h}"/>`).join("")}</g>`;
-  return [
-    `<rect x="${L}" y="-30" width="1600" height="${WATER_LINE + 40}" fill="${tones[0]}"/>`,
-    ...STRIPS.map((edge, k) => sheetOf(skin, edge, tones[k + 1], "", WATER_LINE + 10)),
-    sun,
-    ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, skin)),
-  ].join("");
+  return [...skySheets(skin, width, STRIPS, tones, WATER_LINE), sun, ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, skin))].join("");
 }
 
-/** The same sky in the golden light of the afternoon (the plouf; paper only): pale gold up high, warmer strip after
- *  strip down to the hills, the sun glowing in its halo where the summer sky has it, the clouds cream with peach
- *  bellies. Drawn over the summer sky, it only fades in. */
-export function cielDore() {
+/** The same sky in the golden light of the afternoon (the plouf; paper only), across a layer `width` units wide: pale
+ *  gold up high, warmer strip after strip down to the hills, the sun glowing in its halo where the summer sky has it,
+ *  the clouds cream with peach bellies. Drawn over the summer sky, it only fades in. */
+export function cielDore(width = 1600) {
   const tones = ["#f0dcaa", "#f3cf91", "#f5c17b", "#f6b469"];
   const [sx, sy] = [-30, 150];
   const halo = dot(sx, sy, 78);
   const sun = [[44, "#fff0bf"], [30, "#fff8df"]].map(([r, fill]) => piece("paper", dot(sx, sy, r), path(dot(sx, sy, r), fill), "", 0.5)).join("");
   return [
-    `<rect x="${L}" y="-30" width="1600" height="${WATER_LINE + 40}" fill="${tones[0]}"/>`,
-    ...STRIPS.map((edge, k) => sheetOf("paper", edge, tones[k + 1], "", WATER_LINE + 10)),
+    ...skySheets("paper", width, STRIPS, tones, WATER_LINE),
     `<path d="${halo}" fill="#ffe7a6" fill-opacity=".55"/>`,
     sun,
     ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, "paper", { body: "#fff4dc", belly: "#f4c69c" })),

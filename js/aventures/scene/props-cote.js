@@ -9,7 +9,7 @@ import { cutPiece } from "./decor.js";
 import { blob, dot, lens, n, path, poly, random, speck, tuft } from "./geom.js";
 import { piece, sheetOf } from "./props.js";
 import { edges, HORIZON, voilier } from "./props-pont.js";
-import { cloud } from "./props-riviere.js";
+import { cloud, skySheets } from "./props-riviere.js";
 
 const L = -605; // a 1600-wide layer's left edge
 /** Where the sea laps on the sand, the top of the road's wall, the road's far and near edges, and the C3's lane (its
@@ -26,14 +26,10 @@ const STRIPS = [150, 240, 320, 392].map((y, k) => {
 });
 const CLOUDS = [[-500, 150, 120], [-250, 214, 84], [-30, 140, 100], [140, 330, 70], [430, 190, 116], [700, 128, 96], [880, 250, 74]];
 
-/** The summer sky by day: its blue strips paler down to the sea, its white clouds with their blue-grey bellies (the
- *  river's: props-riviere.js). */
-export function ciel() {
-  return [
-    `<rect x="${L}" y="-30" width="1600" height="${HORIZON + 40}" fill="${SKY[0]}"/>`,
-    ...STRIPS.map((edge, k) => sheetOf("paper", edge, SKY[k + 1], "", HORIZON + 10)),
-    ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, "paper")),
-  ].join("");
+/** The summer sky by day, across a layer `width` units wide: its blue strips paler down to the sea, its white clouds
+ *  with their blue-grey bellies (the river's: props-riviere.js). */
+export function ciel(width = 1600) {
+  return [...skySheets("paper", width, STRIPS, SKY, HORIZON), ...CLOUDS.map(([x, y, w]) => cloud(x, y, w, "paper"))].join("");
 }
 
 /** The sun's place (its middle, units) and its size with its rays. */
