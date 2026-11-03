@@ -18,9 +18,10 @@ export const edges = (width) => [-(width - 390) / 2, (width + 390) / 2];
 
 // ── The sea ─────────────────────────────────────────────────
 
-/** The sea in the evening (paper, mer()'s `tint`): its far band amber with the sunset it mirrors, darker than the sky,
- *  its ripples and the sun's glints golden. */
-export const SOIR = { far: "#d99a6c", ripple: "#ffe9c4", glint: "#ffd27e" };
+/** The sea at sunset (paper, mer()'s `tint`), mirroring the golden sky: its far band a bright peach-gold, lighter than
+ *  the sky's lowest band, the water under it golden, the near water a dusky blue; its ripples deep gold, its crests
+ *  golden, the sun's glints all but white. */
+export const SOIR = { far: "#fcd9a0", mid: "#f2c28c", near: "#8fa3cc", dark: "#7186b8", ripple: "#efa960", cap: "#ffe2a8", glint: "#fffbf0" };
 
 /** The open sea from the horizon down, `width` units wide: bands deeper blue nearer, ripples and whitecaps bigger
  *  nearer, the glints of the sun (high on the left, x −30: the sky's) under it; on paper, `tint`'s colours over its own

@@ -75,24 +75,22 @@ function turnOver(tl, self, box, at, key) {
   tl.to(box, { scaleX: 1, duration: 0.1, ease: "power1.out" }, at + 0.08);
 }
 
-/** An actor (`self`, hidden until then) popping out at `at` s from its pose's origin, bouncing, with a pop. */
+/** An actor (`self`) popping out at `at` s from its pose's origin, bouncing, with a pop: hidden until then (here, as it
+ *  is set up), it shows at that very instant, small (a set: whichever way the timeline is sought, another actor hidden
+ *  at the same instant hands over to it). → when it has settled (s). */
 function popOut(tl, self, at) {
+  Object.assign(self.el.style, HIDDEN);
   tl.call(() => sfx("pop"), null, at);
-  tl.fromTo(self.el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.05, immediateRender: false }, at);
+  tl.set(self.el, { autoAlpha: 1 }, at);
   tl.fromTo(self.pose, { scale: 0.2 }, { scale: 1, duration: 0.42, ease: "back.out(2.6)", immediateRender: false }, at);
-}
-
-/** An actor (`self`) going at `at` s, shrinking away. → when it has gone. */
-function shrinkAway(tl, self, at) {
-  tl.to(self.pose, { scale: 0.3, duration: 0.22, ease: "back.in(2)" }, at).to(self.el, { autoAlpha: 0, duration: 0.06 }, at + 0.18);
-  return at + 0.24;
+  return at + 0.42;
 }
 
 /** sceneActor({ layer, who, looks, look, x, y, height, wide }): a scene sticker (the two of them drawn together, or one
  *  of them in a scene of its own), `height` units tall (with `wide`, that many units wide: the views of a board, all cut
  *  at one width, then keep one scale), with its views: looks = { [key]: { src, fallback } } (sceneUrl(), and the
  *  stand-in of its main person in the nearest pose, fallbackUrl()); it shows `look` first. SceneActor = Actor + { show,
- *  flip, pop, leave } (its `turn` stays its turn box). */
+ *  flip, pop } (its `turn` stays its turn box). */
 export function sceneActor({ layer, who, looks, look, x, y, height, wide = false }) {
   const self = cast({ layer, x, y, size: height, wide });
   self.el.dataset.who = who;
@@ -102,10 +100,8 @@ export function sceneActor({ layer, who, looks, look, x, y, height, wide = false
   self.show = (tl, at, key) => self.wearAt(tl, at, key);
   /** Into the view `key` at `at` s, turned over: squeezed to nothing and back (0.18 s). */
   self.flip = (tl, at, key) => turnOver(tl, self, self.turn, at, key);
-  /** Pops out at `at` s from its feet (hidden until then), bouncing, with a pop. */
+  /** Pops out at `at` s from its feet (hidden until then), bouncing, with a pop. → when it has settled (s). */
   self.pop = (tl, at) => popOut(tl, self, at);
-  /** Goes at `at` s, shrinking away. → when it has gone. */
-  self.leave = (tl, at) => shrinkAway(tl, self, at);
   return self;
 }
 
@@ -151,7 +147,8 @@ export function faceBubble({ layer, who, looks, look, x, y, size, tail }) {
     },
     /** Goes at `at` s, shrinking away. → when it has gone. */
     leave(tl, at) {
-      return shrinkAway(tl, self, at);
+      tl.to(self.pose, { scale: 0.3, duration: 0.22, ease: "back.in(2)" }, at).to(self.el, { autoAlpha: 0, duration: 0.06 }, at + 0.18);
+      return at + 0.24;
     },
   });
 }

@@ -57,9 +57,10 @@ const LIGHTHOUSE = { moments: ["Le phare", "La glace"], clear: 0.25 };
 // them (on their right) at its first time and in front of them (on their left) at its last: it overtakes them
 const ENDLESS = [...Array.from({ length: 18 }, (_, k) => 21 + k * 0.25), 25.3];
 const SNAIL_WHOLE = 23;
-// s: on the way back, every 0.1 s (Review Focus 2): a single view of the bikes, Cycy in front (05) then the two of them
-// out of breath (08), no speed lines
-const BACK = { from: 20.5, to: 25.5, views: ["05", "08"] };
+// s: from « Le phare » to the end of the way back, every 0.1 s, both ends included (Review Focus 2): a single view of
+// the bikes at every instant, no speed lines, and in this order (the board's numbers): out of breath at Ars (08), arms
+// in the air at the lighthouse (12), the ice creams (11), Cycy in front on the way back (05), out of breath again (08)
+const BACK = { from: 15, to: 25.5, views: ["08", "12", "11", "05", "08"] };
 const BACK_WIDE = [21, 23, 25.3]; // s: and over a wide screen (point 5), as its decor glides by
 const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
 const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
@@ -468,7 +469,7 @@ async function suite(page, vp) {
         const c3 = now.c3.filter((layer) => !(t < DIVE_OVER && layer === "carte-trajet"));
         if (c3.length) throw new Error(`à ${t} s : une C3 à l'écran (${JSON.stringify(now.c3)})`);
       }
-      const times = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.1) - 1 }, (_, k) => +(BIKES.from + 0.1 + k * 0.1).toFixed(2));
+      const times = Array.from({ length: Math.round((BIKES.to - BIKES.from) / 0.1) }, (_, k) => +(BIKES.from + 0.1 + k * 0.1).toFixed(2)); // to its end included
       // for each pass, each flat-out view: [times worn (not turning over), times its speed lines showed]
       const lined = [{}, {}];
       for (const [k, t] of [...times, ...[...times].reverse()].entries()) {
@@ -495,22 +496,23 @@ async function suite(page, vp) {
       );
     });
 
-    await check(`point 2 (le retour) : de ${fr(BACK.from)} à ${fr(BACK.to)} s, de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, ${BACK.views.join(" puis ")} (chacune montrée), sans traits de vitesse`, async () => {
+    await check(`point 2 (du phare à la fin du retour) : de ${fr(BACK.from)} à ${fr(BACK.to)} s, bornes comprises, de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, dans l'ordre ${BACK.views.join(", ")}, sans traits de vitesse`, async () => {
       await page.goto(`${BASE}?demo&t=${BACK.from}#/aventures/${ID}`);
       await page.waitFor(playing, 8000);
-      const times = Array.from({ length: Math.round((BACK.to - BACK.from) / 0.1) - 1 }, (_, k) => +(BACK.from + 0.1 + k * 0.1).toFixed(2));
-      const worn = [new Set(), new Set()]; // the views shown, each pass
+      const times = Array.from({ length: Math.round((BACK.to - BACK.from) / 0.1) + 1 }, (_, k) => +(BACK.from + k * 0.1).toFixed(2));
+      const worn = [[], []]; // the views shown, each pass, in order (each once in a row)
       for (const [k, t] of [...times, ...[...times].reverse()].entries()) {
         await page.eval(holdAt(t));
         const now = await page.eval(bikesSeen);
         const how = k >= times.length ? "en reculant" : "en avançant";
         if (now.looks !== 1) throw new Error(`à ${t} s ${how} : ${now.looks} vue(s) des vélos`);
-        if (!BACK.views.includes(now.view)) throw new Error(`à ${t} s ${how} : la vue ${now.view}, pas l'une de ${JSON.stringify(BACK.views)}`);
-        if (now.lines) throw new Error(`à ${t} s ${how} : des traits de vitesse au retour`);
-        worn[Number(k >= times.length)].add(now.view);
+        if (now.lines) throw new Error(`à ${t} s ${how} : des traits de vitesse avec la vue ${now.view}`);
+        const pass = worn[Number(k >= times.length)];
+        if (pass.at(-1) !== now.view) pass.push(now.view);
       }
       worn.forEach((views, back) => {
-        if (views.size !== BACK.views.length) throw new Error(`${back ? "en reculant" : "en avançant"} : vues montrées ${JSON.stringify([...views])}`);
+        const expected = back ? [...BACK.views].reverse() : BACK.views;
+        if (JSON.stringify(views) !== JSON.stringify(expected)) throw new Error(`${back ? "en reculant" : "en avançant"} : vues montrées ${JSON.stringify(views)}, pas ${JSON.stringify(expected)}`);
       });
     });
 
