@@ -17,7 +17,7 @@
 // in front. Its moments are the beats of intros/index.js; its stickers, ile-de-re.stickers.js. The lighthouse is the
 // poster's decor.
 import { content } from "../../content.js";
-import { createStage, ENTER, HIDDEN, layerX, SAFE, W } from "../scene/stage.js";
+import { createStage, ENTER, hide, layerX, SAFE, W } from "../scene/stage.js";
 import { grain, paperLayer } from "../scene/decor.js";
 import { person, preload, sceneActor, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
@@ -32,18 +32,17 @@ import * as port from "../scene/props-rochelle.js";
 import * as cote from "../scene/props-cote.js";
 import * as recipes from "../scene/recipes.js";
 import * as velo from "../scene/recipes-velo.js";
-import { SCENARIOS } from "./index.js";
+import { beatOf } from "./index.js";
 
 export { stickers } from "./ile-de-re.stickers.js";
 
 const gsap = window.gsap;
-const beat = (name) => SCENARIOS["ile-de-re"].beats.find((b) => b.name === name).at;
+const beat = beatOf("ile-de-re");
 const MAP = { at: { x: 260, y: 640 }, unitsPerDegree: 258 }; // Bordeaux (its first point) there, 258 units a degree
 // the trip on the map: its pin plopped well before the dive; the C3 drives on through La Rochelle and parks over its dot,
 // its nose at the pin's tip at the bridge's foot (the names stand clear of it: props-carte.js, stops()), the last dots
 // running on to the pin
 const TRIP = { duration: 4, short: 37 };
-const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 /** A scene sticker of the Île de Ré's boards (`board`, its number `k`), and its stand-in (spec § 3). */
 const scene = (board, k, who, pose) => sceneLook("ile-de-re", board, k, who, pose);
 /** The two of them with their bikes: sticker `k` of their board (correspondance: 01 side by side, 05 Cycy flat out…). */

@@ -5,7 +5,7 @@
 // and his blocked back, overtaken by a snail, Cycy waiting for him), the car back in the valley among the cows until the
 // collie moves them, then the closing poster « LACS D'AYOUS » on the lake. Its moments are the beats of
 // intros/index.js; its stickers, bivouac-1.stickers.js.
-import { createStage, ENTER, H, HIDDEN, W } from "../scene/stage.js";
+import { createStage, ENTER, H, hide, W } from "../scene/stage.js";
 import { grain, paperLayer, sheet } from "../scene/decor.js";
 import { person, preload, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
@@ -16,14 +16,13 @@ import * as montagne from "../scene/props-montagne.js";
 import * as lac from "../scene/props-lac.js";
 import { cow, dog, snail } from "../scene/props-animaux.js";
 import * as recipes from "../scene/recipes.js";
-import { SCENARIOS } from "./index.js";
+import { beatOf } from "./index.js";
 
 export { stickers } from "./bivouac-1.stickers.js";
 
 const gsap = window.gsap;
-const beat = (name) => SCENARIOS["bivouac-1"].beats.find((b) => b.name === name).at;
+const beat = beatOf("bivouac-1");
 const MAP = { at: { x: 199, y: 161 }, unitsPerDegree: 258 }; // Bordeaux (its first point) there, 258 units a degree
-const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 
 // the lake's layers, back to front: [name, depth (its share of the camera's moves), its markup in a skin]; the night's
 // and the dawn's skies go between its sun and its peak

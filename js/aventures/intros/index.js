@@ -46,3 +46,6 @@ export const SCENARIOS = {
     ],
   },
 };
+
+/** beatOf(id): when each moment of outing `id`'s intro begins, by its name: beatOf("canoe")("Le plouf") → 18 (s). */
+export const beatOf = (id) => (name) => SCENARIOS[id].beats.find((b) => b.name === name).at;

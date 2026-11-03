@@ -13,7 +13,7 @@
 // DORDOGNE » on the river by day, Beynac and the canoe in front of the cliff. Its moments are the beats of
 // intros/index.js; its stickers, canoe.stickers.js. The river is the plouf's decor and the poster's.
 import { content } from "../../content.js";
-import { createStage, ENTER, HIDDEN, layerX } from "../scene/stage.js";
+import { createStage, ENTER, hide, layerX } from "../scene/stage.js";
 import { grain, paperLayer, sheet } from "../scene/decor.js";
 import { faceBubble, paperVehicle, person, preload, sceneActor, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
@@ -27,15 +27,14 @@ import * as roque from "../scene/props-roque.js";
 import * as lac from "../scene/props-lac.js";
 import * as recipes from "../scene/recipes.js";
 import * as eau from "../scene/recipes-eau.js";
-import { SCENARIOS } from "./index.js";
+import { beatOf } from "./index.js";
 
 export { stickers } from "./canoe.stickers.js";
 
 const gsap = window.gsap;
-const beat = (name) => SCENARIOS.canoe.beats.find((b) => b.name === name).at;
+const beat = beatOf("canoe");
 const MAP = { at: { x: 50, y: 330 }, unitsPerDegree: 230 }; // Bordeaux (its first point) there, 230 units a degree
 const RELAY = 2.9; // s: the C3 at Port d'Enveaux, the bus's turn
-const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 /** A <span> of class `cls` holding `markup`. */
 const span = (cls, markup = "") => Object.assign(document.createElement("span"), { className: cls, innerHTML: markup });
 /** `el` at left, top (px in its box). → el */

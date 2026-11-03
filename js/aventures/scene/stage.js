@@ -13,6 +13,8 @@ const BAND = { y0: 250, y1: 730 }; // the action band, for a short screen
 
 /** autoAlpha 0 as inline styles: hidden until its moment, without GSAP reading the page's styles. */
 export const HIDDEN = { opacity: "0", visibility: "hidden" };
+/** Each of `els` hidden so (HIDDEN), before the timeline plays. */
+export const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 
 /** The stage's x in `layer` (units): a layer wider than the stage starts left of it, by its inline width. */
 export const layerX = (layer, x) => x + (parseFloat(layer.style.width) - W) / 2;
