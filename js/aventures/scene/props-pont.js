@@ -1,12 +1,13 @@
-// The bridge's pieces (the Île de Ré's spec, § 2, moments 2 and 3, and § 4): the open sea on a summer day (bands deeper
-// blue nearer, ripples and whitecaps, the sun's glints; the lighthouse's sea too, so it takes its skin, "paper" or
-// "poster": props.js), the far coast low on the horizon, Ré's bridge seen from the side (its deck rising to its hump
-// over the shipping channel, its slender piers in the water with their reflections, its lamp posts and its rail), the
-// land at both its ends (La Pallice's foot with the bike rental, Ré's end), the sailboats and the gulls. The bridge's
-// layers are wider than 1600 units: the camera follows the two of them over it. Pure: markup only, the same for the
-// same arguments.
+// The bridge's pieces (the Île de Ré's spec, § 2, moments 2, 3 and 7, and § 4): the open sea on a summer day (bands
+// deeper blue nearer, ripples and whitecaps, the sun's glints; golden in the evening; the lighthouse's sea too, so it
+// takes its skin, "paper" or "poster": props.js), the far coast low on the horizon, Ré's bridge seen from the side (its
+// deck rising to its hump over the shipping channel, its slender piers in the water with their reflections, its lamp
+// posts and its rail; on the way back, flat and never ending), the land at both its ends (La Pallice's foot with the
+// bike rental, Ré's end), the sailboats, the gulls and the snail of the way back. The bridge's layers are wider than
+// 1600 units: the camera follows the two of them over it, and its decor glides by on the way back. Pure: markup only,
+// the same for the same arguments.
 import { AFFICHE as A, cutPiece } from "./decor.js";
-import { blob, curve, lens, n, path, poly, random, speck, topEdge, tuft, xy } from "./geom.js";
+import { blob, curve, dot, lens, n, path, poly, random, speck, topEdge, tuft, xy } from "./geom.js";
 import { paper, rock, roundTrees, sheetOf } from "./props.js";
 import { escape, WATER_LINE } from "./props-riviere.js";
 
@@ -17,12 +18,17 @@ export const edges = (width) => [-(width - 390) / 2, (width + 390) / 2];
 
 // ── The sea ─────────────────────────────────────────────────
 
+/** The sea in the evening (paper, mer()'s `tint`): its far band amber with the sunset it mirrors, darker than the sky,
+ *  its ripples and the sun's glints golden. */
+export const SOIR = { far: "#d99a6c", ripple: "#ffe9c4", glint: "#ffd27e" };
+
 /** The open sea from the horizon down, `width` units wide: bands deeper blue nearer, ripples and whitecaps bigger
- *  nearer, the glints of the sun (high on the left, x −30: the sky's) under it. */
-export function mer(skin, width = 1600) {
+ *  nearer, the glints of the sun (high on the left, x −30: the sky's) under it; on paper, `tint`'s colours over its own
+ *  (SOIR: the evening's). */
+export function mer(skin, width = 1600, tint = {}) {
   const p = paper(skin);
   const c = p
-    ? { far: "#93bfdb", mid: "#84b5d5", near: "#73a9cb", ripple: "#dcedf5", dark: "#5f94bb", cap: "#fbfdff", glint: "#fff6da" }
+    ? { far: "#93bfdb", mid: "#84b5d5", near: "#73a9cb", ripple: "#dcedf5", dark: "#5f94bb", cap: "#fbfdff", glint: "#fff6da", ...tint }
     : { far: "#5aa3a7", mid: A.teal, near: "#28707a", ripple: A.cream, dark: A.navy, cap: A.cream, glint: A.sun };
   const [l, r] = edges(width);
   const band = (y0, y1) => poly([[l, y0], [r, y0], [r, y1], [l, y1]]);
@@ -91,58 +97,66 @@ function piers() {
   return list.sort((a, b) => a - b);
 }
 
-/** A line along the deck, `dy` under its road, every 8 units from x0 to x1 (by default its ends, tucked under the land). */
-function deckLine(dy, x0 = DECK.from - 20, x1 = DECK.to + 20) {
-  return Array.from({ length: Math.ceil((x1 - x0) / 8) + 1 }, (_, k) => Math.min(x1, x0 + k * 8)).map((x) => [x, deck(x) + dy]);
+/** The bridge drawn in a layer `width` units wide: the crossing, from La Pallice's abutment to Ré's over its hump (its
+ *  girder's ends tucked under the land: rives()); or `endless`, its road flat and its piers a span apart all across
+ *  the layer, no land at either end (the way back: Kevin was so slow that it never ends). → { road: its y at x (deck()
+ *  on the crossing), girder: its girder's ends, ends: its parapet's and rail's, piers: their x } */
+function stretch(width, endless) {
+  if (!endless) return { road: deck, girder: [DECK.from - 20, DECK.to + 20], ends: [DECK.from, DECK.to], piers: piers() };
+  const [l, r] = edges(width);
+  return { road: () => DECK.base, girder: [l, r], ends: [l, r], piers: Array.from({ length: Math.floor(width / DECK.span) }, (_, k) => l + DECK.span * (k + 0.5)) };
 }
 
-/** The bridge seen from the side (paper only), from its abutment on La Pallice's land to Ré's: its slender piers on
- *  their footings in the water, each with its cap under the deck, its broken reflection and a lamp post on the deck
- *  over it; the deck, a pale girder curving up to the hump, its fascia shaded and its underside dark, its ends under the
- *  land (rives()); the far parapet along the road. The two of them ride on the road (deck()); the near rail goes in
- *  front of them (rail()). */
-export function pont() {
-  const xs = piers();
+/** A line along the deck, `dy` under its road (`road`, its y at x), every 8 units from x0 to x1. */
+function deckLine(road, dy, [x0, x1]) {
+  return Array.from({ length: Math.ceil((x1 - x0) / 8) + 1 }, (_, k) => Math.min(x1, x0 + k * 8)).map((x) => [x, road(x) + dy]);
+}
+
+/** The bridge seen from the side (paper only), in a layer `width` units wide (`endless`: stretch()): its slender piers
+ *  on their footings in the water, each with its cap under the deck (each pier in a group of class st-pile), its broken
+ *  reflection and a lamp post on the deck over it; the deck, a pale girder (curving up to the hump on the crossing), its
+ *  fascia shaded and its underside dark; the far parapet along the road. The two of them ride on the road (deck() on
+ *  the crossing); the near rail goes in front of them (rail()). */
+export function pont(width, { endless = false } = {}) {
+  const bridge = stretch(width, endless);
   const r = random(421);
-  let columns = "";
-  let lit = "";
-  let caps = "";
-  let footings = "";
+  let pillars = "";
   let reflections = "";
   let foam = "";
   let lamps = "";
-  for (const x of xs) {
-    const top = deck(x) + DECK.thick;
-    columns += poly([[x - 6, top], [x + 6, top], [x + 7.5, DECK.foot], [x - 7.5, DECK.foot]]);
-    lit += poly([[x - 6, top], [x - 2, top], [x - 2.4, DECK.foot], [x - 7.5, DECK.foot]]);
-    caps += poly([[x - 12, top - 1], [x + 12, top - 1], [x + 9, top + 6], [x - 9, top + 6]]);
-    footings += poly([[x - 11, DECK.foot - 10], [x + 11, DECK.foot - 10], [x + 12, DECK.foot + 3], [x - 12, DECK.foot + 3]]);
+  for (const x of bridge.piers) {
+    const top = bridge.road(x) + DECK.thick;
+    const column = poly([[x - 6, top], [x + 6, top], [x + 7.5, DECK.foot], [x - 7.5, DECK.foot]]);
+    const lit = poly([[x - 6, top], [x - 2, top], [x - 2.4, DECK.foot], [x - 7.5, DECK.foot]]);
+    const cap = poly([[x - 12, top - 1], [x + 12, top - 1], [x + 9, top + 6], [x - 9, top + 6]]);
+    const footing = poly([[x - 11, DECK.foot - 10], [x + 11, DECK.foot - 10], [x + 12, DECK.foot + 3], [x - 12, DECK.foot + 3]]);
+    pillars += `<g class="st-pile">${cutPiece({ silhouette: column + footing, markup: path(column, "#d6d0c3") + path(lit, "#e8e3d8") + path(footing, "#aba393"), lift: 0.8 })}${path(cap, "#c4bdae")}</g>`;
     foam += lens(x - 16, DECK.foot + 2, 32, 1.2);
     for (let y = DECK.foot + 7; y < DECK.foot + 52; y += 7 + r() * 4) reflections += lens(x - 6 + (r() - 0.5) * 5, y, 12 + r() * 4, 1.1);
-    const y = deck(x) - 5;
+    const y = bridge.road(x) - 5;
     lamps += poly([[x - 0.9, y], [x - 0.9, y - 46], [x + 0.9, y - 46], [x + 0.9, y]]) + poly([[x, y - 46], [x + 12, y - 48], [x + 12, y - 46], [x, y - 44]]) + poly([[x + 9, y - 47], [x + 16, y - 47], [x + 15, y - 44], [x + 10, y - 44]]);
   }
-  const road = deckLine(0);
-  const girder = poly([...road, ...deckLine(DECK.thick).reverse()]);
-  const fascia = poly([...deckLine(DECK.thick * 0.5), ...deckLine(DECK.thick).reverse()]);
-  const underside = poly([...deckLine(DECK.thick - 2.5), ...deckLine(DECK.thick).reverse()]);
-  const parapet = poly([...deckLine(-5, DECK.from, DECK.to), ...deckLine(0, DECK.from, DECK.to).reverse()]); // from abutment to abutment
+  const line = (dy, along = bridge.girder) => deckLine(bridge.road, dy, along);
+  const girder = poly([...line(0), ...line(DECK.thick).reverse()]);
+  const fascia = poly([...line(DECK.thick * 0.5), ...line(DECK.thick).reverse()]);
+  const underside = poly([...line(DECK.thick - 2.5), ...line(DECK.thick).reverse()]);
+  const parapet = poly([...line(-5, bridge.ends), ...line(0, bridge.ends).reverse()]); // from abutment to abutment
   return [
     path(reflections, "#5f94bb") + path(foam, "#eef6fa"),
-    cutPiece({ silhouette: columns + footings, markup: path(columns, "#d6d0c3") + path(lit, "#e8e3d8") + path(footings, "#aba393"), lift: 0.8 }),
-    path(caps, "#c4bdae"),
-    cutPiece({ silhouette: girder + parapet, markup: path(girder, "#ebe7dd") + path(fascia, "#d5cfc2") + path(underside, "#aea696") + path(parapet, "#dcd7cb"), edge: curve(deckLine(-4.4, DECK.from, DECK.to)), lift: 1.4 }),
+    pillars,
+    cutPiece({ silhouette: girder + parapet, markup: path(girder, "#ebe7dd") + path(fascia, "#d5cfc2") + path(underside, "#aea696") + path(parapet, "#dcd7cb"), edge: curve(line(-4.4, bridge.ends)), lift: 1.4 }),
     cutPiece({ silhouette: lamps, markup: path(lamps, "#6f6c68"), lift: 0.5 }),
   ].join("");
 }
 
-/** The near rail along the road over the water (paper only), in front of the two of them's wheels: a thin bar on its
- *  posts. */
-export function rail() {
-  const top = deckLine(-7, DECK.from, DECK.to);
+/** The near rail along the road over the water (paper only), in a layer `width` units wide (`endless`: stretch()), in
+ *  front of the two of them's wheels: a thin bar on its posts. */
+export function rail(width, { endless = false } = {}) {
+  const { road, ends } = stretch(width, endless);
+  const top = deckLine(road, -7, ends);
   let posts = "";
   for (const [x, y] of top.filter((_, k) => k % 2 === 0)) posts += poly([[x - 0.6, y], [x + 0.6, y], [x + 0.6, y + 7], [x - 0.6, y + 7]]);
-  const bar = poly([...top, ...deckLine(-5.6, DECK.from, DECK.to).reverse()]);
+  const bar = poly([...top, ...deckLine(road, -5.6, ends).reverse()]);
   return cutPiece({ silhouette: bar + posts, markup: path(posts, "#bdb6a8") + path(bar, "#f4f1ea"), lift: 0.4 });
 }
 
@@ -245,12 +259,13 @@ function rental(text) {
 
 /** The land at both ends of the bridge, across a layer `width` units wide (paper only): La Pallice's on the left with
  *  the bike rental behind its road (its sign saying `sign`), Ré's on the right; the trees and the rental behind the
- *  roads, under the land's edge. */
+ *  roads, under the land's edge. Each end's pieces in groups of class st-rive. */
 export function rives(width, sign) {
   const [l, r] = edges(width);
   const rand = random(441);
   const ends = [rive(l, DECK.from, 1, rand), rive(r, DECK.to, -1, rand)];
-  return ends.map((end) => end.behind).join("") + rental(sign) + ends.map((end) => end.land).join("");
+  const bank = (markup) => `<g class="st-rive">${markup}</g>`;
+  return ends.map((end) => bank(end.behind)).join("") + rental(sign) + ends.map((end) => bank(end.land)).join("");
 }
 
 // ── The sailboats and the gulls ─────────────────────────────
@@ -288,4 +303,28 @@ export function mouette(width) {
   /** A shape and its mirror (the other wing). */
   const pair = (d) => `<path d="${d}"/><path d="${d}" transform="scale(-1 1)"/>`;
   return `<svg viewBox="-21 -8 42 13" width="${n(width)}" height="${n((width * 13) / 42)}"><g transform="translate(.8 1.6)" fill="#3b2a18" fill-opacity=".14">${pair(wing)}</g><g fill="#fdfdfb" stroke="#9aa4ad" stroke-width=".5" stroke-linejoin="round">${pair(wing)}</g><g fill="#c3cad0">${pair(back)}</g><g fill="#2e3035">${pair(tip)}</g><path d="M-4 1.8C-2 .4 2.4.2 4.6 1.4C3 2.8-1.6 3.2-4 1.8Z" fill="#fdfdfb" stroke="#9aa4ad" stroke-width=".4"/><path d="M4.4 1.2L6.6 1.6L4.6 2Z" fill="#f2b632"/></svg>`;
+}
+
+// ── The snail of the way back ───────────────────────────────
+
+/** A paper snail crawling left on the deck, `width` units long (an <svg>, its foot's middle at its bottom middle): its
+ *  soft body stretched out, its two stalks and their eyes up in front, its shell a caramel spiral lit on top, a silvery
+ *  trail behind it. */
+export function escargot(width) {
+  const k = width / 44;
+  const [cx, cy, rs] = [1.5, -11.6, 9.4]; // its shell's middle and radius
+  const body = "M-21 0C-21.6-4.2-19.4-8.6-15.6-9C-12.6-9.3-10.8-7.2-10-4.6C-3-3.8 5-3.4 12-2.6C16-2.2 19.4-1.2 21 0Z";
+  const stalks = "M-17.4-8.6Q-18.8-12.4-20.4-16.4M-14.4-8.9Q-14.8-13-15.6-17.2";
+  const eyes = dot(-20.5, -16.8, 1.5) + dot(-15.7, -17.5, 1.5);
+  const shell = dot(cx, cy, rs);
+  const lit = blob([[cx - 7.4, cy - 2.6], [cx - 4.4, cy - 7.4], [cx + 1.6, cy - 8.8], [cx - 1.8, cy - 6.4], [cx - 5.4, cy - 2]]);
+  // its spiral, winding out from the shell's middle
+  const turns = Array.from({ length: 22 }, (_, i) => [cx + (1 + (i / 21) * (rs - 2.6)) * Math.cos(2.2 + (i / 21) * 2.6 * Math.PI), cy + (1 + (i / 21) * (rs - 2.6)) * Math.sin(2.2 + (i / 21) * 2.6 * Math.PI)]);
+  const markup = [
+    path(lens(13, 0.2, 9, 0.7), "#f2f5f6"),
+    cutPiece({ silhouette: stalks, stroke: 1.4, lift: 0.3, markup: `<path d="${stalks}" fill="none" stroke="#a8977a" stroke-width="1.4" stroke-linecap="round"/>` }),
+    path(eyes, "#3b2a18"),
+    cutPiece({ silhouette: body + shell, markup: path(body, "#d6c7a8") + path(lens(-19, -0.9, 36, 0.8), "#a8977a") + path(shell, "#c27a3a") + path(lit, "#e0a463") + `<path d="${curve(turns)}" fill="none" stroke="#6f4220" stroke-width="1.4" stroke-linecap="round"/>`, lift: 0.4 }),
+  ].join("");
+  return `<svg viewBox="-22 -22 44 23" width="${n(44 * k)}" height="${n(23 * k)}"><g>${markup}</g></svg>`;
 }

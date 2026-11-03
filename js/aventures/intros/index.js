@@ -40,9 +40,9 @@ export const SCENARIOS = {
       { name: "Le phare", at: 15 },
       { name: "La glace", at: 18 },
       { name: "Le retour", at: 20.5 },
-      { name: "La Rochelle", at: 23 },
-      { name: "La côte", at: 26.5 },
-      { name: "L'affiche", at: 28.6 },
+      { name: "La Rochelle", at: 25.5 },
+      { name: "La côte", at: 29 },
+      { name: "L'affiche", at: 31.1 },
     ],
   },
 };

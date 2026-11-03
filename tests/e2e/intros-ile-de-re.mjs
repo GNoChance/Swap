@@ -3,13 +3,15 @@
 // going north (the C3 from Bordeaux by Saintes and La Rochelle to the pin at the foot of the bridge, La Pallice), the
 // two of them on their bikes at the bridge's foot, crossing it as the camera follows them, then across the island as
 // the decor glides by (one view at a time, the speed lines with the flat-out views only, no C3, the km signs whole, the
-// phone turned meanwhile), who shows in its moments, its decor over a wide screen, the stickers it loads and a scene
-// sticker's stand-in, its scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the
-// browser's back. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
-// `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of
-// each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s, of the island at
-// 9.6, 10.5, 12, 13.5 and 14.8 s and of the finished poster). Stops at the first failure (exit code 1). A check also
-// fails if the page logged an error.
+// phone turned meanwhile), the lighthouse whole over the two of them, the way back over a bridge that never ends (no
+// bank in sight, its piers going by, the snail overtaking them, one view at a time), who shows in its moments, its
+// decor over a wide screen, the stickers it loads and a scene sticker's stand-in, its scenario warmed on the passport, a
+// touch the first time, « Passer ▸ » in the demo, the browser's back. Needs the site running
+// (`node tests/e2e/serve.mjs`, port 5173), then `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen;
+// SHOTS=<folder> keeps a screenshot of the middle of each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the
+// bridge at 5, 6, 7, 8 and 9.2 s, of the island at 9.6, 10.5, 12, 13.5 and 14.8 s, of the way back at 21, 22.5, 24 and
+// 25.3 s and of the finished poster). Stops at the first failure (exit code 1). A check also fails if the page logged
+// an error.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
@@ -28,7 +30,7 @@ const ID = "ile-de-re";
 const ILE = `${BASE}?demo#/aventures/${ID}`;
 const TITLE = "ÎLE DE RÉ";
 const LINE = "Île de Ré · 17–18 août 2025";
-const LENGTH = { min: 30000, max: 32000 }; // ms, the Île de Ré's intro (spec § 2)
+const LENGTH = { min: 32500, max: 34500 }; // ms, the Île de Ré's intro (spec § 2)
 const ile = AVENTURES.find((a) => a.id === ID);
 const { trajet } = ile;
 const PIN_NAME = ile.lieu; // the pin's name (the trip has no arrivee), at the foot of the bridge
@@ -44,9 +46,21 @@ const CANOE_STAMPED = { welcomed: true, known: AVENTURES.map((a) => a.id), stamp
 const SCENE = "ile-de-re/scene-cycy-et-kevin-a-velo-01"; // the two of them side by side on their bikes, over the bridge and on the poster
 const beat = SCENARIOS[ID] ? beatsOf(ID) : {};
 // who shows in the middle of a moment (spec § 2), entirely on screen: the two of them on their bikes in a scene sticker
-// (« duo ») at the bridge's foot, over the bridge, across the island, and on the poster; the moments in between come
-// with their own scenes (tasks 5 and 6)
-const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "La traversée": ["duo"], "L'affiche": ["duo"] };
+// (« duo ») at the bridge's foot, over the bridge, across the island, at the lighthouse (arms in the air, then their ice
+// creams), on the way back, and on the poster; La Rochelle and the coast come with their own scenes (task 6)
+const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "La traversée": ["duo"], "Le phare": ["duo"], "La glace": ["duo"], "Le retour": ["duo"], "L'affiche": ["duo"] };
+// the moments at the lighthouse: in their middles, the lighthouse whole on screen, its top over their heads and its
+// upper share `clear` out of their sticker's box
+const LIGHTHOUSE = { moments: ["Le phare", "La glace"], clear: 0.25 };
+// s: on the way back over the bridge, never ending: sought on every 0.25 s from its scene in to just before it goes, no
+// bank of the bridge on screen and a pier at least entirely on it; the snail entirely on screen in its middle, behind
+// them (on their right) at its first time and in front of them (on their left) at its last: it overtakes them
+const ENDLESS = [...Array.from({ length: 18 }, (_, k) => 21 + k * 0.25), 25.3];
+const SNAIL_WHOLE = 23;
+// s: on the way back, every 0.1 s (Review Focus 2): a single view of the bikes, Cycy in front (05) then the two of them
+// out of breath (08), no speed lines
+const BACK = { from: 20.5, to: 25.5, views: ["05", "08"] };
+const BACK_WIDE = [21, 23, 25.3]; // s: and over a wide screen (point 5), as its decor glides by
 const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
 const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
 const GLIDING = [9.55, 10, 12.5, 14.8]; // s: across the island, the decor gliding by from its start (its layers furthest right) to once it has stopped
@@ -107,6 +121,31 @@ const islandSeen = `(() => {
     tower: [...document.querySelectorAll('[data-layer="traversee-champs"] .st-clocher')].map((el) => box(el, "clocher"))[0],
   };
 })()`;
+// at the lighthouse: its box (the paper one that shows), and the bikes' view that shows, with the screen's size
+const lighthouseSeen = `(() => {
+  const shows = ${SHOWS};
+  const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
+  const duo = [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].find(shows);
+  return {
+    screen: { width: innerWidth, height: innerHeight },
+    phare: [...document.querySelectorAll(".st-phare")].filter(shows).map((el) => box(el, "phare"))[0] ?? null,
+    duo: duo ? box(duo, "duo") : null,
+  };
+})()`;
+// on the way back: the bridge's banks and piers that show, the snail that shows, the bikes' view that shows, with the
+// screen's size
+const backSeen = `(() => {
+  const shows = ${SHOWS};
+  const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
+  const duo = [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].find(shows);
+  return {
+    screen: { width: innerWidth, height: innerHeight },
+    banks: [...document.querySelectorAll(".st-rive")].filter(shows).map((el) => box(el, "rive")),
+    piers: [...document.querySelectorAll(".st-pile")].filter(shows).map((el) => box(el, "pile")),
+    snail: [...document.querySelectorAll(".st-escargot")].filter(shows).map((el) => box(el, "escargot"))[0] ?? null,
+    duo: duo ? box(duo, "duo") : null,
+  };
+})()`;
 // the rental's signs that show (each its board and its words), with the screen's size
 const signsSeen = `({
   screen: { width: innerWidth, height: innerHeight },
@@ -131,6 +170,8 @@ const posterBoxes = `(() => {
 })()`;
 /** How far apart two boxes are (px; 0 if they touch or overlap). */
 const gap = (a, b) => Math.max(0, a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
+/** A box at least partly in the screen. */
+const inView = (screen, b) => b.right > 0 && b.left < screen.width && b.bottom > 0 && b.top < screen.height;
 const fr = (t) => String(t).replace(".", ",");
 
 async function suite(page, vp) {
@@ -145,7 +186,7 @@ async function suite(page, vp) {
     return page.eval(expression);
   }
 
-  /** The intro played through, as long as it says (30 to 32 s) and not shorter: its poster says the lieu, then the
+  /** The intro played through, as long as it says (32.5 to 34.5 s) and not shorter: its poster says the lieu, then the
    *  stamp's name and dates, all of it on screen, its title out of the sound button's corner; then the passport. */
   async function poster(where) {
     await page.goto(ILE);
@@ -240,6 +281,42 @@ async function suite(page, vp) {
       if (off.length) throw new Error(`${where}, sur le pont à ${t} s : les vélos hors de l'écran ${JSON.stringify(off.map(round))}`);
     }
     await island(where);
+    await lighthouse(where);
+    await endless(where);
+  }
+
+  /** In the middle of each moment at the lighthouse, held there: the lighthouse entirely on screen, its top over the
+   *  two of them's heads, and its upper share out of their sticker's box (spec § 2, « Le phare »). */
+  async function lighthouse(where) {
+    for (const name of LIGHTHOUSE.moments) {
+      const t = beat[name]?.mid;
+      if (t === undefined) throw new Error(`pas de temps « ${name} »`);
+      const { screen, phare, duo } = await heldAt(t, lighthouseSeen);
+      if (!phare || !duo) throw new Error(`${where}, « ${name} » à ${t} s : phare ${phare ? "là" : "absent"}, vélos ${duo ? "là" : "absents"}`);
+      const off = outside(screen, [phare]);
+      if (off.length) throw new Error(`${where}, « ${name} » à ${t} s : le phare coupé par le bord ${JSON.stringify(off.map(round))}`);
+      const top = phare.top + (phare.bottom - phare.top) * LIGHTHOUSE.clear;
+      if (!(phare.top < duo.top && duo.top > top)) throw new Error(`${where}, « ${name} » à ${t} s : le haut du phare pas au-dessus d'eux ${JSON.stringify([phare, duo].map(round))}`);
+    }
+  }
+
+  /** On the way back, sought on from its scene in to just before it goes: no bank of the bridge in the screen, a pier at
+   *  least entirely on it; the snail entirely on screen in its middle, behind the two of them (on their right) at first
+   *  and in front of them (on their left) at last: it overtakes them. */
+  async function endless(where) {
+    await page.goto(`${BASE}?demo&t=${ENDLESS[0]}#/aventures/${ID}`);
+    await page.waitFor(playing, 8000);
+    for (const t of ENDLESS) {
+      await page.eval(holdAt(t));
+      const { screen, banks, piers, snail, duo } = await page.eval(backSeen);
+      const seen = banks.filter((b) => inView(screen, b));
+      if (seen.length) throw new Error(`${where}, au retour à ${t} s : une rive du pont à l'écran ${JSON.stringify(seen.map(round))}`);
+      if (!piers.some((b) => !outside(screen, [b]).length)) throw new Error(`${where}, au retour à ${t} s : aucune pile entière à l'écran (${piers.length} montrée(s))`);
+      if (!snail || !duo) throw new Error(`${where}, au retour à ${t} s : escargot ${snail ? "là" : "absent"}, vélos ${duo ? "là" : "absents"}`);
+      if (t === SNAIL_WHOLE && outside(screen, [snail]).length) throw new Error(`${where}, au retour à ${t} s : l'escargot hors de l'écran ${JSON.stringify(round(snail))}`);
+      if (t === ENDLESS[0] && !(snail.left >= duo.right)) throw new Error(`${where}, au retour à ${t} s : l'escargot pas derrière vous (à votre droite) ${JSON.stringify([snail, duo].map(round))}`);
+      if (t === ENDLESS.at(-1) && !(snail.right <= duo.left)) throw new Error(`${where}, au retour à ${t} s : l'escargot pas devant vous (à votre gauche) ${JSON.stringify([snail, duo].map(round))}`);
+    }
   }
 
   /** Across the island, from its start, sought on every 0.1 s to « Le phare »: each km sign that shows is whole on
@@ -288,13 +365,13 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran ; pendant la traversée (de 0,1 en 0,1 s), chaque panneau kilométrique entier dans l'écran quand il se montre, et chacun (« ${KM.join(" », « ")} ») montré ; les maisons blanches des champs avant le clocher d'Ars (la première vous dépasse avant lui, et quand il arrive à l'écran, une maison y est déjà ou est passée)`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran ; pendant la traversée (de 0,1 en 0,1 s), chaque panneau kilométrique entier dans l'écran quand il se montre, et chacun (« ${KM.join(" », « ")} ») montré ; les maisons blanches des champs avant le clocher d'Ars (la première vous dépasse avant lui, et quand il arrive à l'écran, une maison y est déjà ou est passée) ; au milieu de « ${LIGHTHOUSE.moments.join(" » et « ")} », le phare entier dans l'écran, son haut au-dessus de vous ; au retour (de 0,25 en 0,25 s, de ${fr(ENDLESS[0])} à ${fr(ENDLESS.at(-1))} s), aucune rive du pont à l'écran et une pile au moins entière, l'escargot entier à ${SNAIL_WHOLE} s, derrière vous (à votre droite) à ${fr(ENDLESS[0])} s et devant vous (à votre gauche) à ${fr(ENDLESS.at(-1))} s`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 
   if (vp.width === 1920)
-    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), chaque couche visible couvre toute la largeur de l'écran`, async () => {
-      for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING]])
+    await check(`1920 × 1080 (point 5) : sur le pont, à ?t= ${FOLLOWED.map(fr).join(", ")} (la caméra vous suit, jusqu'au bout de sa course), puis pendant la traversée, à ?t= ${GLIDING.map(fr).join(", ")} (le décor défile, jusqu'au bout de sa course), puis au retour, à ?t= ${BACK_WIDE.map(fr).join(", ")} (le pont défile), chaque couche visible couvre toute la largeur de l'écran`, async () => {
+      for (const [scene, times] of [["pont-", FOLLOWED], ["traversee-", GLIDING], ["retour-", BACK_WIDE]])
         for (const t of times) {
           const layers = await heldAt(t, layersSeen);
           if (!layers.some((l) => l.name.startsWith(scene))) throw new Error(`à ${t} s : aucune couche « ${scene}* » à l'écran ${JSON.stringify(layers.map((l) => l.name))}`);
@@ -356,7 +433,8 @@ async function suite(page, vp) {
     // and the finished poster; the demo banner hidden
     const bridge = [5, 6, 7, 8, 9.2].map((t) => [t, `00-pont-${String(t).replace(".", "-")}s`]);
     const island = [9.6, 10.5, 12, 13.5, 14.8].map((t) => [t, `00-traversee-${String(t).replace(".", "-")}s`]);
-    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, ...island, [30.5, "11-affiche-30-5s"]];
+    const back = [21, 22.5, 24, 25.3].map((t) => [t, `00-retour-${String(t).replace(".", "-")}s`]);
+    const stops = [...Object.entries(beat).map(([name, { mid }], k) => [mid, `${String(k + 1).padStart(2, "0")}-${name.replace(/[^a-z]+/gi, "-").toLowerCase()}`]), [2, "00-carte-2s"], [3.9, "00-carte-3-9s"], [PARKED.at, "00-carte-4-4s"], ...bridge, ...island, ...back, [33, "11-affiche-33s"]];
     for (const [width, height] of vp.turned ? [[vp.width, vp.height], [852, 393]] : [[vp.width, vp.height]]) {
       await page.resize(width, height);
       try {
@@ -415,6 +493,25 @@ async function suite(page, vp) {
           if (!worn || shown < worn / 2) throw new Error(`${back ? "en reculant" : "en avançant"} : la vue ${view} portée ${worn} fois, ses traits de vitesse montrés ${shown} fois`);
         }),
       );
+    });
+
+    await check(`point 2 (le retour) : de ${fr(BACK.from)} à ${fr(BACK.to)} s, de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, ${BACK.views.join(" puis ")} (chacune montrée), sans traits de vitesse`, async () => {
+      await page.goto(`${BASE}?demo&t=${BACK.from}#/aventures/${ID}`);
+      await page.waitFor(playing, 8000);
+      const times = Array.from({ length: Math.round((BACK.to - BACK.from) / 0.1) - 1 }, (_, k) => +(BACK.from + 0.1 + k * 0.1).toFixed(2));
+      const worn = [new Set(), new Set()]; // the views shown, each pass
+      for (const [k, t] of [...times, ...[...times].reverse()].entries()) {
+        await page.eval(holdAt(t));
+        const now = await page.eval(bikesSeen);
+        const how = k >= times.length ? "en reculant" : "en avançant";
+        if (now.looks !== 1) throw new Error(`à ${t} s ${how} : ${now.looks} vue(s) des vélos`);
+        if (!BACK.views.includes(now.view)) throw new Error(`à ${t} s ${how} : la vue ${now.view}, pas l'une de ${JSON.stringify(BACK.views)}`);
+        if (now.lines) throw new Error(`à ${t} s ${how} : des traits de vitesse au retour`);
+        worn[Number(k >= times.length)].add(now.view);
+      }
+      worn.forEach((views, back) => {
+        if (views.size !== BACK.views.length) throw new Error(`${back ? "en reculant" : "en avançant"} : vues montrées ${JSON.stringify([...views])}`);
+      });
     });
 
     await check(`les stickers demandés sous /assets/aventures/ : exactement ceux de ${ID}.stickers.js (${stickers.length}), aucun d'une autre sortie`, async () => {

@@ -415,10 +415,11 @@
 }
 
 /* ── Ré's bridge (ile-de-re.js): the gulls, gliding and flapping, and the sailboats, sailing on and rocking on their
-   waterline; GSAP moves them, each drawn apart ── */
+   waterline; on the way back, the snail crawling over the deck; GSAP moves them, each drawn apart ── */
 .st-mouette,
 .st-voilier,
-.st-borne {
+.st-borne,
+.st-escargot {
   position: absolute;
   display: block;
   will-change: transform;
@@ -430,9 +431,15 @@
   transform-origin: 50% 100%;
 }
 
+/* the snail stretches out from its tail as it crawls */
+.st-escargot {
+  transform-origin: 100% 100%;
+}
+
 .st-mouette svg,
 .st-voilier svg,
-.st-borne svg {
+.st-borne svg,
+.st-escargot svg {
   display: block;
   overflow: visible;
 }
@@ -530,6 +537,12 @@
    water */
 .st-veil--dore {
   background: linear-gradient(to bottom, rgba(255, 184, 104, 0), rgba(255, 184, 104, 0) 240px, rgba(255, 182, 104, 0.22) 380px, rgba(255, 178, 100, 0.16) 452px, rgba(250, 170, 98, 0.08) 530px, rgba(246, 166, 98, 0.05));
+}
+
+/* the golden light of the evening over Ré's bridge on the way back (ile-de-re.js), under its golden sky: clear over the
+   sky, warmest along the horizon and the deck, fainter on the water below */
+.st-veil--soir {
+  background: linear-gradient(to bottom, rgba(255, 184, 104, 0), rgba(255, 184, 104, 0) 380px, rgba(255, 180, 102, 0.16) 452px, rgba(255, 174, 98, 0.24) 505px, rgba(250, 168, 98, 0.12) 590px, rgba(246, 162, 98, 0.06));
 }
 
 .st-veil--nuit {

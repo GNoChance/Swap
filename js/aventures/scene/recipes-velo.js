@@ -1,8 +1,8 @@
 // The bikes' recipes (the Île de Ré's spec, § 4): reusable pieces of timeline for the two of them on their bikes, each →
 // the moment it ends (s): pedalling (pedale: their height rising from the wheels at each stroke, a little rock from side
 // to side, and speed lines streaming out behind them when they go flat out), and the decor gliding by as they ride
-// (defile: each layer at the pace of its depth). Everything is a tween of the timeline, nothing is worked out as it
-// plays: it holds under any seek. Reads `window` only in its functions.
+// either way (defile: each layer at the pace of its depth). Everything is a tween of the timeline, nothing is worked out
+// as it plays: it holds under any seek. Reads `window` only in its functions.
 import { lens, path, wave } from "./geom.js";
 import { HIDDEN } from "./stage.js";
 
@@ -34,9 +34,10 @@ export function pedale(tl, at, { actor, duration, speed = 1, lines = false }) {
 }
 
 /** defile(tl, at, { stage, layers, distance, duration, ease }): from `at` s for `duration` s, the decor (`layers`, a
- *  scene's elements) gliding left past the two of them as they ride right: each layer `distance` × its depth (units),
- *  from half that right of its place to half that left of it (stage.pan(), x), its course centred on it: a layer that
- *  much wider than the widest screen covers it all along. → its end (s). */
+ *  scene's elements) gliding left past the two of them as they ride right (a negative `distance`: gliding right as they
+ *  ride left): each layer `distance` × its depth (units), from half that right of its place to half that left of it
+ *  (stage.pan(), x), its course centred on it: a layer that much wider than the widest screen covers it all along. →
+ *  its end (s). */
 export function defile(tl, at, { stage, layers, distance, duration, ease = "none" }) {
   stage.pan(tl, at, { x: -distance / 2, duration: 0, only: layers });
   stage.pan(tl, at, { x: distance / 2, duration, ease, only: layers });

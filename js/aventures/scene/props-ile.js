@@ -323,7 +323,8 @@ const half = (y) => 21 + ((y - 236) / (566 - 236)) * 8;
 
 /** The Phare des Baleines at PHARE (x, its foot y): its plinth and its door, its shaft of three faces (lit, half lit,
  *  shaded: an octagon from the side) in courses of stone, a window up the middle face now and then, its corbelled
- *  cornice and gallery with its railing, the lantern (its glazing in a black frame) and its dome, the finial. */
+ *  cornice and gallery with its railing, the lantern (its glazing in a black frame) and its dome, the finial; all in a
+ *  group of class st-phare. */
 function tower(skin) {
   const p = paper(skin);
   const c = p
@@ -368,7 +369,7 @@ function tower(skin) {
     path(dome, c.dome),
     path(domeLit, c.domeLit),
   ].join("");
-  return piece(skin, outline, markup, `M${x - 29.4} 221.6H${x + 29.4}`, 1.2);
+  return `<g class="st-phare">${piece(skin, outline, markup, `M${x - 29.4} 221.6H${x + 29.4}`, 1.2)}</g>`;
 }
 
 /** A low white house of the island at x (its left end), its foot at y, `w` wide: its walls, its roof of tiles seen from

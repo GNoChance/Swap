@@ -6,16 +6,21 @@
 // it, gulls crying over it; then across the island the decor glides by faster and faster, the vines, the salt marshes
 // and their salt heaps, the white houses and their hollyhocks, the wooden km signs counting down to the lighthouse, the
 // two of them flat out with their speed lines, Cycy in front then Kevin, until they stop out of breath over their
-// handlebars at Ars, under its black and white steeple; then the Phare des Baleines by day, alone until the moments to
-// come (tasks 5 and 6) are there; then the closing poster « ÎLE DE RÉ » on the lighthouse and the sea, the two of them
-// side by side on their bikes in front. Its moments are the beats of intros/index.js; its stickers,
-// ile-de-re.stickers.js. The lighthouse is the poster's decor.
+// handlebars at Ars, under its black and white steeple; then the Phare des Baleines by day: the two of them pop up in
+// front of it, arms in the air, then turned over, their ice creams; then in the evening, in the golden light, the way
+// back over Ré's bridge, which never ends (Kevin was « super lent »): its deck and its piers glide by on and on, no land
+// in sight, as they pedal on the spot, Cycy in front and Kevin lagging, then out of breath over their handlebars, and a
+// snail overtakes them on the deck; then the lighthouse again until La Rochelle and the coast (task 6) are there; then
+// the closing poster « ÎLE DE RÉ » on the lighthouse and the sea, the two of them side by side on their bikes in front.
+// Its moments are the beats of intros/index.js; its stickers, ile-de-re.stickers.js. The lighthouse is the poster's
+// decor.
 import { content } from "../../content.js";
 import { createStage, ENTER, HIDDEN, layerX, SAFE } from "../scene/stage.js";
 import { grain, paperLayer } from "../scene/decor.js";
 import { preload, sceneActor, vehicle } from "../scene/actors.js";
 import { projection } from "../scene/geo.js";
 import { sceneLook } from "../scene/urls.js";
+import { wave } from "../scene/geom.js";
 import * as carte from "../scene/props-carte.js";
 import * as perigord from "../scene/props-perigord.js";
 import * as riviere from "../scene/props-riviere.js";
@@ -37,6 +42,8 @@ const TRIP = { duration: 4, short: 37 };
 const hide = (els) => els.forEach((el) => Object.assign(el.style, HIDDEN));
 /** A scene sticker of the Île de Ré's boards (`board`, its number `k`), and its stand-in (spec § 3). */
 const scene = (board, k, who, pose) => sceneLook("ile-de-re", board, k, who, pose);
+/** The two of them with their bikes: sticker `k` of their board (correspondance: 01 side by side, 05 Cycy flat out…). */
+const bike = (k) => scene("cycy-et-kevin-a-velo", k);
 /** A prop drawn in paper (`markup`, an <svg> `width` × `height` units) in `layer`, of class `cls`, its bottom middle on
  *  the stage's x, y. → its element */
 function prop(layer, cls, markup, [x, y], [width, height]) {
@@ -52,12 +59,12 @@ function setOff(t) {
   return (p) => (p < t ? share * (1 - Math.cos((Math.PI / 2) * (p / t))) : share + ((1 - share) * (p - t)) / (1 - t));
 }
 
-/** An ease from a pace already reached (`from`, a share of the top pace) up to the top pace over the first share `rise`
- *  of the time, steady, then down to a stop over its last share `fall` (each change half a sine wave). → { ease, mean:
- *  its mean pace, a share of the top one } */
-function sprint({ from, rise, fall }) {
-  const up = (p) => from * p + ((1 - from) / 2) * (p - (rise / Math.PI) * Math.sin((Math.PI * p) / rise)); // the way gone
-  const down = (q) => q / 2 + (fall / (2 * Math.PI)) * Math.sin((Math.PI * q) / fall); // q into the slowing down
+/** An ease from a pace already reached (`from`, a share of the top pace; the top one by default) up to the top pace
+ *  over the first share `rise` of the time, steady, then down to `to` (a share of the top pace; a stop by default) over
+ *  its last share `fall` (each change half a sine wave). → { ease, mean: its mean pace, a share of the top one } */
+function sprint({ from = 1, rise = 0, fall, to = 0 }) {
+  const up = (p) => from * p + (from < 1 ? ((1 - from) / 2) * (p - (rise / Math.PI) * Math.sin((Math.PI * p) / rise)) : 0); // the way gone
+  const down = (q) => to * q + (1 - to) * (q / 2 + (fall / (2 * Math.PI)) * Math.sin((Math.PI * q) / fall)); // q into the slowing down
   const way = (p) => (p < rise ? up(p) : up(rise) + Math.min(p, 1 - fall) - rise + (p > 1 - fall ? down(p - 1 + fall) : 0));
   const mean = way(1);
   return { ease: (p) => way(p) / mean, mean };
@@ -67,6 +74,23 @@ function timeOf(ease, share) {
   let [lo, hi] = [0, 1];
   for (let k = 0; k < 30; k++) [lo, hi] = ease((lo + hi) / 2) < share ? [(lo + hi) / 2, hi] : [lo, (lo + hi) / 2];
   return (lo + hi) / 2;
+}
+/** `target` from `start` (GSAP vars) to `end` and back, over and over from `from` to `to` s, about `half` s each way (a
+ *  whole count of times: as it was at the end); with `ease` each way out (its way back the same, reversed). */
+function throb(tl, target, [from, to], half, start, end, ease = "sine.inOut") {
+  const times = Math.max(1, Math.round((to - from) / (2 * half)));
+  tl.fromTo(target, start, { ...end, duration: (to - from) / (2 * times), ease, yoyo: true, repeat: 2 * times - 1, immediateRender: false }, from);
+}
+/** The gulls ({ el, glide }) from `at` s for `duration` s (5 s at least): each gliding `glide` units and bobbing three
+ *  times, flapping in three flurries of three flaps each, out of step (an even count of halves: the wings up again after
+ *  each). */
+function fly(tl, gulls, at, duration) {
+  gulls.forEach(({ el, glide }, k) => {
+    tl.fromTo(el, { x: 0 }, { x: glide, duration, ease: "none", immediateRender: false }, at);
+    throb(tl, el, [at, at + duration], duration / 6, { y: 0 }, { y: -7 });
+    for (const t of [at + 0.2 + k * 0.23, at + 1.9 + k * 0.31, at + 3.6 + k * 0.15])
+      tl.fromTo(el, { scaleY: 1 }, { scaleY: -0.45, duration: 0.13, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, t);
+  });
 }
 
 // the camera follows the two of them FOLLOW units to the right over the bridge; WIDEST: half what the widest screen
@@ -148,6 +172,42 @@ const PHARE = [
 const PHARE_FRAME = 0.75; // on a phone held sideways: the lantern in sight, the layers' ends not
 // the two of them side by side on their bikes on the poster, on the dune in front of the lighthouse
 const ON_BIKES = { x: 172, y: 726, height: 236 };
+// at the lighthouse, where they stand with their bikes on the dune, arms in the air then with their ice creams: each view
+// `width` units wide, as wide as the poster's (its 01, 236 tall), the board's stickers cut at one scale. In « Le phare »
+// (s into it) they pop up once the island has gone, then jump for joy between `jumps` s (`jump` units high, `hop` s each
+// way: twice); in « La glace » they sway with their ice creams from `sway` s, `tilt` degrees each way; they go `leave` s
+// before the way back
+const AT_PHARE = { x: 172, y: 726, width: 243 };
+const CHEER = { pop: 0.35, jumps: [0.85, 1.45], jump: 9, hop: 0.15, sway: 0.3, tilt: 1.5, leave: 0.25 };
+// the way back over the bridge in the evening, never ending, back to front: [name, depth, its markup in a layer that
+// wide (none: a layer for props)]: the golden sky (the canoe's), the sea golden with it, the gulls over it, the bridge
+// going on and on (no land at either end), the two of them on their bikes (on the spot), the snail on the deck, the
+// near rail; the golden light over them all on a layer of its own (css/intros.css, st-veil--soir)
+const RETOUR = [
+  ["retour-ciel", 0.04, () => riviere.cielDore()],
+  ["retour-mer", 0.55, (width) => pont.mer("paper", width, pont.SOIR)],
+  ["retour-mouettes", 0.58],
+  ["retour-pont", 1, (width) => pont.pont(width, { endless: true })],
+  ["retour-velos", 0],
+  ["retour-escargot", 1],
+  ["retour-rambarde", 1, (width) => pont.rail(width, { endless: true })],
+];
+// on the way back the deck and its piers glide by to the right (velo.defile()) at `pace` units a second (depth 1) as
+// the two of them pedal slowly on the spot (`speed`), Cycy in front and Kevin lagging, `x` on screen on the deck; from
+// `breathless` s into it, turned over out of breath over their handlebars, they pedal slower still (`slower`) and the
+// pace drops to `tired` of its own by the end (sprint())
+const BACK = { pace: 110, speed: 0.8, breathless: 3.5, slower: 0.4, tired: 0.45, x: 215 };
+// the snail on the deck, `width` units long: on screen at x `from` as the way back begins, behind them (on their
+// right), and at `to` as it ends, in front of them (on their left); it crawls at a steady pace, faster than theirs,
+// stretching out about every `stretch` s
+const SNAIL = { width: 46, from: 330, to: 60, stretch: 0.35 };
+// the gulls over the way back: [x, y (their bottom), width, glide (units)], following them left, within the action
+// band
+const BACK_GULLS = [[150, 300, 54, -120], [300, 292, 44, -90], [420, 350, 50, -140], [40, 318, 46, -100], [560, 330, 48, -110]];
+// the golden light of the evening: its veil at `from` as the way back comes in, then warming on to full as they go
+const DUSK = { from: 0.7 };
+const DISSOLVE = 0.4; // s the way back takes to come in over the lighthouse
+const FADE = 0.3; // s it takes to go
 
 /** mount(host, { aventure }): its scenes on a stage in `host` (the map on show, the others hidden until their moment),
  *  and its paused timeline (intros/index.js). */
@@ -180,41 +240,63 @@ export function mount(host, { aventure }) {
     eglise: ARS + (depth * distance) / 2,
   });
 
-  // back to front: the lighthouse (the poster's), the island, the bridge, the two of them across the island and the
-  // grass in front, the map (each hidden under the one before it, until it leaves); a scene is the list of its layers'
-  // elements
-  // 1. the lighthouse on the island's tip, the reef in the sea before it, the dune in front; the two of them on their
-  // bikes for the poster
+  // on the way back, from its moment until its scene has gone (it goes as La Rochelle's begins): how far the deck glides
+  // (units at depth 1), steady, then slowing down as they are out of breath
+  const retour = beat("Le retour");
+  const rochelle = beat("La Rochelle");
+  const backFor = rochelle + FADE - retour;
+  const tiring = sprint({ fall: (backFor - BACK.breathless) / backFor, to: BACK.tired });
+  const backDistance = BACK.pace * backFor * tiring.mean;
+
+  /** The gulls of `list` ([x, y, width, glide]) in `layer`: [{ el, glide }]. */
+  const gullsIn = (layer, list) => list.map(([x, y, width, glide]) => ({ el: prop(layer, "st-mouette", pont.mouette(width), [x, y], [width, (width * 13) / 42]), glide }));
+
+  // back to front: the lighthouse (the poster's), the way back, the island, the bridge, the two of them across the island
+  // and the grass in front, the map (each hidden under the one before it, until it leaves, but the way back: it comes in
+  // over the lighthouse); a scene is the list of its layers' elements
+  // 1. the lighthouse on the island's tip, the reef in the sea before it, the dune in front; the two of them in front of
+  // it with their bikes, arms in the air, then their ice creams; the two of them on their bikes for the poster
   const phareLayers = PHARE.map(([name, depth, markup]) => paperLayer({ stage, name, depth, paper: markup("paper"), poster: markup("poster") }));
   const phareCrowd = stage.layer("phare-gens", { depth: 0.7 });
-  const duo = sceneActor({ layer: phareCrowd, who: "duo", looks: { cote: scene("cycy-et-kevin-a-velo", 1) }, look: "cote", ...ON_BIKES });
+  const duo = sceneActor({ layer: phareCrowd, who: "duo", looks: { cote: bike(1) }, look: "cote", ...ON_BIKES });
+  const arrived = sceneActor({ layer: phareCrowd, who: "duo", looks: { bras: bike(12), glaces: bike(11) }, look: "bras", x: AT_PHARE.x, y: AT_PHARE.y, height: AT_PHARE.width, wide: true });
   const phareScene = [...phareLayers.map((layer) => layer.el), phareCrowd];
 
-  // 2. the island from the bridge's end to Ars: the sky, the far island, the fields behind the path (the vines, the salt
+  // 2. the way back over the bridge in the evening, never ending: the golden sky, the golden sea, the gulls, the bridge
+  // going on and on, the two of them on their bikes on the deck (Cycy in front, then out of breath; each view as wide),
+  // the snail behind them on it, the near rail; the golden light over them all (its layer, the camera never moves it:
+  // GSAP fades it)
+  const backScene = layersOf(RETOUR, backDistance / 2);
+  const homeward = sceneActor({ layer: layerOf(backScene, "retour-velos"), who: "duo", looks: { "fond-cycy": bike(5), souffle: bike(8) }, look: "fond-cycy", x: BACK.x, y: pont.DECK.base, height: RIDE.width, wide: true });
+  // the snail on the deck, `SNAIL.from` on screen as its layer starts the glide backDistance / 2 left of its place
+  const snail = prop(layerOf(backScene, "retour-escargot"), "st-escargot", pont.escargot(SNAIL.width), [SNAIL.from + backDistance / 2, pont.DECK.base], [SNAIL.width, (SNAIL.width * 23) / 44]);
+  const backGulls = gullsIn(layerOf(backScene, "retour-mouettes"), BACK_GULLS);
+  const dusk = stage.layer("retour-soir", { depth: 0 });
+  dusk.classList.add("st-veil", "st-veil--soir");
+
+  // 3. the island from the bridge's end to Ars: the sky, the far island, the fields behind the path (the vines, the salt
   // marshes, the white houses, the church of Ars), the km signs, the cycle path and the fields below it
   const islandScene = layersOf(ISLAND, distance / 2, themes);
 
-  // 3. the bridge over the sea between its two ends, the bike rental at its foot: the far coast, the gulls, the
+  // 4. the bridge over the sea between its two ends, the bike rental at its foot: the far coast, the gulls, the
   // sailboats far off, the bridge, its land, the two of them on its road under the near rail, a sailboat near in front
   const bridgeScene = layersOf(BRIDGE, FOLLOW);
   const rider = sceneActor({
     layer: layerOf(bridgeScene, "pont-route"),
     who: "duo",
-    looks: { face: scene("cycy-et-kevin-a-velo", 2), cote: scene("cycy-et-kevin-a-velo", 1) },
+    looks: { face: bike(2), cote: bike(1) },
     look: "face",
     x: RIDE.from,
     y: pont.deck(RIDE.from),
     height: RIDE.width,
     wide: true, // its size a width: every view as wide, the two of them at one scale
   });
-  const air = layerOf(bridgeScene, "pont-mouettes");
-  const gulls = GULLS.map(([x, y, width, glide]) => ({ el: prop(air, "st-mouette", pont.mouette(width), [x, y], [width, (width * 13) / 42]), glide }));
+  const gulls = gullsIn(layerOf(bridgeScene, "pont-mouettes"), GULLS);
   const sails = SAILS.map(([name, x, y, height, hull, glide]) => ({ el: prop(layerOf(bridgeScene, name), "st-voilier", pont.voilier(height, hull), [x, y + height * 0.02], [height * 0.8, height * 1.04]), glide }));
 
-  // 4. across the island, in front of the bridge as it goes: the two of them on their bikes where it left them on
+  // 5. across the island, in front of the bridge as it goes: the two of them on their bikes where it left them on
   // screen, each view as wide (the board's stickers are cut at one scale), the flat-out ones mirrored; the grass in front
   const islandFront = layersOf(ISLAND_FRONT, distance / 2, themes);
-  const bike = (k) => scene("cycy-et-kevin-a-velo", k);
   const cyclists = sceneActor({ layer: islandFront[0], who: "duo", looks: { cote: bike(1), "fond-cycy": bike(5), "fond-kevin": bike(6), souffle: bike(8) }, look: "cote", ...landed, height: RIDE.width, wide: true });
   MIRRORED.forEach((key) => cyclists.look(key).classList.add("is-flipped"));
   // the km signs along the way, their feet behind the path's grass: each there at its stage x (sign k: on the right of
@@ -225,7 +307,7 @@ export function mount(host, { aventure }) {
   const kmX = (k) => SAFE.x1 - kmBox[0] / 2 + KM.depth * camera(KM.at[k]);
   const kmSigns = kmWords.map((text, k) => prop(layerOf(islandScene, "traversee-bornes"), "st-borne", ile.borne(text, KM.scale), [kmX(k), ile.PISTE.verge + 4], kmBox));
 
-  // 5. the South-West's map, north to the Pertuis: the coast round La Rochelle, the islands and Ré's bridge, the
+  // 6. the South-West's map, north to the Pertuis: the coast round La Rochelle, the islands and Ré's bridge, the
   // marshes, the vines of Cognac and Bordeaux, the Charente, the woods, the Médoc's pines
   const way = trajet.points.map(project).map(({ x, y }) => [x, y]);
   const clear = carte.stops({ trajet, lieu }, project).map((s) => s.box);
@@ -244,7 +326,7 @@ export function mount(host, { aventure }) {
   const end = project(trajet.points.at(-1));
   const car = vehicle({ layer: map[1], name: "c3", x: start.x, y: start.y, width: 60, view: "roule" });
 
-  hide([...phareScene, duo.el, ...islandScene, ...bridgeScene, ...islandFront, ...kmSigns]);
+  hide([...phareScene, duo.el, arrived.el, ...backScene, dusk, ...islandScene, ...bridgeScene, ...islandFront, ...kmSigns]);
   stage.el.style.setProperty("--st-whole", "1"); // the map in the whole height (a phone held sideways): it starts there
   const texture = grain(stage);
   document.fonts?.load('600 26px "Cormorant Garamond"').catch(() => {}); // the names' and the lettering's font, on its way early
@@ -278,13 +360,7 @@ export function mount(host, { aventure }) {
   stage.pan(timeline, off, { x: FOLLOW, duration: crossing - off, ease: pace, only: bridgeScene });
   velo.pedale(timeline, off, { actor: rider, duration: crossing - off });
   const flight = crossing + 0.3 - selle; // till the bridge is gone
-  gulls.forEach(({ el, glide }, k) => {
-    timeline.fromTo(el, { x: 0 }, { x: glide, duration: flight, ease: "none", immediateRender: false }, selle);
-    timeline.fromTo(el, { y: 0 }, { y: -7, duration: flight / 6, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, selle);
-    // three flurries of three flaps each, out of step; an even count of halves: the wings up again after each
-    for (const at of [selle + 0.2 + k * 0.23, selle + 1.9 + k * 0.31, selle + 3.6 + k * 0.15])
-      timeline.fromTo(el, { scaleY: 1 }, { scaleY: -0.45, duration: 0.13, ease: "sine.inOut", yoyo: true, repeat: 5, immediateRender: false }, at);
-  });
+  fly(timeline, gulls, selle, flight);
   stage.sound(timeline, selle + 1.9, "gulls");
   stage.sound(timeline, selle + 3.7, "gulls");
   sails.forEach(({ el, glide }) => {
@@ -309,12 +385,7 @@ export function mount(host, { aventure }) {
     const next = RIDES[k + 1] ? crossing + RIDES[k + 1][0] : null;
     if (k) cyclists.flip(timeline, at, view);
     if (speed) velo.pedale(timeline, at, { actor: cyclists, duration: (next ?? crossing + SPRINT.until) - at, speed, lines });
-    else {
-      // turned over, out of breath: their breaths heave them until the next view, or the end
-      const [from, to] = [at + 0.18, next ?? phare];
-      const breaths = Math.max(1, Math.round((to - from) / (2 * BREATH)));
-      timeline.fromTo(cyclists.pose, { scaleY: 1 }, { scaleY: 1.03, duration: (to - from) / (2 * breaths), ease: "sine.inOut", yoyo: true, repeat: 2 * breaths - 1, immediateRender: false }, from);
-    }
+    else throb(timeline, cyclists.pose, [at + 0.18, next ?? phare], BREATH, { scaleY: 1 }, { scaleY: 1.03 }); // out of breath: their breaths heave them
   });
   // the km signs pop up out of the grass, glide by, and fold down into it before the left of the safe zone (unless they
   // have stopped by then)
@@ -327,11 +398,46 @@ export function mount(host, { aventure }) {
     timeline.fromTo(sign, { scaleY: 1 }, { scaleY: 0, duration: 0.14, ease: "power1.in", immediateRender: false }, gone - 0.14).set(sign, { autoAlpha: 0 }, gone);
   });
 
-  // 5. from « Le phare » on, the lighthouse by day, under the island as it goes (framed so its lantern shows on a phone
-  // held sideways), alone until the moments to come take their turn
+  // 5. « Le phare »: the lighthouse by day, under the island as it goes (framed so its lantern shows on a phone held
+  // sideways); the two of them pop up in front of it, arms in the air, and jump for joy
   timeline.set(phareScene, { autoAlpha: 1 }, phare);
   timeline.fromTo([...islandScene, ...islandFront], { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.3, ease: "power1.in", immediateRender: false }, phare);
   stage.frame(timeline, phare, { whole: PHARE_FRAME, duration: 0.4 });
+  arrived.pop(timeline, phare + CHEER.pop);
+  throb(timeline, arrived.pose, CHEER.jumps.map((t) => phare + t), CHEER.hop, { y: 0 }, { y: -CHEER.jump }, "power2.out");
+
+  // 6. « La glace »: at the lighthouse's foot, turned over, their ice creams; they sway happily, then go
+  const glace = beat("La glace");
+  arrived.flip(timeline, glace, "glaces");
+  const going = retour - CHEER.leave;
+  timeline.fromTo(arrived.pose, { rotation: 0 }, { rotation: CHEER.tilt, duration: going - glace - CHEER.sway, ease: wave(2), immediateRender: false }, glace + CHEER.sway);
+  arrived.leave(timeline, going);
+
+  // 7. « Le retour »: in the evening, over Ré's bridge, which never ends; its scene comes in over the lighthouse, framed
+  // back on the action band, the golden light with it, warming on as they go. The deck and its piers glide by to the
+  // right as they pedal on the spot, slowly, Cycy in front and Kevin lagging, then turned over out of breath over their
+  // handlebars, slower still as the pace drops; the snail on the deck crawls on at its own pace and overtakes them; the
+  // gulls glide and flap, crying
+  timeline.fromTo(backScene, { autoAlpha: 0 }, { autoAlpha: 1, duration: DISSOLVE, ease: "power1.out", immediateRender: false }, retour);
+  timeline.fromTo(dusk, { autoAlpha: 0 }, { autoAlpha: DUSK.from, duration: DISSOLVE, ease: "power1.out", immediateRender: false }, retour);
+  timeline.fromTo(dusk, { autoAlpha: DUSK.from }, { autoAlpha: 1, duration: rochelle - retour - DISSOLVE, ease: "sine.inOut", immediateRender: false }, retour + DISSOLVE);
+  timeline.set(phareScene, { autoAlpha: 0 }, retour + DISSOLVE);
+  stage.frame(timeline, retour, { whole: false, duration: DISSOLVE });
+  velo.defile(timeline, retour, { stage, layers: backScene, distance: -backDistance, duration: backFor, ease: tiring.ease });
+  const breathless = retour + BACK.breathless;
+  velo.pedale(timeline, retour, { actor: homeward, duration: BACK.breathless, speed: BACK.speed });
+  homeward.flip(timeline, breathless, "souffle");
+  velo.pedale(timeline, breathless, { actor: homeward, duration: retour + backFor - breathless, speed: BACK.slower });
+  timeline.fromTo(snail, { x: 0 }, { x: SNAIL.to - SNAIL.from - backDistance, duration: backFor, ease: "none", immediateRender: false }, retour);
+  throb(timeline, snail, [retour, retour + backFor], SNAIL.stretch, { scaleX: 1 }, { scaleX: 1.08 });
+  fly(timeline, backGulls, retour, backFor);
+  stage.sound(timeline, retour + 1.2, "gulls");
+
+  // 8. from « La Rochelle » on, until La Rochelle and the coast are there (task 6): the lighthouse again, under the way
+  // back as it goes (framed so its lantern shows on a phone held sideways)
+  timeline.set(phareScene, { autoAlpha: 1 }, rochelle);
+  timeline.to([...backScene, dusk], { autoAlpha: 0, duration: FADE, ease: "power1.in" }, rochelle);
+  stage.frame(timeline, rochelle, { whole: PHARE_FRAME, duration: 0.4 });
 
   // 10. the poster on the lighthouse and the sea: the two of them ride in side by side in front of it, pedalling
   const poster = beat("L'affiche");
@@ -339,7 +445,7 @@ export function mount(host, { aventure }) {
   velo.pedale(timeline, poster, { actor: duo, duration: 1 });
   recipes.affiche(timeline, poster, { stage, layers: phareLayers, aventure, grain: texture, only: phareScene });
 
-  const actors = [car, rider, cyclists, duo];
+  const actors = [car, rider, cyclists, arrived, homeward, duo];
   return {
     timeline,
     ready: preload(actors.flatMap((a) => a.imgs)),
