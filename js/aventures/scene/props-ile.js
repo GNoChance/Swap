@@ -121,14 +121,18 @@ function roses(list, r) {
   return piece("paper", stems + leaves + blooms.join(""), markup, "", 0.5);
 }
 
-/** The church of Ars (paper), its tower's middle at x, its foot at y: its long white nave on the left under its round
- *  tiles, its buttresses and its arched windows; its square white tower, the louvres of its belfry, its cornice; its
- *  tall octagonal spire, white below and black above (a seamark), a cross on top. */
+// the church of Ars: its tower's half width (its cornice's), and how far right of its middle its nave reaches
+const TOWER = 22;
+const NAVE = 116;
+
+/** The church of Ars (paper), its tower's middle at x, its foot at y: its square white tower at its west end, the
+ *  louvres of its belfry, its cornice; its tall octagonal spire, white below and black above (a seamark), a cross on
+ *  top; its long white nave on the right under its round tiles, its buttresses and its arched windows. */
 function eglise(x, y) {
-  const nave = poly([[x - 116, y], [x - 116, y - 42], [x - 18, y - 42], [x - 18, y]]);
-  const naveRoof = [[x - 120, y - 41], [x - 18, y - 41], [x - 18, y - 64], [x - 102, y - 64]];
-  const buttresses = [-104, -76, -48].map((dx) => poly([[x + dx, y], [x + dx, y - 34], [x + dx + 3, y - 38], [x + dx + 6, y - 34], [x + dx + 6, y]])).join("");
-  const windows = [-90, -62, -34].map((dx) => `M${x + dx} ${y - 12}V${y - 28}a3.5 3.5 0 0 1 7 0V${y - 12}Z`).join("");
+  const nave = poly([[x + 18, y], [x + 18, y - 42], [x + NAVE, y - 42], [x + NAVE, y]]);
+  const naveRoof = [[x + 18, y - 41], [x + NAVE + 4, y - 41], [x + NAVE - 14, y - 64], [x + 18, y - 64]];
+  const buttresses = [42, 70, 98].map((dx) => poly([[x + dx, y], [x + dx, y - 34], [x + dx + 3, y - 38], [x + dx + 6, y - 34], [x + dx + 6, y]])).join("");
+  const windows = [27, 55, 83].map((dx) => `M${x + dx} ${y - 12}V${y - 28}a3.5 3.5 0 0 1 7 0V${y - 12}Z`).join("");
   const [foot, top] = [y, y - 120]; // the tower
   const faces = [[-19, -6, "#f6f2e9"], [-6, 8, "#e6e0d3"], [8, 19, "#cfc7b6"]];
   const tower = faces.map(([a, b, fill]) => path(poly([[x + a, foot], [x + b, foot], [x + b, top], [x + a, top]]), fill)).join("");
@@ -137,17 +141,17 @@ function eglise(x, y) {
   const louvres = [-11, 3].map((dx) => `M${x + dx} ${top + 32}V${top + 14}a4 4 0 0 1 8 0V${top + 32}Z`).join("");
   let slats = "";
   for (const dx of [-11, 3]) for (let yy = top + 17; yy < top + 31; yy += 3) slats += poly([[x + dx + 1, yy], [x + dx + 7, yy], [x + dx + 7, yy + 0.8], [x + dx + 1, yy + 0.8]]);
-  const cornice = poly([[x - 22, top], [x + 22, top], [x + 22, top + 4], [x - 22, top + 4]]);
+  const cornice = poly([[x - TOWER, top], [x + TOWER, top], [x + TOWER, top + 4], [x - TOWER, top + 4]]);
   // the spire: three faces seen of its eight, meeting at its tip; white up to `band`, black above it
   const [tip, half, band] = [top - 98, 17, top - 46];
   const at = (yy) => (half * (yy - tip)) / (top - tip); // its half width at yy
   const spire = (from, to, tones) =>
     [[-1, -0.38], [-0.38, 0.38], [0.38, 1]].map(([a, b], k) => path(poly([[x + a * at(from), from], [x + b * at(from), from], [x + b * at(to), to], [x + a * at(to), to]]), tones[k])).join("");
   const cross = poly([[x - 0.9, tip], [x + 0.9, tip], [x + 0.9, tip - 13], [x - 0.9, tip - 13]]) + poly([[x - 4.5, tip - 9.5], [x + 4.5, tip - 9.5], [x + 4.5, tip - 7.8], [x - 4.5, tip - 7.8]]);
-  const outline = poly([[x - 19, foot], [x - 19, top + 4], [x - 22, top + 4], [x - 22, top], [x - half, top], [x, tip], [x + half, top], [x + 22, top], [x + 22, top + 4], [x + 19, top + 4], [x + 19, foot]]);
+  const outline = poly([[x - 19, foot], [x - 19, top + 4], [x - TOWER, top + 4], [x - TOWER, top], [x - half, top], [x, tip], [x + half, top], [x + TOWER, top], [x + TOWER, top + 4], [x + 19, top + 4], [x + 19, foot]]);
   return [
     piece("paper", nave + poly(naveRoof), path(nave, "#f2ede3") + path(buttresses, "#ddd6c8") + path(windows, "#4a4640") + path(poly(naveRoof), TILES.roof), topEdge(naveRoof), 0.8),
-    piece("paper", outline + cross, tower + path(courses, "#ddd6c8") + path(louvres, "#4a4640") + path(slats, "#8d867a") + path(cornice, "#d8d1c2") + spire(top, band, ["#f7f3ea", "#e5dfd2", "#c9c1b0"]) + spire(band, tip, ["#4a4d55", "#34373e", "#24262b"]) + path(cross, "#30353d"), "", 1),
+    `<g class="st-clocher">${piece("paper", outline + cross, tower + path(courses, "#ddd6c8") + path(louvres, "#4a4640") + path(slats, "#8d867a") + path(cornice, "#d8d1c2") + spire(top, band, ["#f7f3ea", "#e5dfd2", "#c9c1b0"]) + spire(band, tip, ["#4a4d55", "#34373e", "#24262b"]) + path(cross, "#30353d"), "", 1)}</g>`,
   ].join("");
 }
 
@@ -205,17 +209,18 @@ export function loin(width) {
 
 /** The fields behind the cycle path (paper), across a layer `width` units wide, as they go by from left to right: the
  *  vines in rows until x `marais`, the salt marshes until `maisons`, then the white houses with their green shutters
- *  and their hollyhocks, the church of Ars among them, its tower's middle at `eglise`. */
+ *  and their hollyhocks, then the church of Ars, its tower's middle at `eglise`, and more houses past it. */
 export function champs(width, { marais, maisons, eglise: church }) {
   const [l, r] = edges(width);
   const rand = random(471);
   const edge = [];
   for (let x = l; x < r + 60; x += 60) edge.push([x, FIELD + (rand() - 0.5) * 2]);
   const soil = poly([[l, FIELD + 1], [marais - 14, FIELD + 1], [marais - 6, 800], [l, 800]]);
+  // the houses in a row from the marshes' end up to the church's tower, and on past its nave
   const houses = [];
   for (let x = maisons + 10; x < r; x += 8 + rand() * 30) {
-    const w = 54 + rand() * 70;
-    if (x + w > church - 128 && x < church + 30) x = church + 30; // the church's place, its nave on the left
+    const w = 44 + rand() * 52;
+    if (x + w > church - TOWER - 6 && x < church + NAVE + 8) x = church + NAVE + 8 - w; // no room before the church: on past it
     else houses.push([x, w, 34 + rand() * 8]);
     x += w;
   }
@@ -224,7 +229,7 @@ export function champs(width, { marais, maisons, eglise: church }) {
     sheetOf("paper", edge, GRASS.fields, path(soil, "#d6c9a3"), 800),
     ...[[461, 6], [471, 8], [483, 10]].map(([y, h]) => rang(l, marais - 18, y, h, rand)),
     salines(marais, maisons, [[455, 2.2], [463, 2.6], [472, 3.2]], 490, 0.25, rand),
-    ...houses.map(([x, w, h]) => maison("paper", x, 486, w, h, TILES)),
+    ...houses.map(([x, w, h]) => `<g class="st-maison">${maison("paper", x, 486, w, h, TILES)}</g>`),
     eglise(church, 486),
     roses(hollyhocks, rand),
   ].join("");

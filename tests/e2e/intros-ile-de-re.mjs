@@ -49,7 +49,7 @@ const beat = SCENARIOS[ID] ? beatsOf(ID) : {};
 const CAST = { "En selle": ["duo"], "Le pont": ["duo"], "La traversée": ["duo"], "L'affiche": ["duo"] };
 const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
 const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
-const GLIDING = [10, 12.5, 14.8]; // s: across the island, the decor gliding by, the last once it has stopped
+const GLIDING = [9.55, 10, 12.5, 14.8]; // s: across the island, the decor gliding by from its start (its layers furthest right) to once it has stopped
 // s: from « En selle » to « Le phare », the bikes on the bridge and across the island (Review Focus 2): no C3, a single
 // view of the bikes
 const BIKES = { from: 4.5, to: 15 };
@@ -93,11 +93,20 @@ const bikesSeen = `(() => {
     c3: [...document.querySelectorAll('[data-vehicle="c3"]')].filter((el) => [...el.querySelectorAll(".st-actor__img")].some(shows)).map((el) => el.closest(".st-layer")?.dataset.layer),
   };
 })()`;
-// the km signs that show (each its words and its box), with the screen's size
-const kmSeen = `({
-  screen: { width: innerWidth, height: innerHeight },
-  signs: [...document.querySelectorAll(".st-borne")].filter(${SHOWS}).map((el) => { const r = el.getBoundingClientRect(); return { what: el.textContent, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }),
-})`;
+// across the island: the km signs that show (each its words and its box); the middle of the bikes' view that shows
+// (px); the boxes of the white houses of the fields behind the path and of Ars's tower; with the screen's size
+const islandSeen = `(() => {
+  const shows = ${SHOWS};
+  const box = (el, what) => { const r = el.getBoundingClientRect(); return { what, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
+  const bikes = [...document.querySelectorAll('[data-who="duo"] .st-actor__img')].find(shows)?.getBoundingClientRect();
+  return {
+    screen: { width: innerWidth, height: innerHeight },
+    signs: [...document.querySelectorAll(".st-borne")].filter(shows).map((el) => box(el, el.textContent)),
+    riders: bikes ? (bikes.left + bikes.right) / 2 : null,
+    houses: [...document.querySelectorAll('[data-layer="traversee-champs"] .st-maison')].map((el) => box(el, "maison")),
+    tower: [...document.querySelectorAll('[data-layer="traversee-champs"] .st-clocher')].map((el) => box(el, "clocher"))[0],
+  };
+})()`;
 // the rental's signs that show (each its board and its words), with the screen's size
 const signsSeen = `({
   screen: { width: innerWidth, height: innerHeight },
@@ -230,30 +239,45 @@ async function suite(page, vp) {
       const off = outside(now.screen, now.actors);
       if (off.length) throw new Error(`${where}, sur le pont à ${t} s : les vélos hors de l'écran ${JSON.stringify(off.map(round))}`);
     }
-    await kmSigns(where);
+    await island(where);
   }
 
   /** Across the island, from its start, sought on every 0.1 s to « Le phare »: each km sign that shows is whole on
-   *  screen, its words from content.js; and each of them shows on the way. */
-  async function kmSigns(where) {
+   *  screen, its words from content.js, and each of them shows on the way; the white houses of the fields behind the
+   *  path come before Ars's tower (spec § 2): the first of them passes the bikes' middle before the tower does, and when
+   *  the tower first comes into view, a house is already in view or gone by. */
+  async function island(where) {
     const [from, to] = [beat["La traversée"]?.at, beat["Le phare"]?.at];
     if (from === undefined || to === undefined) throw new Error("pas de temps « La traversée » ou « Le phare »");
     if (KM.length < 2) throw new Error(`les panneaux kilométriques : ${JSON.stringify(KM)} dans content.js`);
     await page.goto(`${BASE}?demo&t=${from}#/aventures/${ID}`);
     await page.waitFor(playing, 8000);
     const seen = new Set();
+    const middle = (b) => (b.left + b.right) / 2;
+    const passed = {}; // when the first house and the tower passed the bikes' middle (s)
+    let towerSeen;
     for (let k = 1; from + k * 0.1 < to - 0.05; k++) {
       const t = +(from + k * 0.1).toFixed(2);
       await page.eval(holdAt(t));
-      const { screen, signs } = await page.eval(kmSeen);
+      const { screen, signs, riders, houses, tower } = await page.eval(islandSeen);
       const odd = signs.filter((b) => !KM.includes(b.what));
       if (odd.length) throw new Error(`${where}, à ${t} s : un panneau ${JSON.stringify(odd.map((b) => b.what))}, pas l'un de ${JSON.stringify(KM)}`);
       const cut = outside(screen, signs);
       if (cut.length) throw new Error(`${where}, à ${t} s : un panneau kilométrique coupé par le bord ${JSON.stringify(cut.map(round))}`);
       signs.forEach((b) => seen.add(b.what));
+      if (!houses.length || !tower || riders === null) throw new Error(`${where}, à ${t} s : ${houses.length} maison(s), clocher ${tower ? "là" : "absent"}, vélos ${riders === null ? "absents" : "là"}`);
+      const first = houses.reduce((a, b) => (b.left < a.left ? b : a)); // the first house to come by
+      passed.house ??= middle(first) <= riders ? t : undefined;
+      passed.tower ??= middle(tower) <= riders ? t : undefined;
+      if (towerSeen === undefined && tower.right > 0 && tower.left < screen.width) {
+        towerSeen = t;
+        if (!houses.some((b) => b.left < screen.width)) throw new Error(`${where}, à ${t} s : le clocher d'Ars à l'écran avant toute maison ${JSON.stringify([tower, first].map(round))}`);
+      }
     }
     const missed = KM.filter((what) => !seen.has(what));
     if (missed.length) throw new Error(`${where} : jamais montré(s) pendant la traversée ${JSON.stringify(missed)}`);
+    if (towerSeen === undefined) throw new Error(`${where} : le clocher d'Ars jamais à l'écran pendant la traversée`);
+    if (passed.house === undefined || (passed.tower !== undefined && passed.tower <= passed.house)) throw new Error(`${where} : le clocher d'Ars passe devant vous à ${passed.tower} s, la première maison à ${passed.house ?? "jamais"}`);
   }
 
   await check(`?demo#/aventures/${ID} : data-length entre ${LENGTH.min} et ${LENGTH.max} ms, l'intro jouée en entier (pas moins de data-length − 300 ms), puis l'affiche dit exactement « ${TITLE} » et « ${LINE} », son cadre et son lettrage entièrement dans l'écran, le titre hors du coin du bouton du son ; puis le passeport`, async () => {
@@ -264,7 +288,7 @@ async function suite(page, vp) {
     await maps(`${vp.width} × ${vp.height}`);
   });
 
-  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran ; pendant la traversée (de 0,1 en 0,1 s), chaque panneau kilométrique entier dans l'écran quand il se montre, et chacun (« ${KM.join(" », « ")} ») montré`, async () => {
+  await check(`${vp.width} × ${vp.height} : au milieu de chacun des temps (?t=), ${Object.entries(CAST).map(([name, who]) => `${name} : ${who.join(", ")}`).join(" ; ")}, entièrement dans l'écran ; au milieu de « ${RENTAL} », le panneau « ${RENTAL_SIGN} » de la location entier dans l'écran ; sur le pont à ${CROSSING.map(fr).join(", ")} s, vous deux à vélo seuls et entièrement dans l'écran ; pendant la traversée (de 0,1 en 0,1 s), chaque panneau kilométrique entier dans l'écran quand il se montre, et chacun (« ${KM.join(" », « ")} ») montré ; les maisons blanches des champs avant le clocher d'Ars (la première vous dépasse avant lui, et quand il arrive à l'écran, une maison y est déjà ou est passée)`, async () => {
     await scenes(`${vp.width} × ${vp.height}`);
   });
 

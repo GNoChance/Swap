@@ -107,10 +107,10 @@ const SAILS = [["pont-voiliers", 395, 576, 58, "#24456b", -50], ["pont-voiliers"
 // `rise` of the time, steady, then down to a stop over the last share `fall` (sprint())
 const SPRINT = { top: 520, from: 0.35, rise: 0.15, fall: 0.33, until: 4.6 };
 // what goes by, by when it passes them (s into the crossing): the vines from the bridge's end, then the salt marshes,
-// then the white houses; at the end, the church of Ars where they stop, its tower ARS units across the screen (its
-// steeple on their left)
-const ALONG = { marais: 1.5, maisons: 2.8 };
-const ARS = 112;
+// then the white houses; then the church of Ars, where they stop, its tower ARS units across the screen at the end (its
+// steeple just left of them, the houses before it gone by)
+const ALONG = { marais: 1.5, maisons: 2.3 };
+const ARS = 140;
 // the island, back to front: [name, depth, its markup in a layer that wide, given where the marshes, the houses and the
 // church are in it (none: a layer for props)]: the sky, the far island and the sea, the fields behind the path, the km
 // signs, the cycle path and the fields below it; then in front of the bridge as it goes (the two of them take over from
@@ -128,14 +128,16 @@ const ISLAND_FRONT = [
 ];
 // across the island, their views, each turned over into the next: [s into the crossing, view, pedalling speed (none:
 // out of breath), speed lines]: side by side as they come off the bridge, flat out with Cycy in front, then Kevin, then
-// out of breath over their handlebars as they stop. The flat-out views are drawn riding left on their board: mirrored
+// out of breath over their handlebars as they stop. Each view pedals, or heaves out of breath, until the next one (the
+// last: until the glide stops, or the end). The flat-out views are drawn riding left on their board: mirrored
 const RIDES = [[0, "cote", 1], [0.6, "fond-cycy", 1.8, true], [2.5, "fond-kevin", 1.8, true], [4.1, "souffle"]];
 const MIRRORED = ["fond-cycy", "fond-kevin"];
 const BREATH = 0.35; // s each way of a breath, out of breath
-// the km signs (content.js), by when each pops up on the right of the safe zone (s into the crossing), at their depth
-// (a little farther than the path: `scale` their size), their planks over the two of them's heads; each folds down
-// before the left of the safe zone, the last stays as they stop
-const KM = { at: [0.7, 2.1, 4], depth: 0.6, scale: 0.85 };
+// the km signs (their words: content.js, one each), by when each pops up on the right of the safe zone (s into the
+// crossing): in the vines, in the salt marshes, at Ars; at their depth (a little farther than the path: `scale` their
+// size), their planks over the two of them's heads; each folds down before the left of the safe zone, the last stays as
+// they stop
+const KM = { at: [0.7, 1.75, 4], depth: 0.6, scale: 0.85 };
 // the lighthouse's scene, back to front, paper and poster
 const PHARE = [
   ["phare-ciel", 0.04, riviere.sky],
@@ -169,7 +171,14 @@ export function mount(host, { aventure }) {
   const distance = SPRINT.top * SPRINT.until * cruise.mean;
   const camera = (t) => distance * (cruise.ease(Math.min(1, t / SPRINT.until)) - 0.5);
   const landed = { x: RIDE.to - FOLLOW, y: ile.PISTE.ride };
-  const themes = (depth) => ({ marais: landed.x + depth * camera(ALONG.marais), maisons: landed.x + depth * camera(ALONG.maisons), eglise: ARS + (depth * distance) / 2 });
+  const passing = (depth, t) => landed.x + depth * camera(t);
+  // each layer's themes; a layer nearer than the path starts its village where the path's stands at the glide's end
+  // (sliding further, it keeps right of it all along: its hollyhocks never stand in front of the path's salt pans)
+  const themes = (depth) => ({
+    marais: passing(depth, ALONG.marais),
+    maisons: depth > 1 ? passing(1, ALONG.maisons) + ((depth - 1) * distance) / 2 : passing(depth, ALONG.maisons),
+    eglise: ARS + (depth * distance) / 2,
+  });
 
   // back to front: the lighthouse (the poster's), the island, the bridge, the two of them across the island and the
   // grass in front, the map (each hidden under the one before it, until it leaves); a scene is the list of its layers'
@@ -210,9 +219,11 @@ export function mount(host, { aventure }) {
   MIRRORED.forEach((key) => cyclists.look(key).classList.add("is-flipped"));
   // the km signs along the way, their feet behind the path's grass: each there at its stage x (sign k: on the right of
   // the safe zone, whole, when it pops up)
+  const kmWords = content.aventures.intros.ileDeRe.bornes;
+  if (kmWords.length !== KM.at.length) throw new Error(`ile-de-re: ${kmWords.length} km signs' words (content.js) for ${KM.at.length} times (KM.at)`);
   const kmBox = [ile.BORNE.width * KM.scale, ile.BORNE.height * KM.scale];
   const kmX = (k) => SAFE.x1 - kmBox[0] / 2 + KM.depth * camera(KM.at[k]);
-  const kmSigns = content.aventures.intros.ileDeRe.bornes.map((text, k) => prop(layerOf(islandScene, "traversee-bornes"), "st-borne", ile.borne(text, KM.scale), [kmX(k), ile.PISTE.verge + 4], kmBox));
+  const kmSigns = kmWords.map((text, k) => prop(layerOf(islandScene, "traversee-bornes"), "st-borne", ile.borne(text, KM.scale), [kmX(k), ile.PISTE.verge + 4], kmBox));
 
   // 5. the South-West's map, north to the Pertuis: the coast round La Rochelle, the islands and Ré's bridge, the
   // marshes, the vines of Cognac and Bordeaux, the Charente, the woods, the Médoc's pines
@@ -295,12 +306,16 @@ export function mount(host, { aventure }) {
   velo.defile(timeline, crossing, { stage, layers: islandDecor, distance, duration: SPRINT.until, ease: cruise.ease });
   RIDES.forEach(([t, view, speed, lines], k) => {
     const at = crossing + t;
+    const next = RIDES[k + 1] ? crossing + RIDES[k + 1][0] : null;
     if (k) cyclists.flip(timeline, at, view);
-    if (speed) velo.pedale(timeline, at, { actor: cyclists, duration: crossing + RIDES[k + 1][0] - at, speed, lines });
+    if (speed) velo.pedale(timeline, at, { actor: cyclists, duration: (next ?? crossing + SPRINT.until) - at, speed, lines });
+    else {
+      // turned over, out of breath: their breaths heave them until the next view, or the end
+      const [from, to] = [at + 0.18, next ?? phare];
+      const breaths = Math.max(1, Math.round((to - from) / (2 * BREATH)));
+      timeline.fromTo(cyclists.pose, { scaleY: 1 }, { scaleY: 1.03, duration: (to - from) / (2 * breaths), ease: "sine.inOut", yoyo: true, repeat: 2 * breaths - 1, immediateRender: false }, from);
+    }
   });
-  const winded = crossing + RIDES.at(-1)[0] + 0.18; // turned over, out of breath: their breaths heave them till the end
-  const breaths = Math.max(1, Math.round((phare - winded) / (2 * BREATH)));
-  timeline.fromTo(cyclists.pose, { scaleY: 1 }, { scaleY: 1.03, duration: (phare - winded) / (2 * breaths), ease: "sine.inOut", yoyo: true, repeat: 2 * breaths - 1, immediateRender: false }, winded);
   // the km signs pop up out of the grass, glide by, and fold down into it before the left of the safe zone (unless they
   // have stopped by then)
   kmSigns.forEach((sign, k) => {
