@@ -9,7 +9,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { launch } from "./cdp.mjs";
 import { check as checker } from "./check.mjs";
-import { AHEAD, atPassport, beatsOf, built, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, posterBoxes, REJECT, round, sceneBoxes, SEED, settled, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
+import { AHEAD, atPassport, beatsOf, built, holdAt, inside, KEY, LANDING, lagged, length, loaded, outside, playing, posterBoxes, REJECT, round, sceneBoxes, SEED, settled, SHOWS, skipIs, sleep, timeline, VIEWPORTS } from "./intro-kit.mjs";
 import { AVENTURES } from "../../js/aventures/data.js";
 import { stickers } from "../../js/aventures/intros/bivouac-1.stickers.js";
 
@@ -488,6 +488,24 @@ async function suite(page, vp) {
     await page.eval(holdAt(beat["En haut"].at + 1.5));
     const after = await page.eval(scale);
     if (!(mid < 0.6) || Math.abs(after - 1) > 0.01) throw new Error(`scaleX au milieu ${mid}, ensuite ${after}`);
+  });
+
+  // the turn on the way down (« La descente » + 1.1 s, 0.08 s down, 0.1 s up): Cycy, waiting for Kevin, turns towards
+  // the slope like a card (from the back, cross), then is whole again
+  await check("le bivouac, La descente : Cycy, qui attend Kevin, se retourne vers la pente comme une carte (sa boîte .st-actor__turn est écrasée au milieu du retournement, entière 0,7 s plus tard)", async () => {
+    // the turn box of the Cycy who shows (the one waiting: the others have gone by then), else how many show
+    const scale = `(() => {
+      const seen = [...document.querySelectorAll('.st-actor[data-who="cycy"]')].filter(${SHOWS});
+      return seen.length === 1 ? +gsap.getProperty(seen[0].querySelector(".st-actor__turn"), "scaleX") : seen.length + " Cycy";
+    })()`;
+    const turn = beat["La descente"].at + 1.1;
+    await page.goto(`${BASE}?demo&t=${turn + 0.08}#/aventures/bivouac-1`);
+    await page.waitFor(playing, 8000);
+    await page.eval(holdAt(turn + 0.08));
+    const mid = await page.eval(scale);
+    await page.eval(holdAt(turn + 0.78));
+    const after = await page.eval(scale);
+    if (!(mid < 0.6) || !(Math.abs(after - 1) <= 0.01)) throw new Error(`scaleX au milieu ${mid}, ensuite ${after}`);
   });
 
   await check("?demo&t=99 (après la fin de l'intro) : retour au passeport, sans rester figé sur la dernière image", async () => {

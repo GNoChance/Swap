@@ -187,9 +187,8 @@ test("decoupe: arguments", () => {
   assert.deepEqual(parseArgs(["--scene", "--count", "12", "x.png"]), { target: "x.png", scene: true, count: 12 });
   assert.deepEqual(parseArgs(["x.png", "--scene", "--count", "12"]), { target: "x.png", scene: true, count: 12 });
   assert.throws(() => parseArgs(["x.png", "--count", "12"]), /--count/);
-  for (const bad of [[], ["a"], ["a", "b"], ["x"]]) {
-    assert.throws(() => parseArgs(["x.png", "--scene", "--count", ...bad.slice(0, 1)].filter((v, i, all) => !(i === all.length - 1 && v === "x"))), /--count/);
-  }
+  assert.throws(() => parseArgs(["x.png", "--scene", "--count"]), /--count/);
+  assert.throws(() => parseArgs(["x.png", "--scene", "--count", "a"]), /--count/);
   assert.throws(() => parseArgs(["x.png", "--scene", "--count", "0"]), /--count/);
   assert.throws(() => parseArgs(["x.png", "--scene", "--count", "2.5"]), /--count/);
   assert.throws(() => parseArgs(["--scene"]), /usage/);

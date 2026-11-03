@@ -2,13 +2,13 @@
 // screens (intro-kit.mjs) and the first phone turned sideways: its length and its closing poster « ÎLE DE RÉ », its map
 // going north (the C3 from Bordeaux by Saintes and La Rochelle to the pin at the foot of the bridge, La Pallice), the
 // two of them on their bikes at the bridge's foot, crossing it as the camera follows them, then across the island as
-// the decor glides by (one view at a time, the speed lines with the flat-out views only, no C3, the km signs whole, the
-// phone turned meanwhile), the lighthouse whole over the two of them, the way back over a bridge that never ends (no
-// bank in sight, its piers going by, the snail overtaking them, one view at a time), La Rochelle (the two of them
-// turning round like cards), who shows in its moments, its decor over a wide screen (a 1080p one, and a browser
-// maximised on it), the stickers it loads and a scene sticker's stand-in, its scenario warmed on the passport, a touch
-// the first time, « Passer ▸ » in the demo, the browser's back, in and out three times. Needs the site running
-// (`node tests/e2e/serve.mjs`, port 5173), then
+// the decor glides by (one view at a time, the speed lines with the flat-out views only, the km signs whole, the phone
+// turned meanwhile), no C3 from then on but the coast's, the lighthouse whole over the two of them, the way back over a
+// bridge that never ends (no bank in sight, its piers going by, the snail overtaking them, one view at a time), La
+// Rochelle (the two of them turning round like cards, from the back to the front), who shows in its moments, its decor
+// over a wide screen (a 1080p one, and a browser maximised on it), the stickers it loads and a scene sticker's
+// stand-in, its scenario warmed on the passport, a touch the first time, « Passer ▸ » in the demo, the browser's back,
+// in and out three times. Needs the site running (`node tests/e2e/serve.mjs`, port 5173), then
 // `node tests/e2e/intros-ile-de-re.mjs` (ONLY=1920: a single screen; SHOTS=<folder> keeps a screenshot of the middle of
 // each moment on each screen, of the map at 2, 3.9 and 4.4 s, of the bridge at 5, 6, 7, 8 and 9.2 s, of the island at
 // 9.6, 10.5, 12, 13.5 and 14.8 s, of the way back at 21, 22.5, 24 and 25.3 s, of La Rochelle at 26, 27.5 and 28.8 s,
@@ -62,9 +62,10 @@ const CAST = {
   "La côte": ["c3"],
   "L'affiche": ["duo"],
 };
-// s: at La Rochelle, the two of them turning round like cards (Cycy, then Kevin a little later): both their turn boxes
-// squeezed (scaleX under `squeezed`) in the middle of it, whole (±1) at its end
-const TURN = { mid: 27.8, end: 28.5, squeezed: 0.6 };
+// s: at La Rochelle, the two of them turning round like cards (Cycy, then Kevin a little later): before it, each shows
+// its sticker `from` (side and pose: from the back, in joy); both their turn boxes squeezed (scaleX under `squeezed`) in
+// the middle of it; at its end whole (±1), each showing its sticker `to` (from the front, in joy)
+const TURN = { before: 27.5, mid: 27.8, end: 28.5, squeezed: 0.6, from: "dos-joie", to: "face-joie" };
 const HARBOUR = [26.5, 28.5]; // s: La Rochelle over a wide screen (point 5), as its decor closes in, then once they have turned
 // s: in and out of the intro three times from the passport (Review Focus 4), the last at La Rochelle
 const EXITS = [5, 15, 27];
@@ -87,9 +88,11 @@ const PCS = [[1920, 1080], [1920, 947]];
 const CROSSING = [7, 8, 9.2]; // s: the two of them on the bridge, the camera following them
 const FOLLOWED = [...CROSSING, 9.45]; // s: and the follow's end, its layers furthest
 const GLIDING = [9.55, 10, 12.5, 14.8]; // s: across the island, the decor gliding by from its start (its layers furthest right) to once it has stopped
-// s: from « En selle » to « Le phare », the bikes on the bridge and across the island (Review Focus 2): no C3, a single
-// view of the bikes
+// s: from « En selle » to « Le phare », the bikes on the bridge and across the island (Review Focus 2): a single view of
+// the bikes; and from « En selle » to the end of the intro, no C3 but the coast's in its moment (COAST_C3)
 const BIKES = { from: 4.5, to: 15 };
+// s: the C3 on the coast road, from « La côte » until its scene has gone under the poster's (0.3 s after it)
+const COAST_C3 = { from: 29, to: 31.4 };
 // the flat-out views (their numbers on the bike board): the speed lines show with them only, and with them most of the
 // time
 const FLAT_OUT = ["05", "06"];
@@ -433,7 +436,7 @@ async function suite(page, vp) {
 
   if (vp === VIEWPORTS[0]) {
     const selle = beat["En selle"]?.mid;
-    await check(`point 2 et la C3 : de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle », « Le pont » et « La traversée »), aucune C3 (toutes les 0,25 s ; seule celle de la carte s'efface avant ${DIVE_OVER} s, pendant la plongée) ; et de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, les traits de vitesse ne se montrent qu'avec les vues à fond (${FLAT_OUT.join(", ")}) ou en se retournant, avec chacune d'elles la plupart du temps, et plus à la fin ; au milieu d'« En selle » (${fr(selle)} s), ils penchent pareil qu'on y arrive en avançant ou en reculant`, async () => {
+    await check(`point 2 et la C3 : de ${fr(BIKES.from)} s à la fin de l'intro, aucune C3 (toutes les 0,25 s ; seules celle de la carte, qui s'efface avant ${DIVE_OVER} s pendant la plongée, et celle de la côte, de ${fr(COAST_C3.from)} à ${fr(COAST_C3.to)} s) ; de ${fr(BIKES.from)} à ${fr(BIKES.to)} s (« En selle », « Le pont » et « La traversée »), de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, les traits de vitesse ne se montrent qu'avec les vues à fond (${FLAT_OUT.join(", ")}) ou en se retournant, avec chacune d'elles la plupart du temps, et plus à la fin ; au milieu d'« En selle » (${fr(selle)} s), ils penchent pareil qu'on y arrive en avançant ou en reculant`, async () => {
       // the middle of « En selle » reached forward: the page started before it, paused before it, then sought on to it
       await page.goto(`${BASE}?demo&t=${BIKES.from}#/aventures/${ID}`);
       await page.waitFor(playing, 8000);
@@ -472,6 +475,14 @@ async function suite(page, vp) {
           if (!worn || shown < worn / 2) throw new Error(`${back ? "en reculant" : "en avançant"} : la vue ${view} portée ${worn} fois, ses traits de vitesse montrés ${shown} fois`);
         }),
       );
+      // on to the end of the intro, every 0.25 s, sought on this page (one started near the end would leave with the
+      // intro): no C3 but the coast's, in its moment
+      const end = await page.eval(`${timeline}.duration()`);
+      for (let t = BIKES.to + 0.25; t < end; t += 0.25) {
+        await page.eval(holdAt(t));
+        const { c3 } = await page.eval(bikesSeen);
+        if (c3.some((layer) => !(layer === "cote-c3" && t >= COAST_C3.from && t < COAST_C3.to))) throw new Error(`à ${t} s : une C3 à l'écran (${JSON.stringify(c3)})`);
+      }
     });
 
     await check(`point 2 (du phare à la fin du retour) : de ${fr(BACK.from)} à ${fr(BACK.to)} s, bornes comprises, de 0,1 en 0,1 s, en avant puis en arrière, les vélos montrent exactement une vue, dans l'ordre ${BACK.views.join(", ")}, sans traits de vitesse`, async () => {
@@ -494,11 +505,20 @@ async function suite(page, vp) {
       });
     });
 
-    await check(`La Rochelle : vous vous retournez comme des cartes (à ${fr(TURN.mid)} s, au milieu du retournement, les boîtes .st-actor__turn de Cycy et de Kevin écrasées, un scaleX sous ${fr(TURN.squeezed)} ; à ${fr(TURN.end)} s, entières, ±1)`, async () => {
-      const scales = `["cycy", "kevin"].map((who) => { const el = document.querySelector('.st-actor[data-who="' + who + '"] .st-actor__turn'); return el ? +gsap.getProperty(el, "scaleX") : null; })`;
-      const mid = await heldAt(TURN.mid, scales);
-      const end = await heldAt(TURN.end, scales);
-      if (!mid.every((s) => s !== null && Math.abs(s) < TURN.squeezed) || !end.every((s) => s !== null && Math.abs(Math.abs(s) - 1) <= 0.01)) throw new Error(`scaleX (Cycy, Kevin) au milieu ${JSON.stringify(mid)}, à la fin ${JSON.stringify(end)}`);
+    await check(`La Rochelle : vous vous retournez comme des cartes (à ${fr(TURN.before)} s, Cycy et Kevin de dos, en « joie » ; à ${fr(TURN.mid)} s, au milieu du retournement, les boîtes .st-actor__turn de Cycy et de Kevin écrasées, un scaleX sous ${fr(TURN.squeezed)} ; à ${fr(TURN.end)} s, entières, ±1, et de face, en « joie »)`, async () => {
+      // Cycy's and Kevin's turn boxes' scaleX, and the stickers each shows (side and pose, as « dos-joie »)
+      const seen = `["cycy", "kevin"].map((who) => {
+        const actor = document.querySelector('.st-actor[data-who="' + who + '"]');
+        if (!actor) return { scale: null, look: null };
+        const looks = [...actor.querySelectorAll(".st-actor__img")].filter(${SHOWS}).map((img) => img.src.match(/-(face|dos)-([a-z]+)\\.webp$/)?.slice(1).join("-") ?? img.src);
+        return { scale: +gsap.getProperty(actor.querySelector(".st-actor__turn"), "scaleX"), look: looks.join(" + ") };
+      })`;
+      const before = await heldAt(TURN.before, seen);
+      const mid = await heldAt(TURN.mid, seen);
+      const end = await heldAt(TURN.end, seen);
+      const [scales, looks] = [(list) => JSON.stringify(list.map((s) => s.scale)), (list) => JSON.stringify(list.map((s) => s.look))];
+      if (!before.every((s) => s.look === TURN.from) || !end.every((s) => s.look === TURN.to)) throw new Error(`stickers (Cycy, Kevin) avant ${looks(before)}, à la fin ${looks(end)}, pas « ${TURN.from} » puis « ${TURN.to} »`);
+      if (!mid.every((s) => s.scale !== null && Math.abs(s.scale) < TURN.squeezed) || !end.every((s) => s.scale !== null && Math.abs(Math.abs(s.scale) - 1) <= 0.01)) throw new Error(`scaleX (Cycy, Kevin) au milieu ${scales(mid)}, à la fin ${scales(end)}`);
     });
 
     await check(`les stickers demandés sous /assets/aventures/ : exactement ceux de ${ID}.stickers.js (${stickers.length}), aucun d'une autre sortie`, async () => {
