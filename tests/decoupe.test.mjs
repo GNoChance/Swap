@@ -182,14 +182,18 @@ test("decoupe: a scene sticker is 600 px wide, a standard one 300", () => {
 });
 
 test("decoupe: arguments", () => {
-  assert.deepEqual(parseArgs(["planches/voyages/ile-de-re"]), { target: "planches/voyages/ile-de-re", scene: false, count: null });
-  assert.deepEqual(parseArgs(["x.png", "--scene"]), { target: "x.png", scene: true, count: null });
-  assert.deepEqual(parseArgs(["--scene", "--count", "12", "x.png"]), { target: "x.png", scene: true, count: 12 });
-  assert.deepEqual(parseArgs(["x.png", "--scene", "--count", "12"]), { target: "x.png", scene: true, count: 12 });
+  assert.deepEqual(parseArgs(["planches/voyages/ile-de-re"]), { target: "planches/voyages/ile-de-re", scene: false, count: null, skip: null });
+  assert.deepEqual(parseArgs(["x.png", "--scene"]), { target: "x.png", scene: true, count: null, skip: null });
+  assert.deepEqual(parseArgs(["--scene", "--count", "12", "x.png"]), { target: "x.png", scene: true, count: 12, skip: null });
+  assert.deepEqual(parseArgs(["x.png", "--scene", "--count", "12"]), { target: "x.png", scene: true, count: 12, skip: null });
   assert.throws(() => parseArgs(["x.png", "--count", "12"]), /--count/);
   assert.throws(() => parseArgs(["x.png", "--scene", "--count"]), /--count/);
   assert.throws(() => parseArgs(["x.png", "--scene", "--count", "a"]), /--count/);
   assert.throws(() => parseArgs(["x.png", "--scene", "--count", "0"]), /--count/);
   assert.throws(() => parseArgs(["x.png", "--scene", "--count", "2.5"]), /--count/);
+  assert.deepEqual(parseArgs(["x.png", "--skip", "6"]), { target: "x.png", scene: false, count: null, skip: 6 });
+  assert.throws(() => parseArgs(["x.png", "--scene", "--skip", "6"]), /--skip/);
+  assert.throws(() => parseArgs(["x.png", "--skip"]), /--skip/);
+  assert.throws(() => parseArgs(["x.png", "--skip", "0"]), /--skip/);
   assert.throws(() => parseArgs(["--scene"]), /usage/);
 });

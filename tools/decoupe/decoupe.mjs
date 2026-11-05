@@ -1,8 +1,9 @@
 // Cuts die-cut sticker boards into one WebP per sticker (spec § 7), into assets/aventures/. The pixels go through
 // headless Chrome (the e2e client, no dependency): it decodes the PNG, crops, scales to 300 px (600 for a scene) and encodes the WebP.
-// Run: node tools/decoupe/decoupe.mjs <boards folder of an outing | board.png> [--scene [--count N]]
+// Run: node tools/decoupe/decoupe.mjs <boards folder of an outing | board.png> [--scene [--count N]] [--skip N]
 //   a folder: its standard boards (« <Who> de face.png », « <Who> de dos.png »), 12 poses each;
 //   a file in planches/voyages/vehicules/: a vehicle, 12 views;
+//   --skip N (one standard board file): the board holds 13 stickers, one more than the 12 poses; the N-th in reading order is dropped;
 //   --scene: a scene board, any number of stickers, numbered scene-<board>-01.webp… in reading order; --count N (with --scene only) expects exactly N and unglues touching ones.
 // A board that does not give the expected stickers is reported and writes nothing; the others go on, and the exit
 // code is 1. A contact sheet of each board lands in tools/decoupe/apercu/ (not in git).
@@ -76,7 +77,7 @@ const PAGE = `(() => {
 })()`;
 
 /** What to cut in a board file: where it is read from, how many stickers, and the names (under assets/aventures/). */
-function jobOf(file, scene, count) {
+function jobOf(file, scene, count, skip) {
   const folder = basename(dirname(file));
   const name = basename(file, ".png");
   const outing = outingOf(folder);
@@ -90,7 +91,7 @@ function jobOf(file, scene, count) {
   }
   const board = boardOf(basename(file));
   if (!board) throw new Error(`planche non standard : « ${basename(file)} » (« <Qui> de face.png » ou « <Qui> de dos.png »), voir --scene`);
-  return { file, expected: 12, names: () => fileNames({ outing, ...board }), sheet: `${outing}-${board.who}-${board.side}` };
+  return { file, expected: skip ? 13 : 12, skip, names: () => fileNames({ outing, ...board }), sheet: `${outing}-${board.who}-${board.side}` };
 }
 
 /** Cuts one board: the WebP files [{ name, bytes }], not written yet. Throws when the board does not give what it should. */
@@ -102,14 +103,16 @@ async function cutBoard(page, job) {
     expected: job.expected,
     white: Buffer.from(white, "base64"),
   });
-  const names = job.names(boxes.length);
+  const names = job.names(boxes.length - (job.skip ? 1 : 0));
   const files = [];
   for (const [i, box] of boxes.entries()) {
+    if (i + 1 === job.skip) continue; // the extra sticker: not written
+    const at = files.length;
     const rect = padBox(box, MARGIN, width, height);
     const mask = new Uint8Array(rect.w * rect.h); // 1 where the pixel is this sticker's own
     for (let y = 0; y < rect.h; y++) for (let x = 0; x < rect.w; x++) mask[y * rect.w + x] = owner[(rect.y + y) * width + rect.x + x] === i + 1 ? 1 : 0;
     const webp = await page.eval(`cut.crop(${JSON.stringify(rect)}, ${stickerWidth({ scene: job.scene })}, "${Buffer.from(mask).toString("base64")}")`);
-    files.push({ name: names[i], bytes: Buffer.from(webp.split(",")[1], "base64") });
+    files.push({ name: names[at], bytes: Buffer.from(webp.split(",")[1], "base64") });
   }
   return files;
 }
@@ -154,8 +157,9 @@ function boardFiles(target, scene) {
 }
 
 async function main() {
-  const { target, scene, count } = parseArgs(process.argv.slice(2));
-  const jobs = boardFiles(target, scene).map((file) => jobOf(file, scene, count));
+  const { target, scene, count, skip } = parseArgs(process.argv.slice(2));
+  if (skip && !statSync(target).isFile()) throw new Error("--skip prend une planche (un fichier), pas un dossier");
+  const jobs = boardFiles(target, scene).map((file) => jobOf(file, scene, count, skip));
   const page = await launch({ width: 1200, height: 900, mobile: false });
   try {
     await page.eval(PAGE);
