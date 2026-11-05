@@ -97,8 +97,9 @@ function unglue(bodies, expected, board) {
 }
 
 /** An island of `k` stickers cut into `k` pieces. The rough cut (`rectangles`) only has to tell the stickers' art apart,
- *  and there is a clear gap between two stickers' art: the outline pixels then go to the nearest art. */
-function split(body, k, { labels, piece, art, width, uids }) {
+ *  and there is a clear gap between two stickers' art: the outline pixels then go to the nearest art, and the solid
+ *  bits that this hands to the wrong piece go back (`giveBack`). */
+function split(body, k, { labels, piece, art, alpha, width, uids }) {
   const pieces = rectangles(body.id, body, k, labels, art, width).map((region) => ({
     id: uids.next++, region, x0: width, y0: Infinity, x1: 0, y1: 0, area: 0,
   }));
@@ -127,6 +128,7 @@ function split(body, k, { labels, piece, art, width, uids }) {
       }
     }
   }
+  giveBack(queue, body.id, { labels, piece, alpha, width });
   const byId = new Map(pieces.map((p) => [p.id, p]));
   for (const at of queue) {
     const p = byId.get(piece[at]);
@@ -139,6 +141,74 @@ function split(body, k, { labels, piece, art, width, uids }) {
     p.area++;
   }
   return pieces.filter((p) => p.area);
+}
+
+/** Calls `fn` with each of the 8 neighbours of a pixel that are on the board (an index off the board's top or bottom
+ *  is passed on: `labels` has no island there). */
+function around(at, width, fn) {
+  const x = at % width;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && x + dx >= 0 && x + dx < width) fn(at + dy * width + dx);
+  }
+}
+
+/** Alpha above this is solid: below are the soft (anti-aliased) edges of the outlines. */
+const SOLID = 200;
+
+/**
+ * Two stickers' outlines touch by their soft edges, or overlap: either way the solid pixels of each piece hang
+ * together. A solid bit of a piece cut off from its main bit (its biggest) was handed over by the cut (the straight
+ * line ran through a limb and left some of its art on the other side) or by the nearest art (the white of a shoe keeps
+ * a sticker's art far from its own outline): it goes, with the soft pixels nearest to it, to the piece whose main bit
+ * it touches the most. Each move joins a bit to a main bit, so it ends.
+ */
+function giveBack(pixels, id, { labels, piece, alpha, width }) {
+  const solid = (at) => labels[at] === id && alpha[at] > SOLID;
+  for (;;) {
+    // The bits: each piece's solid pixels, 8-connected, numbered from 1 in `bit` (soft pixels too, below).
+    const bit = new Int32Array(piece.length);
+    const bits = [null];
+    for (const start of pixels) {
+      if (bit[start] || !solid(start)) continue;
+      const b = { piece: piece[start], area: 0 };
+      const stack = [start];
+      bit[start] = bits.length;
+      while (stack.length) {
+        b.area++;
+        around(stack.pop(), width, (next) => {
+          if (bit[next] || !solid(next) || piece[next] !== b.piece) return;
+          bit[next] = bits.length;
+          stack.push(next);
+        });
+      }
+      bits.push(b);
+    }
+    const main = new Map(); // a piece's biggest bit
+    for (const b of bits.slice(1)) if (!(main.get(b.piece)?.area >= b.area)) main.set(b.piece, b);
+    const touches = new Map(); // a cut-off bit -> the pieces whose main bit it touches, and how often
+    for (const at of pixels) {
+      const b = bits[bit[at]];
+      if (!b || main.get(b.piece) === b) continue;
+      around(at, width, (next) => {
+        const other = bits[bit[next]];
+        if (!other || other.piece === b.piece || main.get(other.piece) !== other) return;
+        if (!touches.has(bit[at])) touches.set(bit[at], new Map());
+        const counts = touches.get(bit[at]);
+        counts.set(other.piece, (counts.get(other.piece) ?? 0) + 1);
+      });
+    }
+    if (!touches.size) return;
+    const moves = new Map([...touches].map(([i, counts]) => [i, [...counts].sort((p, q) => q[1] - p[1])[0][0]]));
+    const queue = pixels.filter((at) => bit[at]); // the soft pixels take the bit of the nearest solid pixel
+    for (let head = 0; head < queue.length; head++) {
+      around(queue[head], width, (next) => {
+        if (labels[next] !== id || bit[next]) return;
+        bit[next] = bit[queue[head]];
+        queue.push(next);
+      });
+    }
+    for (const at of pixels) if (moves.has(bit[at]) && piece[at] === bits[bit[at]].piece) piece[at] = moves.get(bit[at]);
+  }
 }
 
 /** The `k` rectangles of island `id` inside the rectangle `r`: cut where its art is narrowest (fewest pixels on a row
@@ -226,7 +296,7 @@ export function cutStickers(alpha, width, height, { threshold = 24, speck = SPEC
   const colour = labels.map((id, at) => (id && !white?.[at] ? 1 : 0));
   const art = white ? erode(colour, width, height, 3) : colour;
   let bodies = kept.filter((island) => island.area >= floor);
-  if (expected != null && bodies.length < expected) bodies = unglue(bodies, expected, { labels, piece, art, width, uids: { next: found.length + 1 } });
+  if (expected != null && bodies.length < expected) bodies = unglue(bodies, expected, { labels, piece, art, alpha, width, uids: { next: found.length + 1 } });
   const ordered = bodies.length ? readingOrder(bodies) : []; // by the stickers alone: a loose bit must not shift them
   const boxes = ordered.map((body) => ({ ...body }));
   const places = new Map(ordered.map((body, i) => [body.id, i + 1]));

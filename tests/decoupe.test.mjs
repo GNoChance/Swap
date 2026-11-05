@@ -77,6 +77,41 @@ test("decoupe: stickers whose outlines touch are told apart", () => {
   });
 });
 
+/** Two stickers glued by the soft edges of their outlines (alpha 120 on the row where they touch), one above the other,
+ *  like « devant le train » 01 and 05: the top one's leg reaches down into a white shoe (no art; with `speck`, a bit of
+ *  shading), its outline ending on row 68, the bottom one's outline starting on row 69. */
+function shoe(speck) {
+  const [width, height] = [100, 115];
+  const alpha = new Uint8Array(width * height);
+  const white = new Uint8Array(width * height);
+  const fill = (x, y, w, h, a, isWhite) => {
+    for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) [alpha[j * width + i], white[j * width + i]] = [a, isWhite];
+  };
+  fill(15, 3, 70, 40, 255, 1); // the top sticker's outline
+  fill(35, 33, 30, 36, 255, 1); // around its leg and its shoe (x 40 to 59, y 50 to 63, white)
+  fill(20, 8, 60, 30, 255, 0); // its art
+  fill(44, 38, 12, 12, 255, 0); // its leg
+  if (speck) fill(46, 54, 9, 9, 255, 0); // the shading of the shoe
+  fill(35, 68, 30, 1, 120, 1); // the soft bottom edge of its outline
+  fill(15, 69, 70, 42, 255, 1); // the bottom sticker's outline
+  fill(15, 69, 70, 1, 120, 1); // its soft top edge
+  fill(20, 74, 60, 32, 255, 0); // its art
+  return { alpha, white, width, height };
+}
+
+test("decoupe: a limb past the cut stays with its sticker", () => {
+  for (const speck of [false, true]) {
+    // Without the speck, the nearest art to the bottom of the shoe is the other sticker's; with it, the straight cut
+    // (through the white of the shoe) leaves the speck on the other side.
+    const { alpha, white, width, height } = shoe(speck);
+    const { boxes, owner } = cutStickers(alpha, width, height, { white, expected: 2 });
+    assert.deepEqual(boxes, [{ x: 15, y: 3, w: 70, h: 66 }, { x: 15, y: 69, w: 70, h: 42 }], `speck: ${speck}`);
+    for (let at = 0; at < alpha.length; at++) {
+      if (alpha[at]) assert.equal(owner[at], at < 69 * width ? 1 : 2, `speck: ${speck}, pixel ${at % width}, ${Math.floor(at / width)}`);
+    }
+  }
+});
+
 test("decoupe: 4 glued columns plus 8 loose bits", () => {
   const { alpha, width, height, white, cells, rect } = glued();
   for (let i = 0; i < 8; i++) rect(cells[i].x + 48 + 6, cells[i].y + 10, 14, 14); // a bit 6 px from the right of a sticker
